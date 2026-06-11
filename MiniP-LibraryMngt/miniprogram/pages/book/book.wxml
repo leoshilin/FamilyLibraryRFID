@@ -1,0 +1,165 @@
+<view class="page">
+  <!-- 顶部导航栏 -->
+  <view class="nav-bar">
+    <view class="back-btn" bindtap="onBack">← 返回</view>
+    <view class="nav-title">
+      {{ mode === 'scan' ? '确认入库' : '图书详情' }}
+    </view>
+    <view class="nav-right"></view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="state-view">
+    <text>加载中…</text>
+  </view>
+
+  <!-- 错误提示 -->
+  <view wx:elif="{{error}}" class="state-view">
+    <text>{{error}}</text>
+  </view>
+  <!-- 书籍信息展示 -->
+  <view wx:else class="book-card">
+  
+    <!-- 主体内容 -->
+    <view class="content">
+  
+      <!-- 顶部信息卡片 -->
+      <view class="info-card">
+  
+        <view class="cover-section">
+          <!-- 左侧封面 -->
+          <view class="cover-box" bindtap="onTakeCoverPhoto">
+            <image wx:if="{{book.cover_url}}" class="cover" src="{{book.cover_url}}" mode="aspectFill" />
+            <view wx:else class="cover-placeholder">
+              {{ metaExists ? '暂无封面' : '点击拍摄封面' }}
+            </view>
+          </view>
+  
+          <!-- ISBN 小字 -->
+          <view class="isbn-text">
+            ISBN {{book.isbn}}
+          </view>
+        </view>
+
+        <!-- 右侧信息 -->
+        <view class="meta-box">
+          <view class="book-title">{{book.title}}</view>
+          <view class="book-author">{{book.authors}}</view>
+          <!-- 分割线 -->
+          <view class="divider"></view>
+          <!-- 统一 label + value 结构 -->
+          <view class="meta-row">
+            <view class="meta-label">出版社</view>
+            <view class="meta-value">{{book.publisher}}</view>
+          </view>
+          <view class="meta-row">
+            <view class="meta-label">发行</view>
+            <view class="meta-value">{{book.publishYear}}</view>
+          </view>
+          <view class="meta-row">
+            <view class="meta-label">价格</view>
+            <view class="meta-value">{{book.price}}</view>
+          </view>
+          <view class="meta-row">
+            <view class="meta-label">装帧</view>
+            <view class="meta-value">{{book.binding}}</view>
+          </view>
+          
+          <!-- 下架水印 -->
+          <view wx:if="{{book.status === 'off_stock'}}" class="off-watermark">
+            已下架
+          </view>
+
+        </view>
+      </view>
+
+      <!-- 套装信息卡片 -->
+      <view class="group-card">
+        <!-- 是否套装 -->
+        <view class="field">
+          <text class="label">是否套装</text>
+          <block wx:if="{{mode === 'scan' && !metaExists}}">
+            <switch checked="{{book.isSet}}" bindchange="onIsSetChange" />
+          </block>
+
+          <block wx:else>
+            <text class="value">{{book.isSet ? '是' : '否'}}</text>
+          </block>
+        </view>
+
+        <!-- 套装区域 -->
+        <view wx:if="{{book.isSet}}">
+          <!-- 总册数 -->
+          <view class="field">
+            <text class="label">套装总册数</text>
+            <block wx:if="{{mode === 'scan' && !metaExists}}">
+              <input type="number" value="{{book.setTotalCount}}" bindinput="onSetTotalCountInput" />
+            </block>
+
+            <block wx:else>
+              <text class="value">{{book.setTotalCount}}</text>
+            </block>
+          </view>
+
+          <!-- 当前册 -->
+          <view class="field">
+            <text class="label">当前第几本</text>
+
+            <block wx:if="{{mode === 'scan'}}">
+              <input type="number" value="{{book.setIndex}}" bindinput="onSetIndexInput" />
+            </block>
+
+            <block wx:else>
+              <text class="value">{{book.setIndex}}</text>
+            </block>
+          </view>
+        </view>
+
+        <!-- view模式下显示 RFID -->
+        <view wx:if="{{mode === 'view'}}" class="field">
+          <text class="label">RFID</text>
+          <text class="value">
+            {{ book.rfid ? book.rfid : '未绑定' }}
+          </text>
+        </view>
+
+      </view>
+
+    </view>
+
+    <!-- 底部操作区 -->
+    <view class="bottom-bar">
+      <!-- 扫码模式 -->
+      <block wx:if="{{mode === 'scan'}}">
+        <button class="primary-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="onConfirmInStock">
+          上架
+        </button>
+      </block>
+
+      <!-- 查看模式 -->
+      <block wx:eliff="{{mode === 'view'}}"></block>
+        <!-- 已下架图书 -->
+        <block wx:if="{{book.status === 'off_stock'}}">        
+          <button class="primary-btn" bindtap="handleOn">
+            重新上架
+          </button>        
+          <button class="danger-btn" bindtap="onDelete">
+            彻底删除
+          </button>        
+        </block>
+
+        <!-- 上架中 -->
+        <block wx:elif="{{book.status === 'in_stock'}}">        
+          <button class="danger-btn" bindtap="handleOff">
+            下架
+          </button>        
+          <button class="secondary-btn" bindtap="onBindRFID">
+            {{ book.rfid ? '重新绑定RFID' : '绑定RFID' }}
+          </button>
+        </block>
+      </view>
+
+    <!-- canvas 隐藏模式 -->
+    <canvas id="coverCanvas" type="2d" style="width: 0; height: 0; position: fixed; top: -9999px;"></canvas>
+  </view>
+</view>

@@ -1,0 +1,260 @@
+.page {
+  min-height: 100vh;
+  background: #f2f2f7;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 顶部导航栏 */
+.nav-bar {
+  height: 96rpx;
+  padding: 0 24rpx;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(20rpx);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid #e5e5ea;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* 返回按钮 */
+.back-btn {
+  font-size: 30rpx;
+  color: #1677ff;
+  font-weight: 500;
+  min-width: 120rpx;
+}
+
+/* 标题 */
+.nav-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #111;
+  text-align: center;
+  flex: 1;
+}
+
+/* 占位 */
+.nav-right {
+  min-width: 120rpx;
+}
+
+/* 内容区域 */
+.content {
+  flex: 1;
+  padding: 30rpx;
+  padding-bottom: 180rpx;
+}
+
+/* 封面整体区域 */
+.cover-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ISBN 小字 */
+.isbn-text {
+  margin-top: 12rpx;
+  font-size: 16rpx;
+  color: #999;
+  text-align: center;
+  word-break: break-all;
+  font-style: italic;   /* 斜体 */
+  letter-spacing: 1rpx; /* 稍微拉开一点字距，更精致 */
+}
+
+/* 信息卡片 */
+.info-card {
+  background: #ffffff;
+  border-radius: 28rpx;
+  padding: 30rpx;
+  display: flex;
+  gap: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.05);
+  margin-bottom: 30rpx;
+}
+
+/* 封面 */
+.cover-box {
+  width: 200rpx;
+  height: 280rpx;
+  border-radius: 16rpx;
+  background: #e5e5ea;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.cover {
+  width: 100%;
+  height: 100%;
+}
+
+.cover-placeholder {
+  font-size: 24rpx;
+  color: #999;
+  text-align: center;
+  padding: 20rpx;
+}
+
+/* 右侧信息 */
+.meta-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* 标题 */
+.book-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 8rpx;
+}
+
+/* 作者 */
+.book-author {
+  font-size: 28rpx;
+  color: #444;
+  margin-bottom: 20rpx;
+}
+
+/* 分割线 */
+.divider {
+  height: 1rpx;
+  background: #e5e5ea;
+  margin-bottom: 16rpx;
+}
+
+/* 每一行 */
+.meta-row {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 12rpx;
+}
+
+/* label 右对齐 */
+.meta-label {
+  width: 70rpx;
+  text-align: right;
+  font-size: 20rpx;
+  color: #888;
+  margin-right: 16rpx;
+}
+
+/* value 左对齐 */
+.meta-value {
+  flex: 1;
+  font-size: 20rpx;
+  color: #333;
+  word-break: break-all;
+}
+
+/* 分组卡片 */
+.group-card {
+  background: #ffffff;
+  border-radius: 28rpx;
+  padding: 20rpx 30rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.05);
+}
+
+/* 下架水印 */
+.off-watermark {
+  position: absolute;
+
+  top: 45%;
+  left: 10%;
+
+  font-size: 80rpx;
+  font-weight: bold;
+
+  color: rgba(150, 150, 150, 0.18);
+
+  transform: rotate(-45deg);
+
+  pointer-events: none;   /* 不遮挡点击 */
+  z-index: 10;
+}
+
+/* 字段 */
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.field:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-size: 28rpx;
+  color: #666;
+}
+
+.value {
+  font-size: 28rpx;
+  color: #111;
+}
+
+.input {
+  text-align: right;
+  font-size: 28rpx;
+}
+
+/* 底部操作栏 */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20rpx 30rpx 40rpx;
+  background: #ffffff;
+  border-top: 1rpx solid #eee;
+  display: flex;
+  gap: 20rpx;
+}
+
+/* 主按钮 */
+.primary-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  background: #1677ff;
+  color: #fff;
+}
+
+.primary-btn::after {
+  border: none;
+}
+
+/* 次按钮 */
+.secondary-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  background: #f2f2f7;
+  color: #333;
+}
+
+/* 危险按钮 */
+.danger-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  background: #ff4d4f;
+  color: #fff;
+}
+

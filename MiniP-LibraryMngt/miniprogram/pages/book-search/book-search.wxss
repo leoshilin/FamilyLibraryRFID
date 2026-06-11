@@ -1,0 +1,178 @@
+.page {
+  background: #f5f6f8;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.search-bar {
+  display: flex;
+  padding: 20rpx;
+  background: #fff;
+}
+
+.search-input {
+  flex: 1;
+  background: #f0f0f0;
+  border-radius: 12rpx;
+  padding: 16rpx;
+  font-size: 28rpx;
+}
+
+.search-btn {
+  margin-left: 16rpx;
+  background: #1677ff;
+  color: #fff;
+  border-radius: 12rpx;
+  padding: 0 24rpx;
+}
+
+.advanced-toggle {
+  padding: 20rpx;
+  font-size: 26rpx;
+  color: #1677ff;
+  background: #fff;
+}
+
+.advanced-panel {
+  background: #fff;
+  padding: 20rpx;
+  border-top: 1rpx solid #eee;
+}
+
+.form-item {
+  margin-bottom: 20rpx;
+}
+
+.label {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.picker {
+  margin-top: 12rpx;
+  padding: 16rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+}
+
+.date-row {
+  display: flex;
+  align-items: center;
+  margin-top: 12rpx;
+}
+
+.date-picker {
+  flex: 1;
+  padding: 16rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  text-align: center;
+}
+
+.date-sep {
+  margin: 0 16rpx;
+}
+
+.confirm-btn {
+  margin-top: 20rpx;
+  background: #1677ff;
+  color: #fff;
+  border-radius: 16rpx;
+}
+
+.list {
+  flex: 1;
+  height: 100vh;
+}
+
+.cover {
+  width: 120rpx;
+  height: 160rpx;
+  border-radius: 8rpx;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.info {
+  flex: 1;
+  margin-left: 20rpx;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+}
+
+.title {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.author {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: #888;
+}
+
+.off-tag {
+  margin-left: 12rpx;
+  font-size: 22rpx;
+  color: #ff4d4f;
+  border: 1rpx solid #ff4d4f;
+  border-radius: 8rpx;
+  padding: 2rpx 8rpx;
+}
+
+.loading {
+  text-align: center;
+  padding: 20rpx;
+  color: #999;
+}
+
+.book-list {
+  background: #f5f5f5;  
+}
+
+.swipe-item {
+  background: #fff;
+  border-radius: 16rpx;
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+
+.actions {
+  display: flex;
+  padding: 20rpx;
+  background: #f8f8f8;
+  gap: 20rpx;  
+}
+
+.btn {
+  width: 160rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 28rpx;
+}
+
+.btn.detail { background: #409eff; }
+.btn.off    { background: #e6a23c; }
+.btn.rfid   { background: #67c23a; }
+.btn.on     { background: #409eff; }
+.btn.delete { background: #f56c6c; }
+
+.book-item {  
+  background: #fff;
+  padding: 24rpx;  
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.off-book {
+  opacity: 0.6;
+}
+

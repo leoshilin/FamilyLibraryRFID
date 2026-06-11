@@ -1,0 +1,171 @@
+.header {
+  padding: 60rpx 30rpx 30rpx;
+  display: flex;
+  flex-direction: column; 
+}
+
+.title {
+  font-size: 40rpx;
+  font-weight: 700;   /* 粗体 */
+  color: #000;
+}
+
+.subtitle {
+  font-size: 28rpx;
+  color: #999;        /* 浅灰 */
+  margin-top: 10rpx;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  padding: 30rpx;
+}
+
+.menu-item {
+  width: 48%;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 36rpx 30rpx;
+  margin-bottom: 24rpx;
+
+  display: flex;  
+  
+  align-items: center;
+  box-sizing: border-box;   /* 关键, 2X2显示 */
+}
+
+.icon {
+  width: 56rpx;
+  height: 56rpx;
+  
+  margin-right: 20rpx;
+  display: block;     /* 很关键 */
+}
+
+.label {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
+  line-height: 1;     /* 防止文字拉高 */
+}
+
+.big-card {
+  margin: 30rpx;
+  padding: 36rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.big-card-content {
+  display: flex;
+  align-items: center;   /* 图标和文字垂直居中 */
+}
+
+.big-icon {
+  width: 60rpx;
+  height: 60rpx;
+  margin-right: 40rpx;
+}
+
+.big-text {
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.section {
+  background-color: #f7f5e6;    /* 整体白色背景 */  
+  border-radius: 16rpx;        /* 圆角 */
+  padding: 24rpx 20rpx;               /* 上下内边距，左右用 margin 对齐 */
+  margin: 40rpx 30rpx 20rpx;      /* 左右与添加藏书/功能区对齐 */
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);  /* 可选轻微阴影 */
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;  /* 左右分开 */
+  align-items: center;
+  margin-bottom: 20rpx;
+  padding: 0 12rpx;   /* 左右内边距，防止文字贴边 */
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: bold;   /* 粗体黑色 */  
+  color: #000;
+}
+
+.section-more {
+  font-size: 24rpx;
+  color: #999;        /* 小号灰色 */
+}
+
+/* 书目结构 */
+.book-item {  
+  display: flex;   
+  flex-direction: row;          /* 水平排列封面和信息 */
+  align-items: center;
+  background-color: #ffffff;       /* 白底卡片 */
+  border-radius: 12rpx;         /* 圆角 */
+  padding: 20rpx;
+  margin: 10rpx 12rpx;
+  box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.05); /* 可选小阴影 */
+}
+
+/* 封面 */
+.cover {
+  width: 130rpx;
+  height: 180rpx;
+  border-radius: 8rpx;
+  margin-right: 20rpx;
+}
+
+.cover-placeholder {
+  width: 100rpx;
+  height: 140rpx;
+  border-radius: 16rpx;
+  background: #E5E5EA;
+  margin-right: 24rpx;
+}
+
+/* 文本区域 */
+.book-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.book-title {
+  font-size: 28rpx;
+  font-weight: bold;
+}
+
+.book-authors {
+  font-size: 24rpx;
+  color: #666;
+  margin-top: 10rpx;
+}
+
+.empty {
+  text-align: center;
+  color: #999;
+  padding: 40rpx 0;
+}
+
+/* 灰色骨架条 */
+.placeholder-line {
+  height: 28rpx;
+  background: #E5E5EA;
+  border-radius: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+.short {
+  width: 60%;
+}
+
+

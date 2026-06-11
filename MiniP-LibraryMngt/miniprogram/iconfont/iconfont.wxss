@@ -1,0 +1,28 @@
+@font-face {
+  font-family: "iconfont";  
+  src: url('/iconfont/iconfont.ttf');
+}
+
+.iconfont {
+  font-family: "iconfont" !important;
+}
+
+.icon-config:before {
+  content: "\e70f";
+}
+
+.icon-search:before {
+  content: "\e600";
+}
+
+.icon-export:before {
+  content: "\e607";
+}
+
+.icon-bookshelf:before {
+  content: "\e67d";
+}
+
+.icon-scan:before {
+  content: "\e8a4";
+}

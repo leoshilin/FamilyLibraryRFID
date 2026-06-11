@@ -1,0 +1,19 @@
+{
+    "name": "HHWUHFController",
+    "id": "HL-HHWUHFController",
+    "version": "1.9",
+    "description": "调用超高频的原生插件",
+    "_dp_type":"nativeplugin",
+    "_dp_nativeplugin":{
+        "android": {
+            "plugins": [
+                {
+                    "type": "module",
+                    "name": "HL-HHWUHFController",
+                    "class": "com.hhw.hl.uhf.HHWUHFController"
+                }
+            ],
+            "integrateType": "aar"
+        }
+    }
+}

@@ -1,0 +1,68 @@
+<view class="page">
+
+  <!-- 顶部标题 -->
+  <view class="header">
+    <text class="title">书海小家</text>
+    <text class="subtitle">家庭图书馆 RFID 快速寻书</text>
+  </view>
+
+  <!-- 添加藏书 -->
+  <view class="card big-card" bindtap="scanISBN">
+    <view class="big-card-content">
+      <image src="/images/icons/scan.png" class="big-icon" />
+      <text class="big-text">添加藏书</text>
+    </view>
+    <text class="arrow">›</text>
+  </view>
+
+  <!-- 2×2 功能区 -->
+  <view class="grid">
+
+    <view class="menu-item" bindtap="goSearch">
+      <image src="/images/icons/search.png" class="icon" />
+      <text class="label">寻书</text>
+    </view>
+
+    <view class="menu-item" bindtap="goStock">
+      <image src="/images/icons/bookshelf.png" class="icon" />
+      <text class="label">在库</text>
+    </view>
+
+    <view class="menu-item" bindtap="goOut">
+      <image src="/images/icons/export.png" class="icon" />
+      <text class="label">出库</text>
+    </view>
+
+    <view class="menu-item" bindtap="goSetting">
+      <image src="/images/icons/config.png" class="icon" />
+      <text class="label">设置</text>
+    </view>
+
+  </view>
+
+  <!-- 最近上架 -->
+  <view class="section">
+  
+    <view class="section-header">
+      <text class="section-title">最近上架</text>
+      <text class="section-more" bindtap="onViewAllTap">
+        查看全部
+      </text>
+    </view>
+
+    <view wx:if="{{recentBooks.length === 0}}">
+      <text class="empty">暂无书籍</text>
+    </view>
+
+    <block wx:for="{{recentBooks}}" wx:key="item_id">
+      <view class="book-item" bindtap="onBookTap" data-book="{{item}}">
+        <image class="cover" src="{{item.cover_url}}" mode="aspectFill" />
+
+        <view class="book-info">
+          <text class="book-title">{{item.title}}</text>
+          <text class="book-authors">{{item.authors}}</text>
+        </view>
+      </view>
+    </block>
+  </view>
+</view>
