@@ -1,0 +1,31 @@
+[{
+	"Frequency": 0,
+	"CRC": [18, -20],
+	"EmbededData": [],
+	"AntennaID": 0,
+	"TimeStamp": 0,
+	"ReadCnt": 1,
+	"PC": [52, 0],
+	"protocol": "\"SL_TAG_PROTOCOL_GEN2\"",
+	"Res": [0, 0],
+	"RSSI": 0,
+	"EmbededDatalen": 0,
+	"Epclen": 12,
+	"EpcId": [-30, -128, 17, 112, 0, 0, 2, 11, -33, -100, 2, 39],
+	"Phase": 0
+}, {
+	"Frequency": 0,
+	"CRC": [71, 39],
+	"EmbededData": [],
+	"AntennaID": 0,
+	"TimeStamp": 0,
+	"ReadCnt": 1,
+	"PC": [48, 0],
+	"protocol": "\"SL_TAG_PROTOCOL_GEN2\"",
+	"Res": [0, 0],
+	"RSSI": 0,
+	"EmbededDatalen": 0,
+	"Epclen": 12,
+	"EpcId": [0, 0, 0, 1, 18, 52, 0, 1, 91, -50, -21, 94],
+	"Phase": 0
+}]

@@ -1,0 +1,341 @@
+<template>
+	<list class="list" loadmoreoffset="5" @loadmore="loadmore()">
+		<header>
+			<view class="list-item-head">
+				<text class="list-item-text-id">id</text>
+				<text class="list-item-text-epc">epc</text>
+				<text class="list-item-text-count">count</text>
+				<text class="list-item-text-rssi">rssi</text>
+			</view>
+		</header>
+		<cell v-for="(item, index) in dataList" v-bind:key="item.id" @click="onclick">
+			<view class="list-item">
+				<text class="list-item-text-id">{{item.id}}</text>
+				<text class="list-item-text-epc">{{item.epc}}</text>
+				<text class="list-item-text-count">{{item.count}}</text>
+				<text class="list-item-text-rssi">{{item.rssi}}</text>
+			</view>
+		</cell>
+	</list>
+	<view style="flex-direction: row;padding: 8rpx;align-items: center;margin-top: 5rpx;margin-bottom: 5rpx;">
+		<text>标签数量:</text>
+		<text>{{tagsAmount}}</text>
+		<checkbox-group style="flex-direction:row;padding-left: 20rpx;" @change="checkboxChange">
+			<label style="flex-direction: row">
+				<checkbox value="cb_async" :disabled="cbDisabled"/>
+				<view style="margin-left: 3rpx;">异步</view>
+			</label>
+			<label style="flex-direction: row;padding-left: 5px;">
+				<checkbox value="cb_voice" :disabled="cbDisabled"/>
+				<view style="margin-left: 3rpx;">声音</view>
+			</label>
+		</checkbox-group>
+	</view>
+	<view class="btn-box">
+		<button type="primary" @click="inventory()" style="flex: 3;">{{btn1Info}}</button>
+		<button type="primary" :disabled="btn2Disabled" @click="inventoryTimer()" style="flex: 3;margin-left: 5px;">定时盘点</button>
+		<button type="primary" :disabled="btn3Disabled" @click="clear()" style="flex: 1;margin-left: 5px;" >清空</button>
+	</view>
+</template>
+
+<script>
+	var app = getApp()
+	var main = plus.android.runtimeMainActivity()
+	var receiver
+	var inventoryFlag = false
+	let that = null
+	// 是否开启异步盘点
+	var asyncFlag = false
+	// 开启声音可能会对盘点效率产生影响
+	var voiceFlag = false
+
+	var hhwUHFController = getApp().globalData.hhwUHFController
+	var globalEvent = getApp().globalData.globalEvent
+
+	// 每页加载数据数
+	var pageNum = 100
+	// 加载缓存数据的偏移量，也是初始页面加载数
+	var offset = 50
+
+	// 字节序列转十六进制字符串
+	function bytesToHexString(byteArray) {
+		return Array.from(byteArray, function(byte) {
+			return ('0' + (byte & 0xFF).toString(16)).slice(-2)
+		}).join('')
+	}
+
+	export default {
+		onLoad() {
+			that = this
+			globalEvent.addEventListener('uhf_tag_event', function(e) {
+			
+				var result = e.tag_info_list
+				
+				if (result == null) {
+					// 接收到停止盘点的回调消息
+					var event = e.inventory_event
+					if (event == "stopInventory") {
+						console.log(e.inventory_event)
+						uni.showToast({
+							title: "停止盘点",
+							icon: "none"
+						})
+						that.btn2Disabled = false
+						that.btn3Disabled = false
+						that.cbDisabled = false
+						that.btn1Info = "开始盘点"
+					}
+					return
+				}
+				
+				// 接收盘点到的标签信息
+				for (var i = 0; i < result.length; i++) {
+					var id = i
+					var epc = bytesToHexString(result[i].EpcId)
+					var rssi = result[i].RSSI
+				
+					var tag = {
+						id: id,
+						epc: epc,
+						count: 1,
+						rssi: rssi
+					}
+					var index = that.epcList.indexOf(epc)
+					console.log("index", index)
+					console.log("epcList.length", that.epcList.length)
+					console.log("dataList.length", that.dataList.length)
+					console.log("offset", offset)
+					if (index == -1) {
+						tag.id = that.epcList.length
+						if (that.dataList.length < offset) {
+							that.dataList.push(tag)
+						}
+						that.tempList.push(tag)
+						that.epcList.push(epc)
+					} else {
+						tag.id = index
+						tag.count = that.tempList[index].count + 1
+						if (index < that.dataList.length) {
+							that.dataList.splice(index, 1, tag)
+						}
+						that.tempList.splice(index, 1, tag)
+					}
+				}
+				that.tagsAmount = that.epcList.length
+			})
+		},
+		data() {
+			return {
+				dataList: [],
+				epcList: [],
+				tempList: [], //数据缓存数组
+				btn1Info: '开始盘点',
+				tagsAmount: 0,
+				btn2Disabled: false,
+				btn3Disabled: false,
+				cbDisabled: false
+			}
+		},
+		onShow() {
+			console.log("inventory Show")
+			// 监听功能按键，触发扫描
+			var IntentFilter = plus.android.importClass('android.content.IntentFilter')
+			var filter = new IntentFilter()
+			filter.addAction("android.rfid.FUN_KEY")
+			receiver = plus.android.implements('io.dcloud.feature.internal.reflect.BroadcastReceiver', {
+				onReceive: function(context, intent) {
+					plus.android.importClass(intent)
+					var code = intent.getIntExtra("keyCode", 0)
+					var keyDown = intent.getBooleanExtra("keydown", false)
+					if (!keyDown) {
+						console.log("keyUp", code)
+						that.inventory()
+					}
+				}
+			})
+			main.registerReceiver(receiver, filter)
+		},
+		onHide() {
+			console.log("inventory Hide")
+			// 注销按键监听
+			main.unregisterReceiver(receiver)
+		},
+		methods: {
+			inventory() {
+				if (that.btn1Info == "开始盘点") {
+					that.btn2Disabled = true
+					that.btn3Disabled = true
+					that.cbDisabled = true
+					that.btn1Info = "停止盘点"
+					// 设置功率为最大
+					hhwUHFController.setPower(33, result => {
+						console.log('asyncInventory', "setPower ", result)
+						if (asyncFlag) {
+							// 设置盘点的session为1
+							hhwUHFController.setGen2session(1, result => {
+								console.log('asyncInventory', "setGen2session ", result)
+								// 大量标签场景（200张标签以上），开始异步盘点，手动调用停止盘点后，停止盘点
+								hhwUHFController.startInventory(true, 0, voiceFlag)
+							})
+						} else {
+							// 设置盘点的session为0
+							hhwUHFController.setGen2session(0, result => {
+								console.log('asyncInventory', "setGen2session ", result)
+								// 少量标签场景（200张标签以下），开始同步盘点，手动调用停止盘点后，停止盘点
+								hhwUHFController.startInventory(false, 0, voiceFlag)
+								// hhwUHFController.tagEpcTidInventoryByTimer(50)
+							})
+						}
+					})
+				} else if (that.btn1Info == "停止盘点") {
+					// 停止盘点，注意stopInventory中的参数值需要和startInventory第一个参数值对应
+					if (asyncFlag) {
+						hhwUHFController.stopInventory(true)
+					} else {
+						hhwUHFController.stopInventory(false)
+					}
+				}
+			},
+			clear() {
+				that.dataList = []
+				that.tempList = []
+				that.epcList = []
+				that.tagsAmount = 0
+				offset = 50
+			},
+			checkboxChange(e) {
+				var values = e.detail.value
+				console.log(values)
+				if (values.length > 0) {
+					var index1 = values.indexOf('cb_async')
+					if (index1 == -1) {
+						asyncFlag = false
+					} else {
+						asyncFlag = true
+					}
+					var index2 = values.indexOf('cb_voice')
+					if (index2 == -1) {
+						voiceFlag = false
+					} else {
+						voiceFlag = true
+					}
+				} else {
+					asyncFlag = false
+					voiceFlag = false
+				}
+			},
+			inventoryTimer() {
+				uni.showToast({
+					title: "开启10S定时盘点",
+					icon: "none"
+				})
+				that.btn2Disabled = true
+				that.btn3Disabled = true
+				that.cbDisabled = true
+				that.btn1Info = "停止盘点"
+				// 设置功率为最大
+				hhwUHFController.setPower(33, result => {
+					console.log('asyncInventory', "setPower ", result)
+					if (asyncFlag) {
+						// 设置盘点的session为1
+						hhwUHFController.setGen2session(1, result => {
+							console.log('asyncInventory', "setGen2session ", result)
+							// 大量标签场景（200张标签以上），开始异步盘点，10000ms后，自动停止盘点
+							hhwUHFController.startInventory(true, 10000, voiceFlag)
+						})
+					} else {
+						// 设置盘点的session为0
+						hhwUHFController.setGen2session(0, result => {
+							console.log('asyncInventory', "setGen2session ", result)
+							// 少量标签场景（200张标签以下），开始同步盘点，10000ms后，自动停止盘点
+							hhwUHFController.startInventory(false, 10000, voiceFlag)
+						})
+					}
+				})
+			},
+			loadmore() {
+				console.log("loadmore size0:", that.dataList.length, "size1:", that.tempList.length)
+				if (that.dataList.length >= that.tempList.length) {
+					console.log("loadmore nomore")
+					return
+				}
+				// 每次加载pageNum个
+				var size
+				if (that.tempList.length - offset >= pageNum) {
+					size = pageNum
+				} else {
+					size = that.tempList.length - offset
+				}
+				for (var i = offset; i < size + offset; i++) {
+					that.dataList.push(that.tempList[i])
+				}
+				offset = offset + size
+			}
+		}
+	}
+</script>
+
+<style scoped>
+	.list {
+		flex: 1;
+		background-color: #ebebeb;
+	}
+
+	.list-item-head {
+		display: flex;
+		flex-direction: row;
+		background-color: #fff;
+	}
+
+	.list-item {
+		display: flex;
+		flex-direction: row;
+		background-color: #fff;
+	}
+
+	.list-item-text-id {
+		width: 65px;
+		padding-left: 5px;
+		padding-right: 5px;
+		padding-top: 8px;
+		padding-bottom: 8px;
+		font-size: 16px;
+	}
+
+	.list-item-text-epc {
+		width: 247px;
+		padding-left: 5px;
+		padding-right: 5px;
+		padding-top: 8px;
+		padding-bottom: 8px;
+		font-size: 16px;
+	}
+
+	.list-item-text-count {
+		width: 65px;
+		padding-left: 5px;
+		padding-right: 5px;
+		padding-top: 8px;
+		padding-bottom: 8px;
+		font-size: 16px;
+	}
+
+	.list-item-text-rssi {
+		width: 35px;
+		padding-left: 5px;
+		padding-right: 5px;
+		padding-top: 8px;
+		padding-bottom: 8px;
+		font-size: 16px;
+	}
+
+	.btn-box {
+		display: flex;
+		flex-direction: row;
+		background-color: #fff;
+		padding-bottom: 5px;
+		padding-left: 5px;
+		padding-right: 5px;
+		align-items: center;
+	}
+</style>

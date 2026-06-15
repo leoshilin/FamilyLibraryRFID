@@ -1,0 +1,455 @@
+<script setup>
+	import {
+		reactive
+	} from 'vue'
+
+	import {
+		onLoad,
+		onShow,
+		onHide
+	} from "@dcloudio/uni-app"
+
+	const page_state = reactive({
+		btn1Info: "开始盘点",
+		tagsAmount: 0, //读取到的标签总数
+		btn2Disabled: false, //禁用按键
+		btn3Disabled: false, //禁用按键
+		cbDisabled: false, //是否禁用
+		dataList: [] // list展示的标签列表，首次最多加载offset个，待上拉加载更多时，加载tempList中的数据
+	})
+
+	var main = plus.android.runtimeMainActivity()
+	// UHF控制器，在App.vue中初始化
+	var hhwUHFController = getApp().globalData.hhwUHFController
+	// 事件监听，在App.vue中初始化
+	var globalEvent = getApp().globalData.globalEvent
+	// 每页加载数量
+	var pageNum = 100
+	// 第一页加载的数量/已加载的数量
+	var offset = 50
+	// 过滤所用列表，只存标签的EPC信息
+	var epcList = []
+	// 标签缓存列表，缓存标签信息，等待上拉至列表底部时，按页加载缓存列表中的数据
+	var tempList = []
+	// 异步盘点标志
+	var async_flag = false
+	// 声音播放标志
+	var voice_flag = true
+	
+	var keyDownTime = 1;
+	var barcode_flag = false;
+
+	onLoad(() => {
+		globalEvent.addEventListener('uhf_tag_event', function(e) {
+			console.log(e.tag_info_list)
+			var result = e.tag_info_list
+			if (result == null) {
+				// 接收到停止盘点的回调消息
+				var event = e.inventory_event
+				if (event == "stopInventory") {
+					uni.showToast({
+						title: "停止盘点",
+						icon: "none"
+					})
+					page_state.btn2Disabled = false
+					page_state.btn3Disabled = false
+					page_state.cbDisabled = false
+					page_state.btn1Info = "开始盘点"
+				}
+				return
+			}
+			// 接收盘点到的标签信息
+			for (var i = 0; i < result.length; i++) {
+				var id = i
+				var epc = bytes2HexString(result[i].EpcId)
+				var rssi = result[i].RSSI
+				//获取标签tid，配合startEpcTidInventory使用
+				// var EmbededData = bytes2HexString(result[i].EmbededData)
+				// console.log("tagEpcTidInventoryByTimer", "epc:" + epc ,  "Tid: " + EmbededData)
+				var tag = {
+					id: id,
+					epc: epc,
+					count: 1,
+					rssi: rssi,
+					
+				}
+				var index = epcList.indexOf(epc)
+				if (index == -1) {
+					tag.id = epcList.length
+					if (page_state.dataList.length < offset) {
+						page_state.dataList.push(tag)
+					}
+					tempList.push(tag)
+					epcList.push(epc)
+				} else {
+					tag.id = index
+					tag.count = tempList[index].count + 1
+					if (index < page_state.dataList.length) {
+						page_state.dataList.splice(index, 1, tag)
+					}
+					tempList.splice(index, 1, tag)
+				}
+			}
+			page_state.tagsAmount = epcList.length
+		})
+	})
+
+	onShow(() => {
+		console.log("inventory Show")
+		// 初始化二维码扫描，以防扫描服务处于关闭状态，而无法调用扫描
+		initBarcodeScan()
+		// 屏蔽二维码扫描扳机，以便app可以自定义触发
+		disableBarcodeScanKey()
+		// 监听功能按键，触发扫描
+		var IntentFilter = plus.android.importClass('android.content.IntentFilter')
+		var filter = new IntentFilter()
+		filter.addAction("android.rfid.FUN_KEY")
+		receiver = plus.android.implements('io.dcloud.feature.internal.reflect.BroadcastReceiver', {
+			onReceive: function(context, intent) {
+				plus.android.importClass(intent)
+				var code = intent.getIntExtra("keyCode", 0)
+				var keyDown = intent.getBooleanExtra("keydown", false)
+				if (keyDown && keyDownTime == 1 && code == 137) {
+					console.log("inventory", "receive keyUp code: " + code)
+					if (barcode_flag) {
+						// 开始扫描
+						startBarcodeScan()
+					} else {
+						// 开始超高频
+						startInventory()
+					}
+					keyDownTime++
+				} else if (!keyDown) {
+					if (barcode_flag) {
+						// 停止扫描
+						stopBarcodeScan()
+					} else {
+						// 停止超高频
+						stopInventory()
+					}
+					keyDownTime = 1
+				}
+			}
+		})
+		main.registerReceiver(receiver, filter)
+	})
+
+	onHide(() => {
+		console.log("inventory Hide")
+		// 注销按键监听
+		main.unregisterReceiver(receiver)
+	})
+
+    function disableBarcodeScanKey(){
+		var Intent = plus.android.importClass("android.content.Intent")
+		var intent = new Intent("com.rfid.KEY_SET")
+		var keyValueArray = ["137"]
+		intent.putExtra("keyValueArray", keyValueArray)
+		intent.putExtra("137", false)
+		main.sendBroadcast(intent)
+    }
+	
+	//字节数组转十六进制字符
+	function bytes2HexString(byteArray) {
+		return Array.from(byteArray, function(byte) {
+			return ('0' + (byte & 0xFF).toString(16)).slice(-2)
+		}).join('')
+	}
+
+	//十六进制字符串转字节数组
+	function hexString2Bytes(str) {
+		var pos = 0
+		var len = str.length
+		if (len % 2 != 0) {
+			return null
+		}
+		len /= 2
+		var hexA = new Array()
+		for (var i = 0; i < len; i++) {
+			var s = str.substr(pos, 2)
+			var v = parseInt(s, 16)
+			hexA.push(v)
+			pos += 2
+		}
+		return hexA
+	}
+	// 初始化二维码扫描
+	function initBarcodeScan() {
+		var Intent = plus.android.importClass("android.content.Intent")
+		var intent = new Intent("com.rfid.SCAN_INIT")
+		main.sendBroadcast(intent);
+	}
+	
+	// 触发二维码扫描
+	function startBarcodeScan() {
+		var Intent = plus.android.importClass("android.content.Intent")
+		var intent = new Intent("com.rfid.SCAN_CMD")
+		main.sendBroadcast(intent);
+	}
+	// 暂停二维码扫描
+	function stopBarcodeScan() {
+		var Intent = plus.android.importClass("android.content.Intent")
+		var intent = new Intent("com.rfid.STOP_SCAN")
+		main.sendBroadcast(intent);
+	}
+	
+	function inventory() {
+		if (page_state.btn1Info == "开始盘点") {
+			startInventory()
+		} else {
+			stopInventory()
+		}
+	}
+
+	function startInventory() {
+		page_state.btn2Disabled = true
+		page_state.btn3Disabled = true
+		page_state.cbDisabled = true
+		page_state.btn1Info = "停止盘点"
+		hhwUHFController.setCancleInventoryFilter();
+		// 盘点过滤数据
+		//var fdata = hexString2Bytes("0b54c56384b36fdd5204e9d1")
+		// 盘点过滤数据区域，1 => EPC区，2 => TID区，3 => USER区
+		//var fbank = 1
+		// 盘点过滤起始地址，指标签数据区域的起始地址，比如：3，代表从标签数据区的第3*2个字节开始匹配数据；EPC区需要从2开始，详情参考“标签读写注意事项”中关于EPC区数据结构的描述
+		//var fstartaddr = 2
+		// 显示匹配的标签，或不匹配的标签。true => 显示匹配的标签，false => 显示不匹配的标签
+		//var matching = true
+		// 设置盘点过滤条件
+		//hhwUHFController.setInventoryFilter(fdata, fbank, fstartaddr, matching, result => {
+		//	console.log("inventory inventory", "setInventoryFilter " + result)
+		//})
+		if (async_flag) {
+			// 设置盘点的session为1
+			// 	console.log("inventory inventory", "async setGen2session: " + result)
+				// 大量标签场景（200张标签以上），开始异步盘点，手动调用停止盘点后，停止盘点
+				hhwUHFController.startInventory(30, 1, true, 0, voice_flag, result => {
+					console.log("inventory inventory", "startInventory " + result)
+				})
+			// })
+		} else {
+			// 设置盘点的session为0
+				console.log("async_flag")
+				// 少量标签场景（200张标签以下），开始同步盘点，手动调用停止盘点后，停止盘点
+				hhwUHFController.startInventory(30,0, false, 0, voice_flag, result => {
+					console.log("inventory inventory", "startInventory " + result)
+				})	
+		}
+		// })
+	}
+	
+	function stopInventory() {
+		// 停止盘点，注意stopInventory中的参数值需要和startInventory第一个参数值对应
+		if (async_flag) {
+			hhwUHFController.stopInventory(true)
+		} else {
+			hhwUHFController.stopInventory(false)
+		}
+	}
+
+	var data = "3600"
+	function clear() {
+		page_state.dataList = []
+		tempList = []
+		epcList = []
+		page_state.tagsAmount = 0
+		offset = 50
+		
+		// hhwUHFController.writeTagDataByFilter(3 , 0 , "eac345678" , hexString2Bytes("12345678").length , "00000000"
+		// 				, 1000  , "e710"  , 1 , 2 , true , result=> {
+		// // int mbank, 写入标签的区域，0:RESERVED区，1:EPC区，2:TID区，3:USER区
+		// // int startaddress, 写入标签的起始地址，单位（1word = 2byte）
+		// // String data, 写入的数据
+		// // int len, 写入标签数据的长度，单位word
+		// // String epc, 标签EPC号
+		// console.log("write"+data,result)
+		// })
+		
+		// hhwUHFController.getTagDataByFilter(3 , 0 , 2 , "00000000", 1000  , "e710"  , 1 , 2 , true , result=> {
+		// // int mbank, 读取标签的区域，0:RESERVED区，1:EPC区，2:TID区，3:USER区
+		// // int startaddress, 读标签的起始地址，单位（1word = 2byte）
+		// // int len, 要读取的标签数据的长度，单位word
+		// // String epc, 要读取的标签的EPC号
+		// 	console.log("read data：", bytes2HexString(result))  //读取标签数据
+		// })
+	
+		// hhwUHFController.writeTagEPCByFilter("e710" , "00000000", 1000 ,"e310" , 1 , 2 , true ,result=> {
+		// 	console.log("write EPC:" + data,result)
+		// })
+		
+	}
+
+	function inventoryTimer() {
+		uni.showToast({
+			title: "开启10S定时盘点",
+			icon: "none"
+		})
+		page_state.btn2Disabled = true
+		page_state.btn3Disabled = true
+		page_state.cbDisabled = true
+		page_state.btn1Info = "停止盘点"
+		// 取消盘点过滤
+		//hhwUHFController.setCancleInventoryFilter(result => {
+		//	console.log("inventory inventoryTimer", "setCancleInventoryFilter: " + result)
+		//})
+			if (async_flag) {
+				// 设置盘点的session为1
+				// hhwUHFController.setGen2session(1, result => {
+					// console.log("inventory inventoryTimer", "async setGen2session: " + result)
+					// 大量标签场景（200张标签以上），开始异步盘点，10000ms后，自动停止盘点
+					// hhwUHFController.startInventory(true, 10000, voice_flag)
+					hhwUHFController.startInventory(30, 1, true, 10000, voice_flag, result => {
+						console.log("inventory inventory", "startInventory " + result)
+					})
+				// })
+			} else {
+				// 设置盘点的session为0
+				// hhwUHFController.setGen2session(0, result => {
+					// console.log("inventory inventoryTimer", "sync setGen2session: " + result)
+					// 少量标签场景（200张标签以下），开始同步盘点，10000ms后，自动停止盘点
+					// hhwUHFController.startInventory(false, 10000, voice_flag)
+					hhwUHFController.startInventory(30, 0, false, 10000, voice_flag, result => {
+						console.log("inventory inventory", "startInventory " + result)
+					})
+				// })
+			}
+		// })
+	}
+
+	function loadmore() {
+		console.log("inventory loadmore", "dataList size1: " + page_state.dataList.length, "temList size: " + tempList.length)
+		if (page_state.dataList.length >= tempList.length) {
+			console.log("inventory loadmore", "nomore")
+			return
+		}
+		// 每次加载pageNum个
+		var size
+		if (tempList.length - offset >= pageNum) {
+			size = pageNum
+		} else {
+			size = tempList.length - offset
+		}
+		for (var i = offset; i < size + offset; i++) {
+			page_state.dataList.push(tempList[i])
+		}
+		offset = offset + size
+	}
+</script>
+
+<template>
+	<list class="list" loadmoreoffset="5" @loadmore="loadmore()">
+		<header>
+			<view class="list-item-head">
+				<text class="list-item-text-id">id</text>
+				<text class="list-item-text-epc">epc</text>
+				<text class="list-item-text-count">count</text>
+				<text class="list-item-text-rssi">rssi</text>
+			</view>
+		</header>
+		<cell v-for="(item, index) in page_state.dataList" v-bind:key="item.id" @click="onclick">
+			<view class="list-item">
+				<text class="list-item-text-id">{{item.id}}</text>
+				<text class="list-item-text-epc">{{item.epc}}</text>
+				<text class="list-item-text-count">{{item.count}}</text>
+				<text class="list-item-text-rssi">{{item.rssi}}</text>
+			</view>
+		</cell>
+	</list>
+	<view style="flex-direction: row;padding: 8rpx;align-items: center;margin-top: 5rpx;margin-bottom: 5rpx;">
+		<text>标签数量:</text>
+		<text>{{page_state.tagsAmount}}</text>
+		<checkbox-group style="flex-direction:row;padding-left: 20rpx;"
+			v-on:change="e => async_flag = e.detail.value[0] ==='async_checkbox'">
+			<label style="flex-direction: row">
+				<checkbox value="async_checkbox" :disabled="page_state.cbDisabled" />
+				<view style="margin-left: 3rpx;">异步</view>
+			</label>
+		</checkbox-group>
+		<checkbox-group style="flex-direction:row;padding-left: 20rpx;"
+			v-on:change="e => voice_flag = e.detail.value[0] === 'voice_checkbox'">
+			<label style="flex-direction: row;padding-left: 5px;">
+				<checkbox value="voice_checkbox" :disabled="page_state.cbDisabled" :checked="true" />
+				<view style="margin-left: 3rpx;">声音</view>
+			</label>
+		</checkbox-group>
+		<checkbox-group style="flex-direction:row;padding-left: 20rpx;"
+			v-on:change="e => barcode_flag = e.detail.value[0] === 'barcode_checkbox'">
+			<label style="flex-direction: row;padding-left: 5px;">
+				<checkbox value="barcode_checkbox" :disabled="page_state.cbDisabled" :checked="false" />
+				<view style="margin-left: 3rpx;">手柄扫码</view>
+			</label>
+		</checkbox-group>
+	</view>
+	<view class="btn-box">
+		<button type="primary" @click="inventory()" style="flex: 3;">{{page_state.btn1Info}}</button>
+		<button type="primary" :disabled="page_state.btn2Disabled" @click="inventoryTimer()"
+			style="flex: 3;margin-left: 5px;">定时盘点</button>
+		<button type="primary" :disabled="page_state.btn3Disabled" @click="clear()"
+			style="flex: 1;margin-left: 5px;">清空</button>
+	</view>
+</template>
+
+<style scoped>
+	.list {
+		flex: 1;
+		background-color: #ebebeb;
+	}
+
+	.list-item-head {
+		display: flex;
+		flex-direction: row;
+		background-color: #fff;
+	}
+
+	.list-item {
+		display: flex;
+		flex-direction: row;
+		background-color: #fff;
+	}
+
+	.list-item-text-id {
+		width: 65px;
+		padding-left: 5px;
+		padding-right: 5px;
+		padding-top: 8px;
+		padding-bottom: 8px;
+		font-size: 16px;
+	}
+
+	.list-item-text-epc {
+		width: 247px;
+		padding-left: 5px;
+		padding-right: 5px;
+		padding-top: 8px;
+		padding-bottom: 8px;
+		font-size: 16px;
+	}
+
+	.list-item-text-count {
+		width: 65px;
+		padding-left: 5px;
+		padding-right: 5px;
+		padding-top: 8px;
+		padding-bottom: 8px;
+		font-size: 16px;
+	}
+
+	.list-item-text-rssi {
+		width: 35px;
+		padding-left: 5px;
+		padding-right: 5px;
+		padding-top: 8px;
+		padding-bottom: 8px;
+		font-size: 16px;
+	}
+
+	.btn-box {
+		display: flex;
+		flex-direction: row;
+		background-color: #fff;
+		padding-bottom: 5px;
+		padding-left: 5px;
+		padding-right: 5px;
+		align-items: center;
+	}
+</style>

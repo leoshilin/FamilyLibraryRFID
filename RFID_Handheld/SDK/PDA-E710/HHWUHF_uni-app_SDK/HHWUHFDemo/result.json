@@ -1,0 +1,36 @@
+			for (var i = 0; i < 1000; i++) {
+				var epc = "E203" + i
+				var tag = {
+					id: i,
+					epc: epc,
+					count: 1,
+					rssi: '-59'
+				}
+				var index = this.epcList.indexOf(tag.epc)
+				if (index == -1) {
+					if (this.dataList.length < offset) {
+						this.dataList.push(tag)
+					}
+					this.tempList.push(tag)
+					this.epcList.push(epc)
+				} else {
+					tag.id = index
+					if (index < offset) {
+						this.dataList.splice(index, 1, tag)
+					}
+					this.tempList.splice(index, 1, tag)
+				}
+			}
+			
+			// uni.saveFile({
+			// 	tempFilePath:"../../static/audio/barcodebeep.ogg",
+			// 	success:function(res){
+			// 		var savedFilePath = res.savedFilePath
+			// 		console.log(savedFilePath)
+			// 	}
+			// })
+			// uni.getSavedFileList({
+			// 	success:function(res){
+			// 		console.log(res.fileList)
+			// 	}
+			// })
