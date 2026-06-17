@@ -14,6 +14,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 
 import androidx.compose.runtime.*
+import kotlinx.coroutines.delay
 
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
@@ -80,10 +81,187 @@ fun RFIDTestScreen() {
         mutableStateOf("")
     }
 
+    var foundTags by remember {
+        mutableStateOf<List<Pair<String,String>>>(emptyList())
+    }
+    // Pair<TID,EPC>
+
+    var selectedTid by remember {
+        mutableStateOf("")
+    }
+
+    var tracking by remember {
+        mutableStateOf(false)
+    }
+
+    var trackingRssi by remember {
+        mutableStateOf("")
+    }
+
+    var trackingPower by remember {
+        mutableStateOf(30)
+    }
+
+    var trackingDistance by remember {
+        mutableStateOf("")
+    }
+
+    var beepLevel by remember {
+        mutableStateOf(0)
+    }
+
+    val scrollState = rememberScrollState()
+
+    LaunchedEffect(tracking) {
+
+        while (tracking) {
+
+            try {
+
+                val manager =
+                    UHFRManager.getInstance()
+
+                //
+                // 当前功率
+                //
+                manager.setPower(
+                    trackingPower,
+                    30
+                )
+
+                //
+                // 根据TID过滤读取
+                //
+                val data =
+                    manager.getTagDataByFilter(
+                        1,
+                        2,
+                        6,
+                        hexToBytes("00000000"),
+                        100.toShort(),
+                        hexToBytes(selectedTid),
+                        2,
+                        0,
+                        true
+                    )
+
+                if (
+                    data != null &&
+                    data.isNotEmpty()
+                ) {
+
+                    //
+                    // 获取RSSI
+                    //
+                    val list =
+                        manager.tagEpcTidInventoryByTimer(
+                            50.toShort()
+                        )
+
+                    val target =
+                        list?.firstOrNull {
+
+                            bytesToHex(
+                                it.EmbededData
+                            ) == selectedTid
+                        }
+
+                    if (target != null) {
+
+                        val rssi =
+                            target.RSSI
+
+                        trackingRssi =
+                            rssi.toString()
+
+                        //--------------------------------
+                        // 自动切换功率
+                        //--------------------------------
+
+                        if ( trackingPower == 30) {
+
+                            if (rssi > -40) {
+                                trackingPower = 20
+                            }
+
+                        } else if (trackingPower == 20) {
+
+                            if (rssi>-30) {
+
+                                trackingPower = 10
+
+                            } else if (rssi < -50){
+
+                                trackingPower = 30
+
+                            }
+
+                        } else { //trackingPower == 10
+
+                            if (rssi < -40) {
+                                trackingPower = 20
+                            }
+
+                        }
+
+                        //--------------------------------
+                        // 距离判断
+                        //--------------------------------
+
+                        when (trackingPower) {
+
+                            30 -> {
+
+                                if (rssi < -60) {
+
+                                    trackingDistance =
+                                        "2米以上"
+
+                                    beepLevel = 1
+
+                                } else {
+
+                                    trackingDistance =
+                                        "1~2米"
+
+                                    beepLevel = 2
+                                }
+                            }
+
+                            20 -> {
+
+                                trackingDistance =
+                                    "0.5~1米"
+
+                                beepLevel = 3
+                            }
+
+                            10 -> {
+
+                                trackingDistance =
+                                    "0.5米以内"
+
+                                beepLevel = 4
+                            }
+                        }
+
+                    }
+                }
+
+            } catch (e: Exception) {
+
+                status =
+                    e.toString()
+            }
+
+            delay(300)
+        }
+    }
+
     //--------------------------------
     // UI
     //--------------------------------
-    val scrollState = rememberScrollState()
+
 
     Column(
         modifier = Modifier
@@ -384,6 +562,144 @@ fun RFIDTestScreen() {
         //--------------------------------
 
         Text("状态：$status")
+        Spacer(modifier = Modifier.height(20.dp))
+
+        //--------------------------------
+        // 搜索标签
+        //--------------------------------
+
+        Button(
+            onClick = {
+
+                try {
+
+                    val manager =
+                        UHFRManager.getInstance()
+
+                    val list =
+                        manager.tagEpcTidInventoryByTimer(
+                            100.toShort()
+                        )
+
+                    if (
+                        list == null ||
+                        list.isEmpty()
+                    ) {
+
+                        status = "未发现标签"
+
+                    } else {
+
+                        foundTags =
+                            list.take(3).map {
+
+                                Pair(
+                                    bytesToHex(
+                                        it.EmbededData
+                                    ),
+                                    bytesToHex(
+                                        it.EpcId
+                                    )
+                                )
+                            }
+                    }
+
+                } catch (e: Exception) {
+
+                    status = e.toString()
+                }
+            }
+        ) {
+            Text("搜索标签")
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        foundTags.forEachIndexed { index, pair ->
+
+            Button(
+                onClick = {
+
+                    selectedTid =
+                        pair.first
+
+                    status =
+                        "已选择标签${index + 1}"
+                }
+            ) {
+
+                Text(
+                    "标签${index + 1}\n" +
+                            pair.second.take(12)
+                )
+            }
+
+            Spacer(
+                modifier =
+                    Modifier.height(8.dp)
+            )
+        }
+
+        Button(
+            onClick = {
+
+                if (
+                    selectedTid.isBlank()
+                ) {
+
+                    status =
+                        "请先选择标签"
+
+                } else {
+
+                    trackingPower = 30
+
+                    tracking = true
+                }
+
+            }
+        ) {
+
+            Text("开始跟踪")
+        }
+
+        Button(
+            onClick = {
+
+                tracking = false
+
+            }
+        ) {
+
+            Text("停止跟踪")
+        }
+
+        Spacer(
+            modifier =
+                Modifier.height(20.dp)
+        )
+
+        Text(
+            """
+            跟踪TID:
+            $selectedTid
+        
+            Power:
+            $trackingPower
+        
+            RSSI:
+            $trackingRssi
+        
+            距离:
+            $trackingDistance
+        
+            Beep:
+            $beepLevel
+            """.trimIndent()
+        )
+
+
+
     }
 }
 
@@ -416,3 +732,4 @@ fun hexToBytes(
         ).toInt(16).toByte()
     }
 }
+
