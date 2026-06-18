@@ -1,718 +1,390 @@
-# 云函数接口说明
+# 1. 整体架构
+
+| 当前名称                 | 建议新名称                      | 领域       |
+| -------------------- | -------------------------- | -------- |
+| commitInStock        | api_bookitem_create        | BookItem |
+| prepareInStock       | api_bookitem_prepareCreate | BookItem |
+| offBookItem          | api.bookitem.offstock      | BookItem |
+| onBookItem           | api.bookitem.restock       | BookItem |
+| deleteBookItem       | api.bookitem.delete        | BookItem |
+| getBookItem          | api.bookitem.get           | BookItem |
+| searchBooks          | api_book_search            | Search   |
+| getRecentBooks       | api.book.recent            | Search   |
+| getBookMeta          | api.bookmeta.getByIsbn     | BookMeta |
+| getBookFromDouban_v2 | api.bookmeta.fetchExternal | BookMeta |
+
+| 未来函数                |
+| ------------------- |
+| api_rfid_bind       |
+| api_rfid_find       |
+| api_rfid_getBinding |
+| api_rfid_unbind     |
+
+| 未来函数              |
+| ----------------- |
+| api_task_poll     |
+| api_task_accept   |
+| api_task_complete |
+| api_task_fail     |
+
+
+# 2. 接口说明
+1 api_bookitem_prepareCreate
+
+（原 prepareInStock）
 
-> 项目路径：`E:\Projects\01. FamilyLibraryRFID\MiniP-LibraryMngt\cloudfunctions`
----
-
-## 1. commitInStock
-
-**输入参数**
-
-| 参数名 | 类型 | 说明 |
-|---|---|---|
-| isbn | String | ISBN 号 |
-| familyId | String | 家庭 ID |
-| operator | String | 操作人 |
-| bookshelfId | String | 书架 ID |
-| editionType | String | 版本类型 |
-| book | Object | 见下表 |
-
-`book` 对象字段：
-
-| 字段名 | 类型 |
-|---|---|
-| title | String |
-| authors | String |
-| publisher | String |
-| publishYear | String |
-| price | String |
-| binding | String |
-| cover_url | String |
-| isSet | Boolean |
-| setTotalCount | Number \| null |
-| setIndex | Number \| null |
-| source | String |
-
-**输出参数**
-
-| 场景 | 字段 | 类型 |
-|---|---|---|
-| 成功 | success | Boolean（true） |
-| 成功 | bookItemId | String |
-
----
-
-## 2. deleteBookItem
-
-**输入参数**
-
-| 参数名 | 类型 |
-|---|---|
-| item_id | String |
-| family_id | String |
-| operator | String |
-
-**输出参数**
-
-| 场景 | 字段 | 类型 |
-|---|---|---|
-| 成功 | success | Boolean（true） |
-| 失败 | success | Boolean（false） |
-| 失败 | message | String |
-
----
-
-## 3. getBookFromDouban_v2
-
-**输入参数**
-
-| 参数名 | 类型 | 说明 |
-|---|---|---|
-| isbn | String | ISBN 号（必填） |
-
-**输出参数**
-
-| 场景 | 字段 | 类型 |
-|---|---|---|
-| 成功 | success | Boolean（true） |
-| 成功 | book | Object，见下表 |
-| 失败（缺 ISBN） | success | Boolean（false） |
-| 失败（缺 ISBN） | msg | String |
-| 失败（网络/解析异常） | success | Boolean（false） |
-| 失败（网络/解析异常） | error | String |
-
-`book` 对象字段：
-
-| 字段名 | 类型 |
-|---|---|
-| _version | String（固定值 `'v2'`） |
-| isbn | String |
-| title | String |
-| authors | String |
-| publisher | String |
-| publishYear | String |
-| price | String |
-| binding | String |
-| cover_url | String（固定为空字符串） |
-| isSet | null |
-| setTotalCount | null |
-| setIndex | null |
-| source | String（固定值 `'douban'`） |
-
----
-
-## 4. getBookItem
-
-**输入参数**
-
-| 参数名 | 类型 | 说明 |
-|---|---|---|
-| itemId | String | book_item 的 _id（必填） |
-
-**输出参数**
-
-| 场景 | 字段 | 类型 |
-|---|---|---|
-| 成功 | success | Boolean（true） |
-| 成功 | data | Object，见下表 |
-| 失败 | success | Boolean（false） |
-| 失败 | message | String |
-
-`data` 对象字段：
-
-| 字段名 | 类型 |
-|---|---|
-| title | String |
-| authors | String |
-| cover_url | String |
-| publisher | String |
-| publishYear | String |
-| price | String |
-| binding | String |
-| isbn | String |
-| isSet | Boolean |
-| setTotalCount | Number |
-| setIndex | any（来自 book_item.set_index） |
-| rfid | any（来自 book_item.rfid_tag_id） |
-| inStockDate | Date |
-
----
-
-## 5. getBookMeta
-
-**输入参数**
-
-| 参数名 | 类型 | 说明 |
-|---|---|---|
-| isbn | String | ISBN 号（必填） |
-
-**输出参数**
-
-| 场景 | 字段 | 类型 |
-|---|---|---|
-| 记录存在 | exists | Boolean（true） |
-| 记录存在 | book | Object，见下表 |
-| 记录不存在 | exists | Boolean（false） |
-
-`book` 对象字段：
-
-| 字段名 | 类型 |
-|---|---|
-| isbn | String |
-| title | String |
-| authors | String |
-| publisher | String |
-| publishYear | String |
-| price | String |
-| binding | String |
-| cover_url | String |
-| isSet | Boolean |
-| setTotalCount | String \| Number |
-| setIndex | null（始终为 null） |
-| source | String |
-
----
-
-## 6. getRecentBooks
-
-**输入参数**
-
-| 参数名 | 类型 |
-|---|---|
-| familyId | String |
-
-**输出参数**
-
-| 场景 | 字段 | 类型 |
-|---|---|---|
-| 成功 | success | Boolean（true） |
-| 成功 | list | Array\<Object\>，见下表 |
-| 失败 | success | Boolean（false） |
-| 失败 | error | any |
-
-`list` 数组元素字段：
-
-| 字段名 | 类型 |
-|---|---|
-| item_id | String |
-| family_id | String |
-| book_meta_id | String |
-| title | String |
-| authors | String |
-| cover_url | String |
-| publisher | String |
-| publishYear | String |
-| price | String |
-| binding | String |
-| isbn | String |
-| isSet | Boolean |
-| setTotalCount | Number |
-| setIndex | any |
-| status | String |
-| rfid | any |
-| inStockDate | Date |
-| inStockStatus | String |
-
----
-
-## 7. offBookItem
-
-**输入参数**
-
-| 参数名 | 类型 |
-|---|---|
-| item_id | String |
-| family_id | String |
-| operator | String |
-| reason | String |
-
-**输出参数**
-
-| 场景 | 字段 | 类型 |
-|---|---|---|
-| 成功 | success | Boolean（true） |
-| 失败 | success | Boolean（false） |
-| 失败 | message | String |
-
----
-
-## 8. onBookItem
-
-**输入参数**
-
-| 参数名 | 类型 |
-|---|---|
-| item_id | String |
-| family_id | String |
-| operator | String |
-
-**输出参数**
-
-| 场景 | 字段 | 类型 |
-|---|---|---|
-| 成功 | success | Boolean（true） |
-| 失败 | success | Boolean（false） |
-| 失败 | message | String |
-
----
-
-## 9. prepareInStock
-
-**输入参数**
-
-| 参数名 | 类型 | 说明 |
-|---|---|---|
-| isbn | String | ISBN 号 |
-| familyId | String | 家庭 ID |
-| book | Object | 见下表 |
-
-`book` 对象字段（仅用到）：
-
-| 字段名 | 类型 |
-|---|---|
-| setIndex | Number \| null |
-
-**输出参数**
-
-| 场景 | 字段 | 类型 | 说明 |
-|---|---|---|---|
-| 成功（meta 不存在） | success | Boolean（true） | |
-| 成功（meta 不存在） | metaExists | Boolean（false） | |
-| 成功（meta 不存在） | bookMetaId | null | |
-| 成功（meta 不存在） | existingItemCount | Number（0） | |
-| 成功（meta 不存在） | needUserConfirm | Boolean（false） | |
-| 成功（meta 存在） | success | Boolean（true） | |
-| 成功（meta 存在） | metaExists | Boolean（true） | |
-| 成功（meta 存在） | bookMetaId | String | |
-| 成功（meta 存在） | isSet | Boolean | |
-| 成功（meta 存在） | existingItemCount | Number | |
-| 成功（meta 存在） | needUserConfirm | Boolean | |
-| 成功（meta 存在） | duplicateType | String \| null | `'normal'` 或 `'set_conflict'` 或 null |
-| 失败 | success | Boolean（false） | |
-| 失败 | message | String | |
-
----
-
-## 10. quickstartFunctions
-
-通过 `event.type` 进行路由分发，不同 type 对应不同的输入输出。
-
-### 公共输入参数
-
-| 参数名 | 类型 | 说明 |
-|---|---|---|
-| type | String | 操作类型，见下表 |
-
-### 各 type 的输入/输出
-
-#### type = `'getOpenId'`
-
-输入：无附加参数
-
-输出：
-
-| 字段 | 类型 |
-|---|---|
-| openid | String |
-| appid | String |
-| unionid | String |
-
----
-
-#### type = `'getMiniProgramCode'`
-
-输入：无附加参数
-
-输出：`String`（云存储 fileID）
-
----
-
-#### type = `'createCollection'`
-
-输入：无附加参数
-
-输出：
-
-| 字段 | 类型 |
-|---|---|
-| success | Boolean |
-| data | String（可选） |
-
----
-
-#### type = `'selectRecord'`
-
-输入：无附加参数
-
-输出：数据库查询结果对象（原始格式）
-
----
-
-#### type = `'updateRecord'`
-
-输入附加参数：
-
-| 参数名 | 类型 |
-|---|---|
-| data | Array\<{ _id: String, sales: Number }\> |
-
-输出：
-
-| 字段 | 类型 |
-|---|---|
-| success | Boolean |
-| data | Array |
-
----
-
-#### type = `'insertRecord'`
-
-输入附加参数：
-
-| 参数名 | 类型 |
-|---|---|
-| data | Object：{ region: String, city: String, sales: Number } |
-
-输出：
-
-| 字段 | 类型 |
-|---|---|
-| success | Boolean |
-| data | Object |
-
----
-
-#### type = `'deleteRecord'`
-
-输入附加参数：
-
-| 参数名 | 类型 |
-|---|---|
-| data | Object：{ _id: String } |
-
-输出：
-
-| 字段 | 类型 |
-|---|---|
-| success | Boolean |
-
----
-
-## 11. searchBooks
-
-**输入参数**
-
-| 参数名 | 类型 | 默认值 | 说明 |
-|---|---|---|---|
-| familyId | String | — | 必填 |
-| keyword | String | `''` | 按书名/作者模糊匹配 |
-| statusIndex | Number | `0` | 0=仅上架，1=全部，2=仅下架 |
-| startDate | String | — | 上架时间起始（可选） |
-| endDate | String | — | 上架时间截止（可选） |
-| page | Number | `1` | 页码 |
-| pageSize | Number | `10` | 每页条数 |
-
-**输出参数**
-
-| 场景 | 字段 | 类型 |
-|---|---|---|
-| 成功 | success | Boolean（true） |
-| 成功 | data | Array\<Object\>，见下表 |
-| 成功 | total | Number |
-| 失败 | success | Boolean（false） |
-| 失败 | message | String |
-
-`data` 数组元素字段：
-
-| 字段名 | 类型 |
-|---|---|
-| item_id | String |
-| family_id | String |
-| status | String |
-| created_at | Date |
-| rfid_tag_id | String \| null |
-| title | String |
-| authors | String |
-| cover_url | String |
-| isbn | String |
-| price | String |
-| publisher | String |
-| publish_year | String |
-| binding | String |
-| is_set | Boolean |
-| set_total_count | Number |
-
-
-
-# 图书馆管理系统微信小程序端 - 云函数接口说明
-
-图书主数据（BookMeta）
-1. getBookMeta
 功能
 
-根据ISBN查询系统主数据book_meta
-
-输入
-{
-  "isbn": "9787111128069"
-}
-返回
-{
-  "exists": true,
-  "book": {
-    "isbn": "",
-    "title": "",
-    "authors": "",
-    "publisher": ""
-  }
-}
-用途
-
-新书上架流程第一步
-
-2. getBookFromDouban_v2
-功能
-
-当book_meta不存在时，从豆瓣抓取书籍信息
-
-输入
-{
-  "isbn": "9787111128069"
-}
-返回
-{
-  "success": true,
-  "book": {
-    "isbn": "",
-    "title": "",
-    "authors": "",
-    "publisher": "",
-    "publishYear": "",
-    "price": ""
-  }
-}
-用途
-
-book_meta补全
-
-图书上架
-3. prepareInStock
-功能
-
-上架预检查
-
-负责判断：
+上架前预检查：
 
 book_meta是否存在
+当前家庭是否已存在同书
+套装序号是否冲突
 
-是否重复上架
+用于：
 
-是否套装
-
-是否需要用户确认
-输入
+扫码ISBN
+↓
+调用prepareCreate
+↓
+决定是否需要用户确认
+↓
+进入确认页
+入参
 {
-  "isbn": "",
-  "familyId": "",
-  "book": {}
+  "isbn":"9787111122334",
+  "familyId":"fm00001",
+  "book":{
+      "isbn":"9787111122334",
+      "setIndex":1
+  }
 }
 返回
 {
-  "success": true,
-  "metaExists": true,
-  "existingItemCount": 1,
-  "needUserConfirm": true
+  "success":true,
+  "metaExists":true,
+  "bookMetaId":"xxx",
+  "isSet":true,
+  "existingItemCount":3,
+  "needUserConfirm":true,
+  "duplicateType":"set_conflict"
 }
-用途
+2 api.bookitem.create
 
-上架前检查
+（原 commitInStock）
 
-4. commitInStock
 功能
 
-正式上架
+正式执行上架。
 
-负责：
+包含：
 
-创建book_meta（如不存在）
-
+自动创建book_meta（不存在时）
 创建book_item
-输入
+写库存日志
+入参
 {
-  "isbn": "",
-  "familyId": "",
-  "operator": "",
-  "bookshelfId": "",
-  "book": {}
+  "isbn":"9787111122334",
+  "familyId":"fm00001",
+  "operator":"admin-user",
+  "bookshelfId":"bs001",
+  "editionType":"original",
+  "book":{
+      ...
+  }
 }
 返回
 {
-  "success": true,
-  "bookItemId": ""
+  "success":true,
+  "bookItemId":"xxxx"
 }
-用途
+3 api.bookitem.offstock
 
-确认上架
+（原 offBookItem）
 
-图书实体
-5. getBookItem
 功能
 
-查询单本实体书详情
+执行下架。
 
-输入
+包含：
+
+状态校验
+更新book_item.status
+写库存日志
+入参
 {
-  "itemId": ""
+  "item_id":"xxx",
+  "family_id":"fm00001",
+  "operator":"admin-user",
+  "reason":"捐赠"
 }
 返回
 {
-  "success": true,
-  "bookItem": {},
-  "bookMeta": {}
+  "success":true
 }
-用途
+4 api.bookitem.restock
 
-详情页
+（原 onBookItem）
 
-6. getRecentBooks
 功能
 
-首页最近上架5本
+重新上架已下架书籍。
 
-输入
+包含：
+
+状态校验
+恢复 in_stock
+写库存日志
+入参
 {
-  "familyId": "fm00001"
+  "item_id":"xxx",
+  "family_id":"fm00001",
+  "operator":"admin-user"
 }
 返回
 {
-  "success": true,
-  "list": []
+  "success":true
 }
-用途
+5 api.bookitem.delete
 
-首页
+（原 deleteBookItem）
 
-7. searchBooks
 功能
 
-图书检索
+逻辑删除。
 
-支持：
+执行：
 
-书名
-作者
-状态
-时间范围
-分页
-输入
-{
-  "familyId": "",
-  "keyword": "",
-  "statusIndex": 0,
-  "startDate": "",
-  "endDate": "",
-  "page": 1,
-  "pageSize": 10
-}
-返回
-{
-  "success": true,
-  "list": [],
-  "total": 100
-}
-用途
-
-书库列表页
-
-生命周期管理
-8. offBookItem
-功能
-
-下架
-
-输入
-{
-  "item_id": "",
-  "family_id": "",
-  "operator": "",
-  "reason": ""
-}
-返回
-{
-  "success": true
-}
-副作用
-
-更新：
-
-book_item
-
-inventory_change_log
-9. onBookItem
-功能
-
-重新上架
-
-输入
-{
-  "item_id": "",
-  "family_id": "",
-  "operator": ""
-}
-返回
-{
-  "success": true
-}
-副作用
-
-更新：
-
-book_item
-
-inventory_change_log
-10. deleteBookItem
-功能
-
-彻底删除（逻辑删除）
-
-输入
-{
-  "item_id": "",
-  "family_id": "",
-  "operator": ""
-}
-返回
-{
-  "success": true
-}
-副作用
-
-更新：
-
+fg_delete=false
+↓
 fg_delete=true
 
-inventory_change_log
+前提：
 
+status=off_stock
+入参
+{
+  "item_id":"xxx",
+  "family_id":"fm00001",
+  "operator":"admin-user"
+}
+返回
+{
+  "success":true
+}
+6 api.bookitem.get
 
-# 2. 整体架构
+（原 getBookItem）
 
-BookMeta
-├─ getBookMeta
-├─ getBookFromDouban
+功能
 
-BookItem
-├─ createBookItem
-├─ getBookItem
-├─ searchBookItems
+根据 book_item_id 获取实体书详情。
 
-BookLifecycle
-├─ offBookItem
-├─ onBookItem
-├─ deleteBookItem
+自动关联：
 
-RFID
-├─ createBindTask
-├─ createFindTask
-├─ claimDeviceTask
-├─ reportBindResult
-├─ reportFindResult
-├─ getTidBindingInfo
+book_item
++
+book_meta
+
+返回完整展示对象。
+
+入参
+{
+  "itemId":"xxx"
+}
+返回
+{
+  "success":true,
+  "data":{
+      ...
+  }
+}
+## 7 api_book_search
+
+（原 searchBooks）
+
+### 功能
+
+* 图书检索。
+
+* 支持：
+
+  - 标题模糊
+  - 作者模糊
+  - 状态筛选
+  - 时间筛选
+  - 分页
+
+### 入参
+{
+  "familyId":"fm00001",
+  "keyword":"三体",
+  "statusIndex":0,
+  "startDate":"2026-01-01",
+  "endDate":"2026-06-30",
+  "page":1,
+  "pageSize":20
+}
+
+### 返回
+{
+  "success":true,
+  "data":[...],
+  "total":56
+}
+
+8 api.book.recent
+
+（原 getRecentBooks）
+
+功能
+
+首页最近上架书籍。
+
+规则：
+
+status=in_stock
+fg_delete=false
+按created_at倒序
+最多5条
+入参
+{
+  "familyId":"fm00001"
+}
+返回
+{
+  "success":true,
+  "list":[...]
+}
+9 api.bookmeta.getByIsbn
+
+（原 getBookMeta）
+
+功能
+
+按 ISBN 查询系统级主数据。
+
+用于：
+
+扫码
+↓
+先查本系统
+↓
+存在直接使用
+入参
+{
+  "isbn":"9787111122334"
+}
+返回
+{
+  "exists":true,
+  "book":{
+      ...
+  }
+}
+10 api.bookmeta.fetchExternal
+
+（原 getBookFromDouban_v2）
+
+功能
+
+从外部数据源抓取书籍信息。
+
+当前：
+
+豆瓣HTML解析
+
+未来：
+
+豆瓣
+OpenLibrary
+Google Books
+国家图书馆
+
+都可以统一挂到这里。
+
+入参
+{
+  "isbn":"9787111122334"
+}
+返回
+{
+  "success":true,
+  "book":{
+      ...
+  }
+}
+
+# 3. 从架构层面的调整建议
+
+你现在实际上已经出现一个现象：
+
+prepareInStock
+commitInStock
+
+两个函数共同完成一次上架
+
+而：
+
+offBookItem
+onBookItem
+deleteBookItem
+
+又是三个独立函数
+
+从DDD（领域设计）角度看其实不完全对称。
+
+我会建议最终形成：
+
+api.bookitem.create
+api.bookitem.updateStatus
+api.bookitem.delete
+api.bookitem.get
+
+api_book_search
+api.book.recent
+
+api.bookmeta.getByIsbn
+api.bookmeta.fetchExternal
+
+其中：
+
+updateStatus
+
+统一处理：
+
+{
+  "action":"off_stock"
+}
+{
+  "action":"restock"
+}
+
+以后：
+
+{
+  "action":"bind_rfid"
+}
+{
+  "action":"lost"
+}
+
+都能扩展。
+
+不过这是第二阶段优化。
+
+对于你现在的开发进度，我建议：
+
+先不要合并。
+
+保持：
+
+offBookItem
+onBookItem
+deleteBookItem
+
+三条独立API。
+
+这样逻辑最清晰，也最容易调试和排查问题。
+
+等 RFID、Task、Inventory 全部完成后，再考虑 API 收敛与统一。这样风险最低。
