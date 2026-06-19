@@ -7,7 +7,7 @@ const _ = db.command
 
 // 云函数入口函数
 exports.main = async (event) => {
-  console.log('searchBooks: start') 
+  console.log('api_book_search: start') 
   console.log('收到参数:', event)
   const {
     familyId,
@@ -183,7 +183,7 @@ exports.main = async (event) => {
 
     }
     catch (err) {
-      console.error('searchBooks error:', err)
+      console.error('api_book_search error:', err)
 
       return {
         success: false,

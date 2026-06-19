@@ -1,5 +1,5 @@
 {
-  "name": "getRecentBooks",
+  "name": "api_bookitem_get",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

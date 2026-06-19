@@ -7,7 +7,7 @@ const db = cloud.database()
 // 云函数入口函数
 // 使用book_item 的 id查询
 exports.main = async (event, context) => {
-  console.log('getBookItem: start')
+  console.log('api_bookitem_get: start')
   const { itemId } = event
   if (!itemId) {
     return {
@@ -30,7 +30,7 @@ exports.main = async (event, context) => {
     }
 
     const bookItem = itemRes.data    
-    console.log(`getBookItem: read ${bookItem ? 1 : 0} books from book_item`)
+    console.log(`api_bookitem_get: read ${bookItem ? 1 : 0} books from book_item`)
 
      // 2️⃣ 查询 book_meta（可能不存在）
      let bookMeta = null
@@ -47,7 +47,7 @@ exports.main = async (event, context) => {
        bookMeta = null
      }
      
-     console.log(`getBookItem: read ${bookMeta ? 1 : 0} Meta data from book_meta`)
+     console.log(`api_bookitem_get: read ${bookMeta ? 1 : 0} Meta data from book_meta`)
  
      // 3️⃣ 拼接返回对象（meta 不存在时返回空值：为了适配页面显示）
      const book = {
@@ -73,7 +73,7 @@ exports.main = async (event, context) => {
  
    } catch (err) {
  
-     console.error('getBookItem error:', err)
+     console.error('api_bookitem_get error:', err)
  
      return {
        success: false,

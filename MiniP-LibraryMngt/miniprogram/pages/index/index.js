@@ -49,7 +49,7 @@ Page({
 
   /*getBookByISBN(isbn) {
     wx.cloud.callFunction({
-      name: 'getBookFromDouban_v2',
+      name: 'api_bookmeta_fetchExternal',
       data: { isbn },
       success: res => {
         wx.showModal({
@@ -71,7 +71,7 @@ Page({
   // 获取最近上架书籍信息
   onLoad() {
     //页面载入时首次刷新页面，并设置更新控制器 = false
-    this.getRecentBooks()
+    this.api_recentbook_search()
     this.data.needRefresh=false
 
     // 设置 eventBus中触发事件的响应函数，此处不做更新，仅仅标志“脏状态”
@@ -101,19 +101,19 @@ Page({
     //页面刷新，判断页面刷新控制器的状态（由eventBus触发的事件响应中设置）后调用刷新
     console.log(`index pg onShow, needRefresh is ${this.data.needRefresh}`)
     if (this.data.needRefresh) {
-      this.getRecentBooks()
+      this.api_recentbook_search()
       this.data.needRefresh = false
     }
   },
 
-  async getRecentBooks() {
+  async api_recentbook_search() {
     const {    
       familyId      
     } = this.data  
 
     try {
       const res = await wx.cloud.callFunction({
-        name: 'getRecentBooks',
+        name: 'api_recentbook_search',
         data: { familyId }
       })
 
@@ -122,7 +122,7 @@ Page({
           recentBooks: res.result.list
         })
       }
-      console.log('Page getRecentBooks: recentBooks=', this.data.recentBooks)
+      console.log('Page api_recentbook_search: recentBooks=', this.data.recentBooks)
 
     } catch (err) {
       console.error('获取最近书籍失败', err)
@@ -140,7 +140,7 @@ Page({
 
   // 加载首页数据方法
   loadHomeData(callback) {    
-    this.getRecentBooks()
+    this.api_recentbook_search()
   },
   
   // 最近上架书目清单中点击书籍跳转到书籍详情页

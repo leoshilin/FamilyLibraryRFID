@@ -56,7 +56,7 @@ exports.main = async (event, context) => {
     }
   } catch (err) {
     // 4️⃣ 处理“表不存在”等系统错误
-    console.error('[getBookMeta] error:', err)
+    console.error('[api_bookmeta_getByIsbn] error:', err)
     throw err
   }
 }

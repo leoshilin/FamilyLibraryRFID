@@ -1,5 +1,5 @@
 {
-  "name": "getBookMeta",
+  "name": "api_bookmeta_getByIsbn",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

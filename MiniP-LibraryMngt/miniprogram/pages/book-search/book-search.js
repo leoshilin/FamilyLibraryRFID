@@ -94,7 +94,7 @@ Page({
     this.setData({ loadingMore: true })
 
     const res = await wx.cloud.callFunction({
-      name: 'searchBooks',
+      name: 'api_book_search',
       data: {   
         familyId: this.data.familyId,     
         keyword: this.data.keyword,
@@ -107,7 +107,7 @@ Page({
     })
 
     const list = res.result.data || []
-    console.log(`book_search.fetchBooks read ${list.length} books from searchBooks`)
+    console.log(`book_search.fetchBooks read ${list.length} books from api_book_search`)
 
     // 替换所有cover_url 原来的cloud云地址为可访问的临时访问地址
     // 1️⃣ 取出所有非空 fileID

@@ -7,11 +7,11 @@
 | offBookItem          | api.bookitem.offstock      | BookItem |
 | onBookItem           | api.bookitem.restock       | BookItem |
 | deleteBookItem       | api.bookitem.delete        | BookItem |
-| getBookItem          | api.bookitem.get           | BookItem |
+| getBookItem          | api_bookitem_get           | BookItem |
 | searchBooks          | api_book_search            | Search   |
-| getRecentBooks       | api.book.recent            | Search   |
-| getBookMeta          | api.bookmeta.getByIsbn     | BookMeta |
-| getBookFromDouban_v2 | api.bookmeta.fetchExternal | BookMeta |
+| getRecentBooks       | api_recentbook_search            | Search   |
+| getBookMeta          | api_bookmeta_getByIsbn     | BookMeta |
+| getBookFromDouban_v2 | api_bookmeta_fetchExternal | BookMeta |
 
 | 未来函数                |
 | ------------------- |
@@ -145,7 +145,8 @@ book_meta是否存在
 {
   "success":true
 }
-5 api.bookitem.delete
+
+## 5. api.bookitem.delete
 
 （原 deleteBookItem）
 
@@ -172,34 +173,39 @@ status=off_stock
 {
   "success":true
 }
-6 api.bookitem.get
+
+## 6. api_bookitem_get
 
 （原 getBookItem）
+需研究：该函数被 async loadFromId(itemId)  调用，但loadFromId好像没有被任何地方调用。需确认逻辑
 
-功能
+### 功能
 
-根据 book_item_id 获取实体书详情。
+* 根据 book_item_id 获取实体书详情。
 
-自动关联：
+* 自动关联：
 
-book_item
-+
-book_meta
+```
+  book_item
+  +
+  book_meta
+```
 
 返回完整展示对象。
 
-入参
+### 入参
 {
   "itemId":"xxx"
 }
-返回
+
+### 返回
 {
   "success":true,
   "data":{
       ...
   }
 }
-## 7 api_book_search
+## 7. api_book_search
 
 （原 searchBooks）
 
@@ -233,34 +239,37 @@ book_meta
   "total":56
 }
 
-8 api.book.recent
+## 8. api_recentbook_search
 
 （原 getRecentBooks）
 
-功能
+### 功能
 
-首页最近上架书籍。
+  - 首页最近上架书籍。
 
-规则：
+  - 规则：
 
-status=in_stock
-fg_delete=false
-按created_at倒序
-最多5条
-入参
+    - status=in_stock
+    - fg_delete=false
+    - 按created_at倒序
+    - 最多5条
+
+### 入参
 {
   "familyId":"fm00001"
 }
-返回
+
+### 返回
 {
   "success":true,
   "list":[...]
 }
-9 api.bookmeta.getByIsbn
+
+## 9. api_bookmeta_getByIsbn
 
 （原 getBookMeta）
 
-功能
+### 功能
 
 按 ISBN 查询系统级主数据。
 
@@ -271,22 +280,25 @@ fg_delete=false
 先查本系统
 ↓
 存在直接使用
-入参
+
+### 入参
 {
   "isbn":"9787111122334"
 }
-返回
+
+###  返回
 {
   "exists":true,
   "book":{
       ...
   }
 }
-10 api.bookmeta.fetchExternal
+
+## 10. api_bookmeta_fetchExternal
 
 （原 getBookFromDouban_v2）
 
-功能
+### 功能
 
 从外部数据源抓取书籍信息。
 
@@ -303,11 +315,12 @@ Google Books
 
 都可以统一挂到这里。
 
-入参
+### 入参
 {
   "isbn":"9787111122334"
 }
-返回
+
+### 返回
 {
   "success":true,
   "book":{
@@ -339,13 +352,13 @@ deleteBookItem
 api.bookitem.create
 api.bookitem.updateStatus
 api.bookitem.delete
-api.bookitem.get
+api_bookitem_get
 
 api_book_search
 api.book.recent
 
-api.bookmeta.getByIsbn
-api.bookmeta.fetchExternal
+api_bookmeta_getByIsbn
+api_bookmeta_fetchExternal
 
 其中：
 

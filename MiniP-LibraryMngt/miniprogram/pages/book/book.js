@@ -74,7 +74,7 @@ Page({
     })
 
     wx.cloud.callFunction({
-      name: 'getBookMeta',
+      name: 'api_bookmeta_getByIsbn',
       data: { isbn }
     })
     .then(res => {
@@ -95,9 +95,9 @@ Page({
       // meta 不存在，继续查 douban
       // 此处理论上存在douban也无法获取信息的可能，今后可以增加获取的方式（api），应维护为相应的source。
       // api也无法获取到的情况，最终只能后台管理员维护（前台不开放给用户手动登录新书），并注意保持source ='manual'
-      console.log('book.loadFromISBN: book not exist in meta, call function getBookFromDouban_v2 to get book info')
+      console.log('book.loadFromISBN: book not exist in meta, call function api_bookmeta_fetchExternal to get book info')
       return wx.cloud.callFunction({
-        name: 'getBookFromDouban_v2',
+        name: 'api_bookmeta_fetchExternal',
         data: { isbn }
       })
     })
@@ -109,7 +109,7 @@ Page({
 
       const result = res.result
       if (!result || !result.success || !result.book) {
-        throw new Error('book.loadFromISBN: 调用云函数getBookFromDouban_v2返回格式异常')
+        throw new Error('book.loadFromISBN: 调用云函数api_bookmeta_fetchExternal返回格式异常')
       }
 
       // 2️⃣ 真正的书籍对象          
@@ -145,7 +145,7 @@ Page({
 
     try {
       const res = await wx.cloud.callFunction({
-        name: 'getBookItem',
+        name: 'api_bookitem_get',
         data: {
           itemId
         }
