@@ -400,7 +400,7 @@ Page({
     } = this.data
   
     const res = await wx.cloud.callFunction({
-      name: 'prepareInStock',
+      name: 'api_bookitem_prepareCreate',
       data: {
         isbn,
         familyId,
@@ -426,7 +426,7 @@ Page({
   
     console.log(`callCommit Para: isbn=${isbn},familyId=${familyId},book=${book},editionType=${editionType}`)
     const res = await wx.cloud.callFunction({
-      name: 'commitInStock',
+      name: 'api_bookitem_create',
       data: {
         isbn,
         familyId,
@@ -556,7 +556,7 @@ Page({
 
     try {
       const result = await wx.cloud.callFunction({
-        name: 'onBookItem',
+        name: 'api_bookitem_restock',
         data: {
           item_id: book.item_id,
           family_id: book.family_id,
@@ -625,7 +625,7 @@ Page({
 
             try {
               const result = await wx.cloud.callFunction({
-                name: 'offBookItem',
+                name: 'api_bookitem_offstock',
                 data: {
                   item_id: book.item_id,
                   family_id: book.family_id,

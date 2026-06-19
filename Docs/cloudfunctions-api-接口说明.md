@@ -4,9 +4,9 @@
 | -------------------- | -------------------------- | -------- |
 | commitInStock        | api_bookitem_create        | BookItem |
 | prepareInStock       | api_bookitem_prepareCreate | BookItem |
-| offBookItem          | api.bookitem.offstock      | BookItem |
-| onBookItem           | api.bookitem.restock       | BookItem |
-| deleteBookItem       | api.bookitem.delete        | BookItem |
+| offBookItem          | api_bookitem_offstock      | BookItem |
+| onBookItem           | api_bookitem_restock       | BookItem |
+| deleteBookItem       | api_bookitem_delete        | BookItem |
 | getBookItem          | api_bookitem_get           | BookItem |
 | searchBooks          | api_book_search            | Search   |
 | getRecentBooks       | api_recentbook_search            | Search   |
@@ -29,11 +29,10 @@
 
 
 # 2. 接口说明
-1 api_bookitem_prepareCreate
-
+## 1. api_bookitem_prepareCreate
 （原 prepareInStock）
 
-功能
+### 功能
 
 上架前预检查：
 
@@ -50,7 +49,8 @@ book_meta是否存在
 决定是否需要用户确认
 ↓
 进入确认页
-入参
+
+### 入参
 {
   "isbn":"9787111122334",
   "familyId":"fm00001",
@@ -59,7 +59,8 @@ book_meta是否存在
       "setIndex":1
   }
 }
-返回
+
+### 返回
 {
   "success":true,
   "metaExists":true,
@@ -69,11 +70,12 @@ book_meta是否存在
   "needUserConfirm":true,
   "duplicateType":"set_conflict"
 }
-2 api.bookitem.create
+
+## 2. api_bookitem_create
 
 （原 commitInStock）
 
-功能
+### 功能
 
 正式执行上架。
 
@@ -82,7 +84,8 @@ book_meta是否存在
 自动创建book_meta（不存在时）
 创建book_item
 写库存日志
-入参
+
+### 入参
 {
   "isbn":"9787111122334",
   "familyId":"fm00001",
@@ -93,16 +96,18 @@ book_meta是否存在
       ...
   }
 }
-返回
+
+###  返回
 {
   "success":true,
   "bookItemId":"xxxx"
 }
-3 api.bookitem.offstock
+
+## 3. api_bookitem_offstock
 
 （原 offBookItem）
 
-功能
+### 功能
 
 执行下架。
 
@@ -111,22 +116,25 @@ book_meta是否存在
 状态校验
 更新book_item.status
 写库存日志
-入参
+
+### 入参
 {
   "item_id":"xxx",
   "family_id":"fm00001",
   "operator":"admin-user",
   "reason":"捐赠"
 }
-返回
+
+### 返回
 {
   "success":true
 }
-4 api.bookitem.restock
+
+## 4. api_bookitem_restock
 
 （原 onBookItem）
 
-功能
+### 功能
 
 重新上架已下架书籍。
 
@@ -135,22 +143,24 @@ book_meta是否存在
 状态校验
 恢复 in_stock
 写库存日志
-入参
+
+### 入参
 {
   "item_id":"xxx",
   "family_id":"fm00001",
   "operator":"admin-user"
 }
-返回
+
+### 返回
 {
   "success":true
 }
 
-## 5. api.bookitem.delete
+## 5. api_bookitem_delete
 
 （原 deleteBookItem）
 
-功能
+### 功能
 
 逻辑删除。
 
@@ -163,13 +173,15 @@ fg_delete=true
 前提：
 
 status=off_stock
-入参
+
+### 入参
 {
   "item_id":"xxx",
   "family_id":"fm00001",
   "operator":"admin-user"
 }
-返回
+
+### 返回
 {
   "success":true
 }
@@ -351,7 +363,7 @@ deleteBookItem
 
 api.bookitem.create
 api.bookitem.updateStatus
-api.bookitem.delete
+api_bookitem_delete
 api_bookitem_get
 
 api_book_search

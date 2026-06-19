@@ -1,5 +1,5 @@
 {
-  "name": "onBookItem",
+  "name": "api_bookitem_delete",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

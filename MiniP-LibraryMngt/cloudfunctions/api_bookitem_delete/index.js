@@ -15,7 +15,7 @@ exports.main = async (event) => {
     operator
   } = event
   const now = new Date()
-  console.log(`deleteBookItem start, item_id=${item_id}, family_id=${family_id}, operator=${operator}`)
+  console.log(`api_bookitem_delete start, item_id=${item_id}, family_id=${family_id}, operator=${operator}`)
 
   // 执行删除前的事务代码
   const transaction = await db.startTransaction()

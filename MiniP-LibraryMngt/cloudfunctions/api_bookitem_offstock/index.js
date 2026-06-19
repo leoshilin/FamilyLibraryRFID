@@ -18,7 +18,7 @@ exports.main = async (event) => {
     reason
   } = event
   const now = new Date()
-  console.log(`offBookItem start, item_id=${item_id}, family_id=${family_id}, reason=${reason},operator=${operator}`)
+  console.log(`api_bookitem_offstock start, item_id=${item_id}, family_id=${family_id}, reason=${reason},operator=${operator}`)
 
   // 执行下架的事务代码
   const transaction = await db.startTransaction()

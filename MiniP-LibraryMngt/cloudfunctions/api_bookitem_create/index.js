@@ -28,7 +28,7 @@ function normalizeInput(input) {
 }
 // 云函数入口函数
 exports.main = async (event) => {
-  console.log('commitInStock start')
+  console.log('api_bookitem_create start')
   const {
     isbn,
     familyId,
@@ -41,7 +41,7 @@ exports.main = async (event) => {
   const db = cloud.database()
   const now = new Date()
 
-  console.log('commitInStock params:', {
+  console.log('api_bookitem_create params:', {
     isbn,
     familyId,
     operator,
@@ -82,10 +82,10 @@ exports.main = async (event) => {
       data: cleanMeta
     })
     bookMetaId = insertRes._id
-    console.log('commitInStock params: create book in book_meta done: ',bookMetaId)
+    console.log('api_bookitem_create params: create book in book_meta done: ',bookMetaId)
   } else {
     bookMetaId = metaRes.data[0]._id
-    console.log('commitInStock params: found book in book_meta done: ',bookMetaId)
+    console.log('api_bookitem_create params: found book in book_meta done: ',bookMetaId)
   }
 
   // 2️⃣ 创建 book_item  
@@ -103,7 +103,7 @@ exports.main = async (event) => {
       updated_at: now
     }
   })
-  console.log('commitInStock params: create book in book_item done: ',itemRes._id)
+  console.log('api_bookitem_create params: create book in book_item done: ',itemRes._id)
 
   // 3. 写入库存变更日志
   item_id = itemRes._id

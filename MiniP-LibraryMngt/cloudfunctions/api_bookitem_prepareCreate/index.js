@@ -14,7 +14,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
 exports.main = async (event) => {
   const { isbn, familyId, book } = event
   const db = cloud.database()
-  console.log(`prepareInStock start: isbn=${isbn}, familyId=${familyId}, book.isbn=${book.isbn}, book.setIndex=${book.setIndex}`)
+  console.log(`api_bookitem_prepareCreate start: isbn=${isbn}, familyId=${familyId}, book.isbn=${book.isbn}, book.setIndex=${book.setIndex}`)
 
   // 1️⃣ 查 meta
   const metaRes = await db.collection('book_meta')
@@ -24,7 +24,7 @@ exports.main = async (event) => {
   
   //情况1：book_meta中不存在，book_item中也不会存在（系统逻辑保证）
   if (metaRes.data.length === 0) {
-    console.log('prepareInStock: book meta not existing')
+    console.log('api_bookitem_prepareCreate: book meta not existing')
     return {
       success: true,
       bookMetaId: null,
@@ -52,7 +52,7 @@ exports.main = async (event) => {
   let duplicateType = null
 
   if (!isSetFromDB) { // 非套装书
-    console.log('prepareInStock: 非套装书，重复上架')
+    console.log('api_bookitem_prepareCreate: 非套装书，重复上架')
     if (existingItemCount  > 0) {
       needUserConfirm = true
       duplicateType = 'normal'
@@ -60,7 +60,7 @@ exports.main = async (event) => {
   } else { // 套装书
     // 如果页面没有填写第几本，视为错误
     if (!book.setIndex) {
-      console.log('prepareInStock: 套装书但未给出第几本')
+      console.log('api_bookitem_prepareCreate: 套装书但未给出第几本')
       return {
         success: false,
         message: '请填写套装中的第几本'
@@ -73,13 +73,13 @@ exports.main = async (event) => {
     )
 
     if (conflict) {
-      console.log('prepareInStock: 套装书，本书已上架')
+      console.log('api_bookitem_prepareCreate: 套装书，本书已上架')
       needUserConfirm = true
       duplicateType = 'set_conflict'
     }
   }
   
-  console.log('prepareInStock: done, before return')
+  console.log('api_bookitem_prepareCreate: done, before return')
   return {
     success: true,
     metaExists: true,

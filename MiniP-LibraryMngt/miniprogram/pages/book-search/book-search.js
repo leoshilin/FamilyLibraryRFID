@@ -191,7 +191,7 @@ Page({
 
             try {
               const result = await wx.cloud.callFunction({
-                name: 'offBookItem',
+                name: 'api_bookitem_offstock',
                 data: {
                   item_id: book.item_id,
                   family_id: book.family_id,
@@ -276,7 +276,7 @@ Page({
 
     try {
       const result = await wx.cloud.callFunction({
-        name: 'deleteBookItem',
+        name: 'api_bookitem_delete',
         data: {
           item_id: book.item_id,
           family_id: book.family_id,
@@ -366,7 +366,7 @@ Page({
 
     try {
       const result = await wx.cloud.callFunction({
-        name: 'onBookItem',
+        name: 'api_bookitem_restock',
         data: {
           item_id: book.item_id,
           family_id: book.family_id,

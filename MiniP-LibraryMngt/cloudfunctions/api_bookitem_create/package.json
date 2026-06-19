@@ -1,5 +1,5 @@
 {
-  "name": "offBookItem",
+  "name": "api_bookitem_create",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

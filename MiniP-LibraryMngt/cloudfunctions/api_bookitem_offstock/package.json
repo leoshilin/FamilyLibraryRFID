@@ -1,5 +1,5 @@
 {
-  "name": "prepareInStock",
+  "name": "api_bookitem_offstock",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
