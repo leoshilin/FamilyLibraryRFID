@@ -28,7 +28,7 @@
 | api_task_fail     |
 
 
-# 2. 接口说明
+# A. 手机端书本管理
 ## 1. api_bookitem_prepareCreate
 （原 prepareInStock）
 
@@ -339,6 +339,318 @@ Google Books
       ...
   }
 }
+
+
+# B. 手机端创建任务
+## 11. api_task_createBindRfid
+### 功能
+
+创建 RFID 绑定任务。
+
+用于：
+
+图书检索页
+↓
+点击【绑定RFID】
+↓
+创建 bind_rfid 任务
+↓
+PDA 后续轮询获取
+
+### 入参
+{
+  "bookItemId":"bi00001",
+  "cretaed_by":"admin-user"
+}
+
+### 返回
+{
+  "success":true,
+  "taskId":"task00001"
+}
+
+## 12. api_task_createFindBook
+### 功能
+
+创建寻书任务。
+
+用于：
+
+图书详情页
+↓
+点击【寻找图书】
+↓
+创建 find_book 任务
+↓
+PDA 后续执行
+
+### 入参
+{
+  "bookItemId":"bi00001",
+  "operator":"admin-user"
+}
+
+### 返回
+{
+  "success":true,
+  "taskId":"task00002"
+}
+
+# C. PDA任务轮询
+## 13. api_task_claim
+### 功能
+
+PDA领取待执行任务。
+
+规则：
+
+仅 PDA 调用
+从 pending / running 中按创建时间排序
+返回一个任务
+返回后立即更新状态为 running
+
+对应设计文档：
+
+PDA无任务
+↓
+api_task_claim
+↓
+获得任务
+↓
+running
+
+### 入参
+{
+  "deviceId":"pda001"
+}
+
+### 返回
+{
+  "success":true,
+  "task":{
+    "taskId":"task00001",
+    "taskType":"bind_rfid",
+    "bookItemId":"bi00001"
+  }
+}
+
+无任务：
+
+{
+  "success":true,
+  "task":null
+}
+
+## 14. api_task_complete
+### 功能
+
+提交任务执行结果。
+
+适用于：
+
+bind_rfid
+find_book
+
+### 入参
+{
+  "taskId":"task00001",
+  "status":"success",
+  "result":{
+    "message":"completed"
+  }
+}
+
+### 返回
+{
+  "success":true
+}
+# D. RFID绑定核心接口
+
+这是绑定流程真正执行业务逻辑的部分。
+
+## 15. api_rfid_getBindingInfo
+### 功能
+
+根据 RFID TID 查询当前绑定状态。
+
+用于 PDA 扫描标签后确认。
+
+流程：
+
+扫描TID
+↓
+查询当前是否已绑定
+↓
+显示旧书信息
+↓
+用户确认是否解绑
+
+### 入参
+{
+  "tid":"E280699500000001"
+}
+
+### 返回（未绑定）
+{
+  "success":true,
+  "bound":false
+}
+
+### 返回（已绑定）
+{
+  "success":true,
+  "bound":true,
+  "book":{
+    "bookItemId":"bi00002",
+    "title":"三体",
+    "isbn":"9787536692930"
+  }
+}
+
+## 16. api_rfid_bind
+### 功能
+
+执行 RFID 绑定。
+
+核心接口。
+
+实现：
+
+场景A
+场景B
+场景C
+场景D
+
+全部统一处理。
+
+内部负责：
+
+book1旧标签解绑
++
+tid旧书解绑
++
+book1绑定tid
++
+写rfid_bind_log
+
+无需 PDA 自己判断。
+
+### 入参
+{
+  "bookItemId":"bi00001",
+  "tid":"E280699500000001",
+  "operator":"admin-user"
+}
+
+### 返回
+{
+  "success":true,
+  "action":"rebind"
+}
+
+action：
+
+bind
+rebind
+
+## 17. api_rfid_unbind
+### 功能
+
+主动解绑 RFID。
+
+当前版本虽然业务中未出现入口。
+
+但未来：
+
+图书详情
+↓
+解绑RFID
+
+大概率会需要。
+
+建议现在预留。
+
+### 入参
+{
+  "bookItemId":"bi00001",
+  "operator":"admin-user"
+}
+
+### 返回
+{
+  "success":true
+}
+
+# E. PDA执行绑定时的图书校验
+
+设计文档中有一个关键步骤：
+
+PDA领取任务
+↓
+显示书名
+↓
+用户扫描ISBN
+↓
+校验是否正确
+
+建议增加专门接口。
+
+## 18. api_bookitem_verifyIsbn
+### 功能
+
+校验当前任务对应图书。
+
+避免用户拿错书。
+
+### 入参
+{
+  "bookItemId":"bi00001",
+  "isbn":"9787536692930"
+}
+
+### 返回
+{
+  "success":true,
+  "matched":true
+}
+
+或
+
+{
+  "success":true,
+  "matched":false
+}
+
+# F. 寻书任务接口
+
+实际上寻书几乎不需要新增业务接口
+
+因为 PDA 拿到任务后只需要获得：
+
+bookItemId
+↓
+查询rfid_tid
+↓
+启动扫描
+
+因此增加一个详情接口即可。
+
+## 19. api_bookitem_getRfid
+### 功能
+
+获取图书绑定 RFID 信息。
+
+### 入参
+{
+  "bookItemId":"bi00001"
+}
+
+### 返回
+{
+  "success":true,
+  "rfidTid":"E280699500000001"
+}
+
 
 # 3. 从架构层面的调整建议
 

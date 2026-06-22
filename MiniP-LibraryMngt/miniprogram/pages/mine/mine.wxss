@@ -1,1 +1,189 @@
-/* pages/mine/mine.wxss */
+.page {
+  padding-bottom: 40rpx;
+}
+
+.card {
+  margin: 30rpx;
+  padding: 30rpx;
+  border-radius: 24rpx;
+  background: #ffffff;
+}
+
+.user-card {
+  margin-top: 60rpx;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  font-size: 60rpx;
+  margin-right: 24rpx;
+}
+
+.user-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-size: 34rpx;
+  font-weight: bold;
+}
+
+.user-role {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 8rpx;
+}
+
+.family-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-title {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+}
+
+.family-name {
+  display: block;
+  font-size: 30rpx;
+  font-weight: bold;
+  margin-top: 10rpx;
+}
+
+.section {
+
+  background-color: #f7f5e6;
+
+  border-radius: 16rpx;
+
+  padding: 24rpx 20rpx;
+
+  margin: 40rpx 30rpx 20rpx;
+
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+}
+
+.section-header {
+
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  margin-bottom: 20rpx;
+
+  padding: 0 12rpx;
+}
+
+.section-title {
+
+  font-size: 32rpx;
+
+  font-weight: bold;
+
+  color: #000;
+}
+
+.stat-grid {
+
+  display: flex;
+
+  justify-content: space-around;
+
+  padding: 20rpx 0;
+}
+
+.stat-item {
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+}
+
+.stat-value {
+
+  font-size: 42rpx;
+
+  font-weight: bold;
+}
+
+.stat-label {
+
+  font-size: 24rpx;
+
+  color: #666;
+
+  margin-top: 10rpx;
+}
+
+.list-item {
+
+  background: #ffffff;
+
+  border-radius: 12rpx;
+
+  padding: 24rpx;
+
+  margin: 10rpx 12rpx;
+
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+}
+
+.item-name {
+
+  display: block;
+
+  font-size: 28rpx;
+
+  font-weight: bold;
+}
+
+.item-subtitle {
+
+  display: block;
+
+  font-size: 24rpx;
+
+  color: #999;
+
+  margin-top: 8rpx;
+}
+
+.arrow {
+
+  font-size: 40rpx;
+
+  color: #999;
+}
+
+.add-button {
+
+  margin: 20rpx 12rpx 10rpx;
+
+  text-align: center;
+
+  background: #ffffff;
+
+  border-radius: 12rpx;
+
+  padding: 24rpx;
+
+  font-size: 28rpx;
+
+  color: #333;
+}

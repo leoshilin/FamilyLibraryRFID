@@ -46,27 +46,7 @@ Page({
       }
     })
   },
-
-  /*getBookByISBN(isbn) {
-    wx.cloud.callFunction({
-      name: 'api_bookmeta_fetchExternal',
-      data: { isbn },
-      success: res => {
-        wx.showModal({
-          title: '图书信息',
-          content: JSON.stringify(res.result),
-          showCancel: false
-        })
-      },
-      fail: err => {
-        wx.showModal({
-          title: '查询失败',
-          content: JSON.stringify(err),
-          showCancel: false
-        })
-      }
-    })
-  },*/
+ 
   
   // 获取最近上架书籍信息
   onLoad() {
