@@ -2,97 +2,298 @@ Page({
 
   data: {
 
-    user: {
-      nickName: '方大大',
-      role: 'OWNER'
-    },
+    registered: false,
 
-    family: {
-      familyId: 'fm00001',
-      name: '方家图书馆'
-    },
+    user: null,
+
+    family: null,
 
     stats: {
-      bookshelfCount: 3,
-      bookCount: 568
+
+      bookshelfCount: 0,
+
+      bookCount: 0
+
     },
 
-    bookshelves: [
-      {
-        _id: 'bs001',
-        name: '客厅书架',
-        bookCount: 126
-      },
-      {
-        _id: 'bs002',
-        name: '儿童书架',
-        bookCount: 218
-      },
-      {
-        _id: 'bs003',
-        name: '书房书架',
-        bookCount: 224
+    bookshelves: []
+
+  },
+
+  async onShow() {
+
+    const app = getApp()
+  
+    console.log('before login')
+  
+    await app.login()
+  
+    console.log('after login')
+  
+    console.log(app.globalData)
+  
+    await this.initPage()
+  
+  },
+
+  async initPage() {
+
+    const app = getApp()
+
+    const {
+
+      registered,
+
+      currentUser
+
+    } = app.globalData
+
+    console.log(
+      'Mine init:',
+      registered,
+      currentUser
+    )
+
+    //
+    // 未注册用户
+    //
+    if (!registered) {
+
+      this.setData({
+
+        registered: false,
+
+        user: null,
+
+        family: null,
+
+        bookshelves: []
+
+      })
+
+      return
+
+    }
+
+    //
+    // 已注册用户
+    //
+    this.setData({
+
+      registered: true,
+
+      user: currentUser
+
+    })
+
+    //
+    // 后续调用
+    //
+    // await this.loadFamily()
+    // await this.loadBookshelf()
+
+  },
+
+  async onRegisterTap() {
+
+    wx.showLoading({
+      title: '注册中...'
+    })
+  
+    try {
+  
+      const res = await wx.cloud.callFunction({
+  
+        name: 'api_user_register',
+  
+        data: {
+          nickName: '书虫虫'
+        }
+  
+      })
+  
+      console.log( 'api_user_register result:',   res.result )
+  
+      if (!res.result.success) {
+  
+        wx.showToast({
+  
+          title:
+            res.result.message ||
+            '注册失败',
+  
+          icon: 'none'
+  
+        })
+  
+        return
+  
       }
-    ]
-
+  
+      //
+      // 重新获取登录用户信息
+      //
+      const app = getApp()
+  
+      await app.login()
+  
+      //
+      // 刷新Mine页面
+      //
+      await this.initPage()
+  
+      wx.showToast({
+  
+        title: '注册成功',
+  
+        icon: 'success'
+  
+      })
+  
+    }
+    catch(err) {
+  
+      console.error(
+        'register failed',
+        err
+      )
+  
+      wx.showToast({
+  
+        title: '注册失败',
+  
+        icon: 'none'
+  
+      })
+  
+    }
+    finally {
+  
+      wx.hideLoading()
+  
+    }
+  
   },
 
-  onLoad() {
-    this.loadMineData()
-  },
+  async onEditUserTap() {
 
-  async loadMineData() {
-
-    // TODO:
-    // api_user_get
-    // api_family_get
-    // api_bookshelf_list
-
-  },
-
-  onSwitchFamily() {
-
-    wx.showToast({
-      title: '待开发',
-      icon: 'none'
+    const currentName =
+      this.data.user.nickName
+  
+    wx.showModal({
+  
+      title: '修改用户名',
+  
+      editable: true,
+  
+      placeholderText: currentName,
+  
+      success: async (res) => {
+  
+        if (!res.confirm) {
+          return
+        }
+  
+        const nickName =
+          (res.content || '').trim()
+  
+        if (!nickName) {
+  
+          wx.showToast({
+  
+            title: '用户名不能为空',
+  
+            icon: 'none'
+  
+          })
+  
+          return
+  
+        }
+  
+        await this.updateUserName(
+          nickName
+        )
+  
+      }
+  
     })
-
+  
   },
 
-  onRenameFamily() {
+  async updateUserName(nickName) {
 
-    wx.showToast({
-      title: '待开发',
-      icon: 'none'
+    wx.showLoading({
+  
+      title: '保存中...'
+  
     })
-
-  },
-
-  onBookshelfTap(e) {
-
-    const bookshelfId = e.currentTarget.dataset.id
-
-    console.log('bookshelfId=', bookshelfId)
-
-    // TODO
-  },
-
-  onAddBookshelf() {
-
-    wx.showToast({
-      title: '待开发',
-      icon: 'none'
-    })
-
-  },
-
-  onAbout() {
-
-    wx.showToast({
-      title: '待开发',
-      icon: 'none'
-    })
-
+  
+    try {
+  
+      const res =
+        await wx.cloud.callFunction({
+  
+          name: 'api_user_update',
+  
+          data: {
+  
+            nickName
+  
+          }
+  
+        })
+  
+      if (!res.result.success) {
+  
+        wx.showToast({
+  
+          title:
+            res.result.message ||
+            '修改失败',
+  
+          icon: 'none'
+  
+        })
+  
+        return
+  
+      }
+  
+      const app = getApp()
+  
+      await app.login()
+  
+      await this.initPage()
+  
+      wx.showToast({
+  
+        title: '修改成功',
+  
+        icon: 'success'
+  
+      })
+  
+    }
+    catch(err) {
+  
+      console.error(err)
+  
+      wx.showToast({
+  
+        title: '修改失败',
+  
+        icon: 'none'
+  
+      })
+  
+    }
+    finally {
+  
+      wx.hideLoading()
+  
+    }
+  
   }
 
 })

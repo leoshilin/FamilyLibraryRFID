@@ -93,6 +93,23 @@
   color: #000;
 }
 
+.register-button {
+
+  margin: 30rpx;
+
+  padding: 30rpx;
+
+  border-radius: 24rpx;
+
+  background: #ffffff;
+
+  text-align: center;
+
+  font-size: 30rpx;
+
+  font-weight: bold;
+}
+
 .stat-grid {
 
   display: flex;

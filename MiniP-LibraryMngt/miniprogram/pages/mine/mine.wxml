@@ -1,8 +1,46 @@
-<view class="page">
+<view wx:if="{{!registered}}">
+
+<view class="card user-card">
+
+  <view class="user-info">
+
+    <view class="avatar">
+      👤
+    </view>
+
+    <view class="user-text">
+
+      <text class="user-name">
+        未注册用户
+      </text>
+
+      <text class="user-role">
+        请先注册系统账号
+      </text>
+
+    </view>
+
+  </view>
+
+</view>
+
+<view
+  class="register-button"
+  bindtap="onRegisterTap"
+>
+  注册用户
+</view>
+
+</view>
+
+<view wx:if="{{registered}}">
 
 <!-- 用户信息 -->
 
-<view class="card user-card">
+<view
+  class="card user-card"
+  bindtap="onEditUserTap"
+>
 
   <view class="user-info">
 
@@ -17,21 +55,18 @@
       </text>
 
       <text class="user-role">
-        {{user.role}}
+        已注册用户
       </text>
 
     </view>
-
+    <text class="arrow">›</text>
   </view>
 
 </view>
 
 <!-- 当前家庭 -->
 
-<view
-  class="card family-card"
-  bindtap="onSwitchFamily"
->
+<view class="card family-card">
 
   <view>
 
@@ -40,7 +75,7 @@
     </text>
 
     <text class="family-name">
-      {{family.name}}
+      {{family ? family.name : '未加入家庭'}}
     </text>
 
   </view>
@@ -49,163 +84,6 @@
 
 </view>
 
-<!-- 家庭统计 -->
-
-<view class="section">
-
-  <view class="section-header">
-
-    <text class="section-title">
-      家庭统计
-    </text>
-
-  </view>
-
-  <view class="stat-grid">
-
-    <view class="stat-item">
-
-      <text class="stat-value">
-        {{stats.bookshelfCount}}
-      </text>
-
-      <text class="stat-label">
-        书架
-      </text>
-
-    </view>
-
-    <view class="stat-item">
-
-      <text class="stat-value">
-        {{stats.bookCount}}
-      </text>
-
-      <text class="stat-label">
-        图书
-      </text>
-
-    </view>
-
-  </view>
-
-</view>
-
-<!-- 书架管理 -->
-
-<view class="section">
-
-  <view class="section-header">
-
-    <text class="section-title">
-      书架管理
-    </text>
-
-  </view>
-
-  <block
-    wx:for="{{bookshelves}}"
-    wx:key="_id"
-  >
-
-    <view
-      class="list-item"
-      bindtap="onBookshelfTap"
-      data-id="{{item._id}}"
-    >
-
-      <view>
-
-        <text class="item-name">
-          {{item.name}}
-        </text>
-
-        <text class="item-subtitle">
-          {{item.bookCount}}册
-        </text>
-
-      </view>
-
-      <text class="arrow">›</text>
-
-    </view>
-
-  </block>
-
-  <view
-    class="add-button"
-    bindtap="onAddBookshelf"
-  >
-    ＋新增书架
-  </view>
-
-</view>
-
-<!-- 家庭管理 -->
-
-<view class="section">
-
-  <view class="section-header">
-
-    <text class="section-title">
-      家庭管理
-    </text>
-
-  </view>
-
-  <view
-    class="list-item"
-    bindtap="onRenameFamily"
-  >
-
-    <text>
-      修改家庭名称
-    </text>
-
-    <text class="arrow">›</text>
-
-  </view>
-
-  <view
-    class="list-item"
-    bindtap="onSwitchFamily"
-  >
-
-    <text>
-      切换家庭
-    </text>
-
-    <text class="arrow">›</text>
-
-  </view>
-
-</view>
-
-<!-- 系统 -->
-
-<view class="section">
-
-  <view class="section-header">
-
-    <text class="section-title">
-      系统
-    </text>
-
-  </view>
-
-  <view
-    class="list-item"
-    bindtap="onAbout"
-  >
-
-    <text>
-      关于系统
-    </text>
-
-    <text class="arrow">›</text>
-
-  </view>
-
-</view>
+<!-- 后续统计区域 -->
 
 </view>

@@ -396,7 +396,7 @@ PDA 后续执行
   "taskId":"task00002"
 }
 
-# C. PDA任务轮询
+# C. PDA端操作
 ## 13. api_task_claim
 ### 功能
 
@@ -464,13 +464,10 @@ find_book
 {
   "success":true
 }
-# D. RFID绑定核心接口
-
-这是绑定流程真正执行业务逻辑的部分。
 
 ## 15. api_rfid_getBindingInfo
 ### 功能
-
+这是绑定流程真正执行业务逻辑的部分。
 根据 RFID TID 查询当前绑定状态。
 
 用于 PDA 扫描标签后确认。
@@ -581,7 +578,11 @@ rebind
   "success":true
 }
 
-# E. PDA执行绑定时的图书校验
+
+## 18. api_bookitem_verifyIsbn
+### 功能
+
+PDA执行绑定时的图书校验
 
 设计文档中有一个关键步骤：
 
@@ -594,9 +595,6 @@ PDA领取任务
 校验是否正确
 
 建议增加专门接口。
-
-## 18. api_bookitem_verifyIsbn
-### 功能
 
 校验当前任务对应图书。
 
@@ -621,10 +619,11 @@ PDA领取任务
   "matched":false
 }
 
-# F. 寻书任务接口
+
+## 19. api_bookitem_getRfid
+### 功能
 
 实际上寻书几乎不需要新增业务接口
-
 因为 PDA 拿到任务后只需要获得：
 
 bookItemId
@@ -634,9 +633,7 @@ bookItemId
 启动扫描
 
 因此增加一个详情接口即可。
-
-## 19. api_bookitem_getRfid
-### 功能
+（PDA获取任务中应该包含Rfid的信息，不需要查询）
 
 获取图书绑定 RFID 信息。
 
@@ -650,6 +647,171 @@ bookItemId
   "success":true,
   "rfidTid":"E280699500000001"
 }
+
+
+# C. 手机端登录初始化相关API
+整体流程
+```
+进入小程序
+      ↓
+api_user_login
+      ↓
+registered=false
+      ↓
+显示 未注册用户
+      ↓
+点击注册
+      ↓
+api_user_register
+      ↓
+注册成功
+      ↓
+api_user_login
+      ↓
+显示用户信息
+```
+
+## C1. api_user_login
+### 功能
+
+根据当前微信账号查询系统用户。
+只查询。绝不创建。
+
+### 入参
+{}
+
+### 处理
+```
+获取openid
+
+查询user
+```
+### 返回1：已注册
+```
+{
+  "success": true,
+  "registered": true,
+
+  "user": {
+    "_id": "u001",
+    "nickName": "方大大",
+    "currentFamilyId": "f001"
+  }
+}
+```
+### 返回2：未注册
+```
+{
+  "success": true,
+  "registered": false
+}
+```
+
+## C2. api_user_register
+### 功能
+```
+注册系统用户
+```
+
+调用入口
+```
+我的
+↓
+未注册用户
+↓
+注册
+```
+
+
+### 入参
+```
+{
+  "nickName": "方大大"
+}
+```
+openid
+
+从：
+
+cloud.getWXContext()
+
+获取。
+
+### 处理
+```
+获取openid
+
+检查user是否存在
+
+存在
+    返回失败
+
+不存在
+    创建user
+```
+
+### 返回
+```
+{
+  "success": true,
+  "userId": "u001"
+}
+```
+
+## C3. api_user_get
+### 功能
+```
+获取用户信息。
+```
+
+### 入参
+```
+{
+  "userId": "u001"
+}
+```
+或
+```
+{}
+```
+根据openid获取。
+
+
+### 处理
+```
+```
+
+### 返回
+```
+{
+  "success": true,
+
+  "user": {
+    "_id": "u001",
+    "nickName": "方大大",
+    "currentFamilyId": "f001",
+    "status": "ACTIVE"
+  }
+}
+```
+## C4. 
+### 功能
+```
+```
+
+
+
+### 入参
+```
+```
+
+### 处理
+```
+```
+
+### 返回
+```
+```
 
 
 # 3. 从架构层面的调整建议
