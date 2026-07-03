@@ -1,3 +1,5 @@
+const userServices = require('../../services/userServices')
+
 Page({
 
   data: {
@@ -102,24 +104,21 @@ Page({
   
     try {
   
-      const res = await wx.cloud.callFunction({
+      const result = await userServices.register(
+        '书虫虫'
+      )
   
-        name: 'api_user_register',
+      console.log(
+        'api_user_register result:',
+        result
+      )
   
-        data: {
-          nickName: '书虫虫'
-        }
-  
-      })
-  
-      console.log( 'api_user_register result:',   res.result )
-  
-      if (!res.result.success) {
+      if (!result.success) {
   
         wx.showToast({
   
           title:
-            res.result.message ||
+            result.message ||
             '注册失败',
   
           icon: 'none'
@@ -231,25 +230,17 @@ Page({
   
     try {
   
-      const res =
-        await wx.cloud.callFunction({
+      const result =
+        await userServices.updateUser(
+          nickName
+        )
   
-          name: 'api_user_update',
-  
-          data: {
-  
-            nickName
-  
-          }
-  
-        })
-  
-      if (!res.result.success) {
+      if (!result.success) {
   
         wx.showToast({
   
           title:
-            res.result.message ||
+            result.message ||
             '修改失败',
   
           icon: 'none'

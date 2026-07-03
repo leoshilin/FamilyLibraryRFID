@@ -11,7 +11,18 @@ exports.main = async (event, context) => {
     nickName
   } = event
 
-  console.log(`api_user_register: nickName =${nickName} `)
+  const safeNickName = (nickName || '').trim()
+
+  console.log(`api_user_register: nickName =${safeNickName} `)
+
+  if (!safeNickName) {
+
+    return {
+      success: false,
+      message: '用户名不能为空'
+    }
+
+  }
   
   try {
 
@@ -45,9 +56,9 @@ exports.main = async (event, context) => {
 
           openid,
 
-          nickName,
+          nickName: safeNickName,
 
-          currentFamilyId: null,
+          role: 'USER',
 
           status: 'ACTIVE',
 

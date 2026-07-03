@@ -13,6 +13,17 @@ exports.main = async (event, context) => {
     nickName
   } = event
 
+  const safeNickName = (nickName || '').trim()
+
+  if (!safeNickName) {
+
+    return {
+      success: false,
+      message: '用户名不能为空'
+    }
+
+  }
+
   try {
 
     const wxContext = cloud.getWXContext()
@@ -36,7 +47,19 @@ exports.main = async (event, context) => {
 
     }
 
-    const userId = userRes.data[0]._id
+    const user = userRes.data[0]
+    const userId = user._id
+
+    if (user.status !== 'ACTIVE') {
+
+      return {
+        success: false,
+        message: '用户状态不可用'
+      }
+
+    }
+
+    const now = new Date()
 
     await db
       .collection('user')
@@ -45,16 +68,21 @@ exports.main = async (event, context) => {
 
         data: {
 
-          nickName,
+          nickName: safeNickName,
 
-          updated_at: new Date()
+          updated_at: now
 
         }
 
       })
 
     return {
-      success: true
+      success: true,
+      user: {
+        ...user,
+        nickName: safeNickName,
+        updated_at: now
+      }
     }
 
   }

@@ -1,4 +1,6 @@
 // app.js
+const userServices = require('./services/userServices')
+
 App({
   globalData: {
     env: "cloud1-7gyxpvk57f520e6a",
@@ -24,17 +26,15 @@ App({
 
   async login() {
 
-    const res = await wx.cloud.callFunction({
-      name: 'api_user_login'
-    })
+    const result = await userServices.login()
 
     if (
-      res.result.success &&
-      res.result.registered
+      result.success &&
+      result.registered
     ) {
 
       this.globalData.currentUser =
-        res.result.user
+        result.user
 
       this.globalData.registered = true
 

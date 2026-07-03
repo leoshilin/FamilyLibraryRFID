@@ -249,3 +249,5 @@ AI 修改代码前应：
 避免无关重构。
 
 保持代码风格一致。
+
+AI生成的设计文档以md格式输出到：FamilyLibraryRFID/.codex/output/
