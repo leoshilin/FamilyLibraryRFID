@@ -58,10 +58,9 @@
         已注册用户
       </text>
 
-    </view>
-    <text class="arrow">›</text>
+    </view>    
   </view>
-
+  <text class="arrow">›</text>
 </view>
 
 <!-- 当前家庭 -->

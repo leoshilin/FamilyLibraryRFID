@@ -1,3 +1,28 @@
+# 0. 当前待处理问题
+## 0.1 API全部直接传familyId
+目前API几乎都是：familyId
+实际上以后登录以后：
+
+```
+user
+↓
+currentFamilyId
+↓
+默认家庭
+```
+
+因此，API中不传familyId，而是统一在后台：
+```
+openid
+↓
+user
+↓
+currentFamilyId
+
+```
+
+
+
 # 1. 整体架构
 
 | 当前名称                 | 建议新名称                      | 领域       |
