@@ -1,7 +1,7 @@
 // app.js
 App({
   globalData: {
-    env: "",
+    env: "cloud1-7gyxpvk57f520e6a",
     // 登录用户信息
     currentUser: null,
     // 是否注册
