@@ -20,23 +20,32 @@ user
 currentFamilyId
 
 ```
-
+---
 
 
 # 1. 整体架构
 
-| 当前名称                 | 建议新名称                      | 领域       |
-| -------------------- | -------------------------- | -------- |
-| commitInStock        | api_bookitem_create        | BookItem |
-| prepareInStock       | api_bookitem_prepareCreate | BookItem |
-| offBookItem          | api_bookitem_offstock      | BookItem |
-| onBookItem           | api_bookitem_restock       | BookItem |
-| deleteBookItem       | api_bookitem_delete        | BookItem |
-| getBookItem          | api_bookitem_get           | BookItem |
-| searchBooks          | api_book_search            | Search   |
-| getRecentBooks       | api_recentbook_search            | Search   |
-| getBookMeta          | api_bookmeta_getByIsbn     | BookMeta |
-| getBookFromDouban_v2 | api_bookmeta_fetchExternal | BookMeta |
+| API名称                      | 领域       |
+| -------------------------- | -------- |
+| api_bookitem_create        | BookItem |
+| api_bookitem_prepareCreate | BookItem |
+| api_bookitem_offstock      | BookItem |
+| api_bookitem_restock       | BookItem |
+| api_bookitem_delete        | BookItem |
+| api_bookitem_get           | BookItem |
+| api_book_search            | Search   |
+| api_recentbook_search            | Search   |
+| api_bookmeta_getByIsbn     | BookMeta |
+| api_bookmeta_fetchExternal | BookMeta |
+| api_family_getCurrent | family |
+| api_family_create | family |
+| api_family_update | family |
+| api_family_delete | family |
+| api_bookshelf_create | bookshelf |
+| api_bookshelf_update | bookshelf |
+| api_bookshelf_delete | bookshelf |
+| api_bookshelf_list | bookshelf |
+
 
 | 未来函数                |
 | ------------------- |
@@ -52,9 +61,10 @@ currentFamilyId
 | api_task_complete |
 | api_task_fail     |
 
+---
 
 # A. 手机端书本管理
-## 1. api_bookitem_prepareCreate
+## A1. api_bookitem_prepareCreate
 （原 prepareInStock）
 
 ### 功能
@@ -85,6 +95,9 @@ book_meta是否存在
   }
 }
 
+### 处理规则
+
+
 ### 返回
 {
   "success":true,
@@ -96,7 +109,9 @@ book_meta是否存在
   "duplicateType":"set_conflict"
 }
 
-## 2. api_bookitem_create
+---
+
+## A2. api_bookitem_create
 
 （原 commitInStock）
 
@@ -122,13 +137,17 @@ book_meta是否存在
   }
 }
 
+### 处理规则
+
 ###  返回
 {
   "success":true,
   "bookItemId":"xxxx"
 }
 
-## 3. api_bookitem_offstock
+---
+
+## A3. api_bookitem_offstock
 
 （原 offBookItem）
 
@@ -150,12 +169,16 @@ book_meta是否存在
   "reason":"捐赠"
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true
 }
 
-## 4. api_bookitem_restock
+---
+
+## A4. api_bookitem_restock
 
 （原 onBookItem）
 
@@ -176,12 +199,16 @@ book_meta是否存在
   "operator":"admin-user"
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true
 }
 
-## 5. api_bookitem_delete
+---
+
+## A5. api_bookitem_delete
 
 （原 deleteBookItem）
 
@@ -206,12 +233,16 @@ status=off_stock
   "operator":"admin-user"
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true
 }
 
-## 6. api_bookitem_get
+---
+
+## A6. api_bookitem_get
 
 （原 getBookItem）
 需研究：该函数被 async loadFromId(itemId)  调用，但loadFromId好像没有被任何地方调用。需确认逻辑
@@ -235,6 +266,8 @@ status=off_stock
   "itemId":"xxx"
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true,
@@ -242,7 +275,10 @@ status=off_stock
       ...
   }
 }
-## 7. api_book_search
+
+---
+
+## A7. api_book_search
 
 （原 searchBooks）
 
@@ -269,6 +305,8 @@ status=off_stock
   "pageSize":20
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true,
@@ -276,7 +314,9 @@ status=off_stock
   "total":56
 }
 
-## 8. api_recentbook_search
+---
+
+## A8. api_recentbook_search
 
 （原 getRecentBooks）
 
@@ -296,13 +336,17 @@ status=off_stock
   "familyId":"fm00001"
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true,
   "list":[...]
 }
 
-## 9. api_bookmeta_getByIsbn
+---
+
+## A9. api_bookmeta_getByIsbn
 
 （原 getBookMeta）
 
@@ -323,6 +367,8 @@ status=off_stock
   "isbn":"9787111122334"
 }
 
+### 处理规则
+
 ###  返回
 {
   "exists":true,
@@ -331,7 +377,9 @@ status=off_stock
   }
 }
 
-## 10. api_bookmeta_fetchExternal
+---
+
+## A10. api_bookmeta_fetchExternal
 
 （原 getBookFromDouban_v2）
 
@@ -357,6 +405,8 @@ Google Books
   "isbn":"9787111122334"
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true,
@@ -364,10 +414,329 @@ Google Books
       ...
   }
 }
+---
 
+## A11. api_family_getCurrent
+
+
+### 功能
+获取当前登录用户访问中的家庭（不一定是用户创建的家庭，也可能是用户加入的家庭）
+
+### 入参
+{}
+
+### 处理规则
+
+### 返回
+- 成功返回：
+{
+  "success": true,
+  "family": {
+    "_id": "familyId",
+    "name": "我的家庭",
+    "status": "ACTIVE",
+    "created_by": "userId",
+    "created_at": "datetime"
+  },
+  "role": "OWNER",
+  "bookshelfCount": 1
+}
+
+- 无家庭返回:
+{
+  "success": true,
+  "family": null,
+  "role": null,
+  "bookshelfCount": 0
+}
+
+---
+
+## A12. api_family_create
+### 功能
+登录用户创建家庭
+
+### 入参
+{
+  "name": "我的家庭"
+}
+
+说明：
+name 可选。为空时默认“我的家庭”。
+
+### 处理规则
+创建家庭是特殊权限，只要注册用户即可创建，不依赖 user_family。
+
+### 返回
+- 成功返回：
+{
+  "success": true,
+  "familyId": "familyId",
+  "bookshelfId": "bookshelfId",
+  "family": {
+    "_id": "familyId",
+    "name": "我的家庭",
+    "status": "ACTIVE"
+  }
+}
+
+- 失败返回示例：
+  {
+    "success": false,
+    "message": "用户未注册"
+  }
+
+  {
+    "success": false,
+    "message": "当前用户已创建家庭"
+  }
+
+---
+
+## A13. api_family_update
+### 功能
+更新指定家庭的名称信息
+
+### 入参
+{
+  "familyId": "familyId",
+  "name": "新的家庭名称"
+}
+
+### 处理规则
+
+### 返回
+- 成功返回：
+{
+  "success": true,
+  "family": {
+    "_id": "familyId",
+    "name": "新的家庭名称",
+    "status": "ACTIVE",
+    "updated_at": "datetime"
+  }
+}
+
+- 失败返回示例：
+  {
+    "success": false,
+    "message": "家庭名称不能为空"
+  }
+
+  {
+    "success": false,
+    "message": "无权限修改家庭"
+  }
+
+---
+
+## A14. api_family_delete
+
+### 功能
+删除指定家庭，逻辑删除，不做物理删除。
+
+### 入参
+{
+  "familyId": "familyId"
+}
+
+### 处理规则
+获取当前登录用户：openid -> user
+校验用户已注册且 status = ACTIVE
+校验 familyId 必填
+查询目标 family
+若家庭不存在或已 DISABLED，返回失败
+权限：role-permission 校验
+
+删除前检查该家庭下是否存在 status = ACTIVE 的书架
+若存在 ACTIVE 书架，拒绝删除
+若允许删除：更新 family.status = DISABLED
+写入 updated_by
+写入 updated_at
+
+如果当前用户的 currentFamilyId === familyId：删除 user.currentFamilyId 字段，不能写 null
+
+### 返回
+- 成功返回：
+  {
+    "success": true
+  }
+
+- 失败返回示例：
+  {
+    "success": false,
+    "message": "familyId不能为空"
+  }
+
+  {
+    "success": false,
+    "message": "家庭不存在"
+  }
+
+  {
+    "success": false,
+    "message": "无权限删除家庭"
+  }
+
+  {
+    "success": false,
+    "message": "当前家庭下存在有效书架，请先删除书架"
+  }
+
+---
+
+## A15. api_bookshelf_create
+### 功能
+在指定家庭下创建书架
+
+### 入参
+{
+  "familyId": "familyId",
+  "name": "书架名称"
+}
+
+### 处理规则
+familyId 必填
+name 必填，trim 后不能为空
+当前用户必须已注册且 status = ACTIVE
+目标家庭必须存在且 status = ACTIVE
+权限：role-permission 校验
+
+同一家庭下 ACTIVE 书架数量不能超过 99
+sort_order 由后端计算：当前 ACTIVE 书架最大 sort_order + 1
+创建时写入：familyId
+name
+sort_order
+status = ACTIVE
+created_by
+created_at
+
+### 返回
+- 成功返回：
+{
+  "success": true,
+  "bookshelfId": "bookshelfId",
+  "bookshelf": {
+    "_id": "bookshelfId",
+    "familyId": "familyId",
+    "name": "书架名称",
+    "sort_order": 2,
+    "status": "ACTIVE"
+  }
+}
+
+---
+
+## A16. api_bookshelf_update
+
+### 功能
+修改指定书架名称
+
+### 入参
+{
+  "bookshelfId": "bookshelfId",
+  "name": "新的书架名称"
+}
+
+### 处理规则
+bookshelfId 必填
+name 必填
+查询书架，取得 familyId
+书架必须存在且 status = ACTIVE
+权限：role-permission 校验
+
+只修改名称，不修改 familyId、sort_order
+写入 updated_by、updated_at
+
+### 返回
+- 成功返回：
+  {
+    "success": true,
+    "bookshelf": {
+      "_id": "bookshelfId",
+      "familyId": "familyId",
+      "name": "新的书架名称",
+      "sort_order",
+      "status": "ACTIVE",
+      "updated_at": "datetime"
+    }
+  }
+
+---
+
+## A17. api_bookshelf_delete
+### 功能
+逻辑删除指定书架。
+
+### 入参
+{
+  "bookshelfId": "bookshelfId"
+}
+
+### 处理规则
+bookshelfId 必填
+查询书架，取得 familyId
+书架必须存在且 status = ACTIVE
+权限：role-permission 校验
+
+删除前检查该书架下是否存在有效在架图书：book_item.bookshelf_id = bookshelfId
+inventory_status = in_stock
+fg_delete 不为 true
+
+若存在，拒绝删除
+若允许删除：更新 bookshelf.status = DISABLED
+写入 updated_by
+写入 updated_at
+
+删除后重排同家庭下剩余 ACTIVE 书架的 sort_order
+
+### 返回
+- 成功返回：
+{
+  "success": true
+}
+
+- 失败返回示例：
+{
+  "success": false,
+  "message": "该书架下存在在架图书，无法删除"
+}
+
+---
+
+## A18. api_bookshelf_list
+### 功能
+查询指定家庭下 ACTIVE 书架列表
+
+### 入参
+{
+  "familyId": "familyId"
+}
+
+### 处理规则
+familyId 必填
+当前用户必须属于该家庭，或为 ADMIN
+按 sort_order 升序返回
+默认只返回 status = ACTIVE
+
+### 返回
+{
+  "success": true,
+  "list": [
+    {
+      "_id": "bookshelfId",
+      "familyId": "familyId",
+      "name": "我的书架",
+      "sort_order": 1,
+      "status": "ACTIVE"
+    }
+  ]
+}
+
+---
 
 # B. 手机端创建任务
-## 11. api_task_createBindRfid
+## B1. api_task_createBindRfid
 ### 功能
 
 创建 RFID 绑定任务。
@@ -388,13 +757,15 @@ PDA 后续轮询获取
   "cretaed_by":"admin-user"
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true,
   "taskId":"task00001"
 }
 
-## 12. api_task_createFindBook
+## B2. api_task_createFindBook
 ### 功能
 
 创建寻书任务。
@@ -415,6 +786,8 @@ PDA 后续执行
   "operator":"admin-user"
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true,
@@ -422,7 +795,7 @@ PDA 后续执行
 }
 
 # C. PDA端操作
-## 13. api_task_claim
+## C1. api_task_claim
 ### 功能
 
 PDA领取待执行任务。
@@ -449,6 +822,8 @@ running
   "deviceId":"pda001"
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true,
@@ -466,7 +841,7 @@ running
   "task":null
 }
 
-## 14. api_task_complete
+## C2. api_task_complete
 ### 功能
 
 提交任务执行结果。
@@ -485,12 +860,14 @@ find_book
   }
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true
 }
 
-## 15. api_rfid_getBindingInfo
+## C3. api_rfid_getBindingInfo
 ### 功能
 这是绑定流程真正执行业务逻辑的部分。
 根据 RFID TID 查询当前绑定状态。
@@ -512,6 +889,8 @@ find_book
   "tid":"E280699500000001"
 }
 
+### 处理规则
+
 ### 返回（未绑定）
 {
   "success":true,
@@ -529,7 +908,7 @@ find_book
   }
 }
 
-## 16. api_rfid_bind
+## C4. api_rfid_bind
 ### 功能
 
 执行 RFID 绑定。
@@ -564,6 +943,8 @@ book1绑定tid
   "operator":"admin-user"
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true,
@@ -575,7 +956,7 @@ action：
 bind
 rebind
 
-## 17. api_rfid_unbind
+## C5. api_rfid_unbind
 ### 功能
 
 主动解绑 RFID。
@@ -598,13 +979,15 @@ rebind
   "operator":"admin-user"
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true
 }
 
 
-## 18. api_bookitem_verifyIsbn
+## C6. api_bookitem_verifyIsbn
 ### 功能
 
 PDA执行绑定时的图书校验
@@ -631,6 +1014,8 @@ PDA领取任务
   "isbn":"9787536692930"
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true,
@@ -645,7 +1030,7 @@ PDA领取任务
 }
 
 
-## 19. api_bookitem_getRfid
+## C7. api_bookitem_getRfid
 ### 功能
 
 实际上寻书几乎不需要新增业务接口
@@ -667,6 +1052,8 @@ bookItemId
   "bookItemId":"bi00001"
 }
 
+### 处理规则
+
 ### 返回
 {
   "success":true,
@@ -674,7 +1061,7 @@ bookItemId
 }
 
 
-# C. 手机端登录初始化相关API
+# D. 手机端登录初始化相关API
 整体流程
 ```
 进入小程序
@@ -696,7 +1083,7 @@ api_user_login
 显示用户信息
 ```
 
-## C1. api_user_login
+## D1. api_user_login
 ### 功能
 
 根据当前微信账号查询系统用户。
@@ -732,7 +1119,7 @@ api_user_login
 }
 ```
 
-## C2. api_user_register
+## D2. api_user_register
 ### 功能
 ```
 注册系统用户
@@ -783,7 +1170,7 @@ cloud.getWXContext()
 }
 ```
 
-## C3. api_user_get
+## D3. api_user_get
 ### 功能
 ```
 获取用户信息。
@@ -819,7 +1206,7 @@ cloud.getWXContext()
   }
 }
 ```
-## C4. 
+## D4. 
 ### 功能
 ```
 ```
