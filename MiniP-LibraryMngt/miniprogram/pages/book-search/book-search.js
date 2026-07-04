@@ -79,6 +79,12 @@ Page({
   async fetchBooks(reset = false) {
     console.log('book_search.fetchBooks: start')
 
+    const STATUS_MAP = [
+      'in_stock',
+      'all',
+      'off_stock'
+    ]
+
     if (reset) {
       this.setData({
         page: 1,
@@ -98,7 +104,8 @@ Page({
       data: {   
         familyId: this.data.familyId,     
         keyword: this.data.keyword,
-        statusIndex: this.data.statusIndex,
+        status: STATUS_MAP[this.data.statusIndex],
+//        statusIndex: this.data.statusIndex,
         startDate: this.data.startDate,
         endDate: this.data.endDate,        
         page: this.data.page,

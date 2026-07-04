@@ -1,7 +1,11 @@
 # 0. 当前待处理问题
+本章记载的是已知的，当前存在的问题或待改善事项。
+由于功能开发为优先，因此以下事项当前暂时不修改，仅做记录。在功能开发稳定后再考虑统一修改。
+因此，文档中相关设计和本章节记载的内容可能会有冲突。
+
 ## 0.1 API全部直接传familyId
-目前API几乎都是：familyId
-实际上以后登录以后：
+目前API几乎都是：familyId作为入参。
+今后在用户登录和家庭功能上线之后，登录用户信息中可获取当前操作家庭
 
 ```
 user
@@ -20,31 +24,58 @@ user
 currentFamilyId
 
 ```
+因此，相关API将会在未来实现用户登录和家庭功能后统一修改。
+
 ---
+
+## 0.2 operator 不应该由客户端传
+当前版本是在用户登录功能设计之前完成的，因此operator 大量用了hard coding 传递了"admin-user"。
+在功能稳定后下一阶段再统一修改。
+
+## 0.3 命名不统一
+当前版本中item_id、itemId、bookItemId，familyId 与 family_id，tid与rfidTid等存在大量不统一的命名。
+在功能稳定后下一阶段再统一修改。
+未来的原则：
+ - API 全部 camelCase
+ - 数据库内部 snake_case
+
 
 
 # 1. 整体架构
 
-| API名称                      | 领域       |
-| -------------------------- | -------- |
-| api_bookitem_create        | BookItem |
-| api_bookitem_prepareCreate | BookItem |
-| api_bookitem_offstock      | BookItem |
-| api_bookitem_restock       | BookItem |
-| api_bookitem_delete        | BookItem |
-| api_bookitem_get           | BookItem |
-| api_book_search            | Search   |
-| api_recentbook_search            | Search   |
-| api_bookmeta_getByIsbn     | BookMeta |
-| api_bookmeta_fetchExternal | BookMeta |
-| api_family_getCurrent | family |
-| api_family_create | family |
-| api_family_update | family |
-| api_family_delete | family |
-| api_bookshelf_create | bookshelf |
-| api_bookshelf_update | bookshelf |
-| api_bookshelf_delete | bookshelf |
-| api_bookshelf_list | bookshelf |
+| 编号 | API名称                      | 领域       |
+|------ | -------------------------- | -------- |
+|A2| api_bookitem_create        | BookItem |
+|A1| api_bookitem_prepareCreate | BookItem |
+|A3| api_bookitem_offstock      | BookItem |
+|A4| api_bookitem_restock       | BookItem |
+|A5| api_bookitem_delete        | BookItem |
+|A6| api_bookitem_get           | BookItem |
+|A7| api_book_search            | Search   |
+|A8| api_recentbook_search            | Search   |
+|A9| api_bookmeta_getByIsbn     | BookMeta |
+|A10| api_bookmeta_fetchExternal | BookMeta |
+|A11| api_family_getCurrent | family |
+|A12| api_family_create | family |
+|A13| api_family_update | family |
+|A14| api_family_delete | family |
+|A15| api_bookshelf_create | bookshelf |
+|A16| api_bookshelf_update | bookshelf |
+|A17| api_bookshelf_delete | bookshelf |
+|A18| api_bookshelf_list | bookshelf |
+|B1| api_task_createBindRfid | task |
+|B2| api_task_createFindBook | task |
+|C1| api_task_claim | task |
+|C2| api_task_complete | task |
+|C3| api_rfid_getBindingInfo | task |
+|C4| api_rfid_bind | task |
+|C5| api_rfid_unbind | task |
+|C6| api_bookitem_verifyIsbn | task |
+|C7| api_bookitem_getRfid | task |
+|D1| api_user_login | user |
+|D2| api_user_register | user |
+|D3| api_user_get | user |
+
 
 
 | 未来函数                |
@@ -298,7 +329,7 @@ status=off_stock
 {
   "familyId":"fm00001",
   "keyword":"三体",
-  "statusIndex":0,
+  "status":"in_stock",
   "startDate":"2026-01-01",
   "endDate":"2026-06-30",
   "page":1,

@@ -11,15 +11,13 @@ exports.main = async (event) => {
   console.log('收到参数:', event)
   const {
     familyId,
-    keyword = '',
-    statusIndex = 0,      // 0:仅上架 1:全部 2:仅下架
+    keyword = '',    
+    status = 'in_stock',
     startDate,
     endDate,    
     page = 1,
     pageSize = 10
   } = event
-
-  const status = Number(statusIndex)
 
   try {
 
@@ -41,9 +39,9 @@ exports.main = async (event) => {
     }
 
     // ---- 状态筛选 ----
-    if (status === 0) {
+    if (status === 'in_stock') {
       itemMatch.status = 'in_stock'
-    } else if (status === 2) {
+    } else if (status === 'off_stock') {
       itemMatch.status = 'off_stock'
     }
 

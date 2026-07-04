@@ -9,6 +9,66 @@
 # 2026
 
 ---
+## 权限取消Action层的模型简化
+项目最初的权限设计同时使用了 Action 和 Permission 两个概念，例如：
+
+ACTIONS.FAMILY_UPDATE
+ROLE_PERMISSION
+checkPermission({ action })
+
+经过评审后认为，当前项目Action 与 Permission 实际上是一一对应的，没有独立存在的价值。
+这里的 FAMILY_UPDATE 同时表示：
+
+ - API 所需权限
+ - Role 所拥有的权限
+ - checkPermission() 的检查对象
+
+因此，决定取消 Action 概念。
+
+整个权限模型统一采用 Permission 作为唯一权限标识。
+
+统一命名如下：
+
+    ACTIONS → PERMISSIONS
+    action 参数 → permission
+    isActionAllowedForRole() → hasPermission()
+    FAMILY_CREATE_ACTIONS → PUBLIC_PERMISSIONS
+
+权限检查统一为：
+
+    Role -> Permission -> API
+
+而不是：
+
+    Role -> Permission -> Action -> API
+
+### 设计原则
+
+以后所有云函数调用统一采用：
+
+    await checkPermission({
+    db,
+    openid,
+    permission: PERMISSIONS.BOOKITEM_DELETE,
+    familyId
+    })
+
+Role 与 Permission 的关系由 ROLE_PERMISSION 定义：
+
+    ROLE_PERMISSION = {
+    OWNER: new Set([
+        PERMISSIONS.BOOKITEM_DELETE,
+        ...
+    ])
+    }
+
+权限判断统一通过：
+
+hasPermission(permission, familyRole)
+
+实现。
+
+---
 
 ## 数据库采用 book_meta + book_item 两层设计
 

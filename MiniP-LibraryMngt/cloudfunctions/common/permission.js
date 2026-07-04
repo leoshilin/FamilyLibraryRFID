@@ -1,4 +1,4 @@
-const ACTIONS = {
+const PERMISSIONS  = Object.freeze({
   FAMILY_CREATE: 'FAMILY_CREATE',
   FAMILY_UPDATE: 'FAMILY_UPDATE',
   FAMILY_DELETE: 'FAMILY_DELETE',
@@ -20,74 +20,75 @@ const ACTIONS = {
   RFID_TASK_CREATE_BIND: 'RFID_TASK_CREATE_BIND',
   RFID_UNBIND: 'RFID_UNBIND',
   RFID_TASK_CREATE_FIND: 'RFID_TASK_CREATE_FIND'
-}
+})
 
-const RESOURCE_TYPES = {
+const RESOURCE_TYPES = Object.freeze({
   FAMILY: 'family',
   BOOKSHELF: 'bookshelf',
   BOOK_ITEM: 'book_item'
-}
+})
 
-const FAMILY_CREATE_ACTIONS = [
-  ACTIONS.FAMILY_CREATE
-]
+//不依赖家庭角色(user_family)即可拥有的权限
+const PUBLIC_PERMISSIONS  = Object.freeze([
+  PERMISSIONS.FAMILY_CREATE
+])
 
 const ROLE_PERMISSION = {
-  OWNER: [
-    ACTIONS.FAMILY_UPDATE,
-    ACTIONS.FAMILY_DELETE,
-    ACTIONS.BOOKSHELF_CREATE,
-    ACTIONS.BOOKSHELF_UPDATE,
-    ACTIONS.BOOKSHELF_DELETE,
-    ACTIONS.BOOKSHELF_LIST,
-    ACTIONS.BOOKITEM_CREATE,
-    ACTIONS.COVER_UPDATE,
-    ACTIONS.BOOKITEM_OFFSTOCK,
-    ACTIONS.BOOKITEM_RESTOCK,
-    ACTIONS.BOOKITEM_DELETE,
-    ACTIONS.BOOKITEM_SEARCH,
-    ACTIONS.RECENTBOOK_SEARCH,
-    ACTIONS.RFID_TASK_CREATE_BIND,
-    ACTIONS.RFID_UNBIND,
-    ACTIONS.RFID_TASK_CREATE_FIND
-  ],
+  OWNER: new Set([
+    PERMISSIONS.FAMILY_UPDATE,
+    PERMISSIONS.FAMILY_DELETE,
+    PERMISSIONS.BOOKSHELF_CREATE,
+    PERMISSIONS.BOOKSHELF_UPDATE,
+    PERMISSIONS.BOOKSHELF_DELETE,
+    PERMISSIONS.BOOKSHELF_LIST,
+    PERMISSIONS.BOOKITEM_CREATE,
+    PERMISSIONS.COVER_UPDATE,
+    PERMISSIONS.BOOKITEM_OFFSTOCK,
+    PERMISSIONS.BOOKITEM_RESTOCK,
+    PERMISSIONS.BOOKITEM_DELETE,
+    PERMISSIONS.BOOKITEM_SEARCH,
+    PERMISSIONS.RECENTBOOK_SEARCH,
+    PERMISSIONS.RFID_TASK_CREATE_BIND,
+    PERMISSIONS.RFID_UNBIND,
+    PERMISSIONS.RFID_TASK_CREATE_FIND
+  ]),
 
-  MEMBER: [
-    ACTIONS.BOOKSHELF_LIST,
-    ACTIONS.BOOKITEM_CREATE,
-    ACTIONS.COVER_UPDATE,
-    ACTIONS.BOOKITEM_OFFSTOCK,
-    ACTIONS.BOOKITEM_RESTOCK,
-    ACTIONS.BOOKITEM_SEARCH,
-    ACTIONS.RECENTBOOK_SEARCH,
-    ACTIONS.RFID_TASK_CREATE_BIND,
-    ACTIONS.RFID_TASK_CREATE_FIND
-  ],
+  MEMBER: new Set([
+    PERMISSIONS.BOOKSHELF_LIST,
+    PERMISSIONS.BOOKITEM_CREATE,
+    PERMISSIONS.COVER_UPDATE,
+    PERMISSIONS.BOOKITEM_OFFSTOCK,
+    PERMISSIONS.BOOKITEM_RESTOCK,
+    PERMISSIONS.BOOKITEM_SEARCH,
+    PERMISSIONS.RECENTBOOK_SEARCH,
+    PERMISSIONS.RFID_TASK_CREATE_BIND,
+    PERMISSIONS.RFID_TASK_CREATE_FIND
+  ]),
 
-  GUEST: [
-    ACTIONS.BOOKSHELF_LIST,
-    ACTIONS.BOOKITEM_SEARCH,
-    ACTIONS.RECENTBOOK_SEARCH
-  ]
+  GUEST: new Set([
+    PERMISSIONS.BOOKSHELF_LIST,
+    PERMISSIONS.BOOKITEM_SEARCH,
+    PERMISSIONS.RECENTBOOK_SEARCH
+  ])
 }
 
 const FRONTEND_PERMISSION_KEYS = {
-  canUpdateFamily: ACTIONS.FAMILY_UPDATE,
-  canDeleteFamily: ACTIONS.FAMILY_DELETE,
-  canCreateBookshelf: ACTIONS.BOOKSHELF_CREATE,
-  canUpdateBookshelf: ACTIONS.BOOKSHELF_UPDATE,
-  canDeleteBookshelf: ACTIONS.BOOKSHELF_DELETE,
-  canListBookshelf: ACTIONS.BOOKSHELF_LIST,
-  canCreateBookItem: ACTIONS.BOOKITEM_CREATE,
-  canOffstockBookItem: ACTIONS.BOOKITEM_OFFSTOCK,
-  canRestockBookItem: ACTIONS.BOOKITEM_RESTOCK,
-  canDeleteBookItem: ACTIONS.BOOKITEM_DELETE,
-  canSearchBook: ACTIONS.BOOKITEM_SEARCH,
-  canViewRecentBook: ACTIONS.RECENTBOOK_SEARCH,
-  canUpdateCover: ACTIONS.COVER_UPDATE,
-  canCreateBindRfidTask: ACTIONS.RFID_TASK_CREATE_BIND,
-  canUnbindRfid: ACTIONS.RFID_UNBIND,
-  canCreateFindBookTask: ACTIONS.RFID_TASK_CREATE_FIND
+  canUpdateFamily: PERMISSIONS.FAMILY_UPDATE,
+  canDeleteFamily: PERMISSIONS.FAMILY_DELETE,
+  canCreateBookshelf: PERMISSIONS.BOOKSHELF_CREATE,
+  canUpdateBookshelf: PERMISSIONS.BOOKSHELF_UPDATE,
+  canDeleteBookshelf: PERMISSIONS.BOOKSHELF_DELETE,
+  canListBookshelf: PERMISSIONS.BOOKSHELF_LIST,
+  canCreateBookItem: PERMISSIONS.BOOKITEM_CREATE,
+  canOffstockBookItem: PERMISSIONS.BOOKITEM_OFFSTOCK,
+  canRestockBookItem: PERMISSIONS.BOOKITEM_RESTOCK,
+  canDeleteBookItem: PERMISSIONS.BOOKITEM_DELETE,
+  canSearchBook: PERMISSIONS.BOOKITEM_SEARCH,
+  canViewRecentBook: PERMISSIONS.RECENTBOOK_SEARCH,
+  canUpdateCover: PERMISSIONS.COVER_UPDATE,
+  canCreateBindRfidTask: PERMISSIONS.RFID_TASK_CREATE_BIND,
+  canUnbindRfid: PERMISSIONS.RFID_UNBIND,
+  canCreateFindBookTask: PERMISSIONS.RFID_TASK_CREATE_FIND
 }
 
 const getCurrentUser = async (db, openid) => {
@@ -172,11 +173,13 @@ const getFamilyRole = async (db, userId, familyId) => {
 
 }
 
-const isActionAllowedForRole = (action, familyRole) => {
+//根据家庭角色判断是否拥有指定权限
 
-  const permissions = ROLE_PERMISSION[familyRole] || []
+const hasPermission = (permission, familyRole) => {
 
-  return permissions.includes(action)
+  const permissions = ROLE_PERMISSION[familyRole] || new Set()
+
+  return permissions.has(permission)
 
 }
 
@@ -189,13 +192,13 @@ const buildPermissions = ({
 
   Object.keys(FRONTEND_PERMISSION_KEYS).forEach((key) => {
 
-    const action = FRONTEND_PERMISSION_KEYS[key]
+      const permission = FRONTEND_PERMISSION_KEYS[key]
 
-    permissions[key] =
-      systemRole === 'ADMIN' ||
-      isActionAllowedForRole(action, familyRole)
+      permissions[key] =
+        systemRole === 'ADMIN' ||
+        hasPermission(permission, familyRole)
 
-  })
+      })
 
   return permissions
 
@@ -204,7 +207,7 @@ const buildPermissions = ({
 const checkPermission = async ({
   db,
   openid,
-  action,
+  permission,
   familyId,
   resourceType,
   resourceId
@@ -217,10 +220,10 @@ const checkPermission = async ({
     }
   }
 
-  if (!action) {
+  if (!permission) {
     return {
       allowed: false,
-      message: '缺少权限动作'
+      message: '缺少权限定义'
     }
   }
 
@@ -252,7 +255,7 @@ const checkPermission = async ({
   }
 
   // 创建家庭是注册用户权限，不依赖 user_family。
-  if (FAMILY_CREATE_ACTIONS.includes(action)) {
+  if (PUBLIC_PERMISSIONS.includes(permission)) {
     return {
       allowed: true,
       user,
@@ -292,7 +295,7 @@ const checkPermission = async ({
     }
   }
 
-  if (!isActionAllowedForRole(action, familyRole)) {
+  if (!hasPermission(permission, familyRole)) {
     return {
       allowed: false,
       user,
@@ -302,6 +305,8 @@ const checkPermission = async ({
       message: '无权限操作'
     }
   }
+
+  
 
   return {
     allowed: true,
@@ -314,14 +319,14 @@ const checkPermission = async ({
 }
 
 module.exports = {
-  ACTIONS,
+  PERMISSIONS,
   RESOURCE_TYPES,
   ROLE_PERMISSION,
   FRONTEND_PERMISSION_KEYS,
   getCurrentUser,
   resolveFamilyId,
   getFamilyRole,
-  isActionAllowedForRole,
+  hasPermission,
   buildPermissions,
   checkPermission
 }
