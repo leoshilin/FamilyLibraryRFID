@@ -29,7 +29,7 @@ currentFamilyId
 ---
 
 ## 0.2 operator 不应该由客户端传
-当前版本是在用户登录功能设计之前完成的，因此operator 大量用了hard coding 传递了"admin-user"。
+当前版本是在用户登录功能设计之前完成的，因此operator 大量用了hard coding 传递了"admin-user"。包括部分函数的created_by入参。
 在功能稳定后下一阶段再统一修改。
 
 ## 0.3 命名不统一
@@ -63,6 +63,8 @@ currentFamilyId
 |A16| api_bookshelf_update | bookshelf |
 |A17| api_bookshelf_delete | bookshelf |
 |A18| api_bookshelf_list | bookshelf |
+|A19| api_bookshelf_reorder | bookshelf |
+|A20| api_family_switchCurrent | family |
 |B1| api_task_createBindRfid | task |
 |B2| api_task_createFindBook | task |
 |C1| api_task_claim | task |
@@ -172,10 +174,14 @@ book_meta是否存在
 
 ###  返回
 {
-  "success":true,
-  "bookItemId":"xxxx"
+    success:true,
+
+    bookItem:{
+       ...
+    }
 }
 
+ * 返回bookitem对象，而非仅仅bookItemId
 ---
 
 ## A3. api_bookitem_offstock
@@ -301,11 +307,15 @@ status=off_stock
 
 ### 返回
 {
-  "success":true,
-  "data":{
-      ...
-  }
+    success:true,
+
+    bookItem:{...},
+
+    bookMeta:{...},
+
+    bookshelf:{...}
 }
+
 
 ---
 
@@ -766,6 +776,41 @@ familyId 必填
 
 ---
 
+## A19. api_bookshelf_reorder
+### 功能
+指定家庭下 书架的重新排序（sort_order）
+
+### 入参
+{
+  
+}
+* 需进一步明确参数定义
+
+### 处理规则
+
+### 返回
+
+
+---
+
+## A20. api_family_switchCurrent
+### 功能
+切换当前家庭
+
+### 入参
+{
+  "familyId": "familyId"
+}
+
+### 处理规则
+  检查是否属于该家庭
+  ↓
+  更新user.currentFamilyId
+
+### 返回
+
+---
+
 # B. 手机端创建任务
 ## B1. api_task_createBindRfid
 ### 功能
@@ -785,16 +830,21 @@ PDA 后续轮询获取
 ### 入参
 {
   "bookItemId":"bi00001",
-  "cretaed_by":"admin-user"
+  "created_by":"admin-user"
 }
 
 ### 处理规则
 
 ### 返回
-{
-  "success":true,
-  "taskId":"task00001"
-}
+  {
+    "success":true,
+
+    task:{
+    ...
+    }
+  }
+
+  * 返回task对象，而非仅仅taskId。
 
 ## B2. api_task_createFindBook
 ### 功能
@@ -1237,25 +1287,8 @@ cloud.getWXContext()
   }
 }
 ```
-## D4. 
-### 功能
-```
-```
 
-
-
-### 入参
-```
-```
-
-### 处理
-```
-```
-
-### 返回
-```
-```
-
+---
 
 # 3. 从架构层面的调整建议
 
