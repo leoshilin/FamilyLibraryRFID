@@ -1,4 +1,6 @@
 // 云函数入口文件
+// 根据当前微信 openid 查询系统用户，只查询不创建
+// 已注册用户返回权限信息，供前端控制 UI 展示
 const cloud = require('wx-server-sdk')
 
 cloud.init({
@@ -6,6 +8,11 @@ cloud.init({
 })
 
 const db = cloud.database()
+
+// 引入权限公共模块
+const {
+  buildFamilyPermissions
+} = require('../common/permission')
 
 exports.main = async (event, context) => {
 
@@ -32,10 +39,16 @@ exports.main = async (event, context) => {
 
     }
 
+    const user = userRes.data[0]
+
+    // 已注册用户：构建当前家庭下的权限集
+    const permissions = await buildFamilyPermissions(db, user)
+
     return {
       success: true,
       registered: true,
-      user: userRes.data[0]
+      user,
+      permissions
     }
 
   } catch (err) {

@@ -18,7 +18,10 @@ Page({
 
     },
 
-    bookshelves: []
+    bookshelves: [],
+
+    // 当前家庭下的用户权限集
+    permissions: {}
 
   },
 
@@ -43,11 +46,9 @@ Page({
     const app = getApp()
 
     const {
-
       registered,
-
-      currentUser
-
+      currentUser,
+      permissions
     } = app.globalData
 
     console.log(
@@ -62,15 +63,11 @@ Page({
     if (!registered) {
 
       this.setData({
-
         registered: false,
-
         user: null,
-
         family: null,
-
-        bookshelves: []
-
+        bookshelves: [],
+        permissions: {}
       })
 
       return
@@ -78,18 +75,16 @@ Page({
     }
 
     //
-    // 已注册用户
+    // 已注册用户：加载用户信息与权限
     //
     this.setData({
-
       registered: true,
-
-      user: currentUser
-
+      user: currentUser,
+      permissions
     })
 
     //
-    // 后续调用
+    // 后续调用（第二部分实现）
     //
     // await this.loadFamily()
     // await this.loadBookshelf()

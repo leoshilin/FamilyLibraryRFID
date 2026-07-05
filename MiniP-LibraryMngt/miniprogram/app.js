@@ -7,7 +7,9 @@ App({
     // 登录用户信息
     currentUser: null,
     // 是否注册
-    registered: false
+    registered: false,
+    // 当前家庭下的用户权限集（由 api_user_login 返回）
+    permissions: {}
   },
   
   
@@ -38,11 +40,17 @@ App({
 
       this.globalData.registered = true
 
+      // 存储权限信息，供各页面控制 UI 展示
+      this.globalData.permissions =
+        result.permissions || {}
+
     } else {
 
       this.globalData.currentUser = null
 
       this.globalData.registered = false
+
+      this.globalData.permissions = {}
 
     }
 

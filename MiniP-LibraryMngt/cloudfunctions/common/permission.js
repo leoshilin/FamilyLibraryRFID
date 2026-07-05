@@ -73,6 +73,7 @@ const ROLE_PERMISSION = {
 }
 
 const FRONTEND_PERMISSION_KEYS = {
+  canCreateFamily: PERMISSIONS.FAMILY_CREATE,
   canUpdateFamily: PERMISSIONS.FAMILY_UPDATE,
   canDeleteFamily: PERMISSIONS.FAMILY_DELETE,
   canCreateBookshelf: PERMISSIONS.BOOKSHELF_CREATE,
@@ -204,6 +205,58 @@ const buildPermissions = ({
 
 }
 
+// 为已登录用户构建当前家庭下的完整权限集
+// 供 api_user_login 等需要返回前端权限的场景使用
+const buildFamilyPermissions = async (db, user) => {
+
+  const permissions = {}
+
+  // 系统管理员拥有所有权限
+  if (user.role === 'ADMIN') {
+
+    Object.keys(FRONTEND_PERMISSION_KEYS).forEach((key) => {
+      permissions[key] = true
+    })
+
+    return permissions
+
+  }
+
+  // 注册用户即可创建家庭，无需依赖家庭角色
+  permissions.canCreateFamily = true
+
+  // 如果用户有当前家庭，查询家庭角色并构建该家庭下的权限
+  if (user.currentFamilyId) {
+
+    const familyRole = await getFamilyRole(
+      db,
+      user._id,
+      user.currentFamilyId
+    )
+
+    if (familyRole) {
+
+      Object.keys(FRONTEND_PERMISSION_KEYS).forEach((key) => {
+
+        // canCreateFamily 已在上面处理，跳过
+        if (key === 'canCreateFamily') {
+          return
+        }
+
+        const permission = FRONTEND_PERMISSION_KEYS[key]
+
+        permissions[key] = hasPermission(permission, familyRole)
+
+      })
+
+    }
+
+  }
+
+  return permissions
+
+}
+
 const checkPermission = async ({
   db,
   openid,
@@ -216,6 +269,7 @@ const checkPermission = async ({
   if (!db) {
     return {
       allowed: false,
+      reason: 'MISSING_DB',
       message: '缺少数据库对象'
     }
   }
@@ -223,6 +277,7 @@ const checkPermission = async ({
   if (!permission) {
     return {
       allowed: false,
+      reason: 'MISSING_PERMISSION',
       message: '缺少权限定义'
     }
   }
@@ -232,6 +287,7 @@ const checkPermission = async ({
   if (!user) {
     return {
       allowed: false,
+      reason: 'USER_NOT_FOUND',
       message: '用户未注册'
     }
   }
@@ -239,6 +295,7 @@ const checkPermission = async ({
   if (user.status !== 'ACTIVE') {
     return {
       allowed: false,
+      reason: 'USER_DISABLED',
       user,
       message: '用户状态不可用'
     }
@@ -275,6 +332,7 @@ const checkPermission = async ({
   if (!resolvedFamilyId) {
     return {
       allowed: false,
+      reason: 'MISSING_FAMILY_ID',
       user,
       message: '缺少家庭ID'
     }
@@ -289,6 +347,7 @@ const checkPermission = async ({
   if (!familyRole) {
     return {
       allowed: false,
+      reason: 'NOT_FAMILY_MEMBER',
       user,
       familyId: resolvedFamilyId,
       message: '用户不属于该家庭'
@@ -298,6 +357,7 @@ const checkPermission = async ({
   if (!hasPermission(permission, familyRole)) {
     return {
       allowed: false,
+      reason: 'PERMISSION_DENIED',
       user,
       systemRole: user.role,
       familyRole,
@@ -328,5 +388,6 @@ module.exports = {
   getFamilyRole,
   hasPermission,
   buildPermissions,
+  buildFamilyPermissions,
   checkPermission
 }
