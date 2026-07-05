@@ -12,7 +12,7 @@ const db = cloud.database()
 // 引入权限公共模块
 const {
   buildFamilyPermissions
-} = require('../common/permission')
+} = require('./common/permission')
 
 exports.main = async (event, context) => {
 

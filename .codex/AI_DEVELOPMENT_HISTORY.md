@@ -9,6 +9,12 @@
 # 2026
 
 ---
+### 云函数的Shared Module的处理方式
+在cloudfunctions下，common 放到模板目录：_template/common，下面配置共通代码模块（比如： permission.js）。今后如有变动在此维护。
+一旦更新后都必须使用脚本把common同步到每一个云函数目录下。
+
+
+---
 ## 权限取消Action层的模型简化
 项目最初的权限设计同时使用了 Action 和 Permission 两个概念，例如：
 
