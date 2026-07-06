@@ -4,7 +4,9 @@
   "private": true,
   "description": "Development tools for FamilyLibraryRFID cloud functions.",
   "scripts": {
-    "sync-common": "node scripts/sync-common.js"
+    "sync-common": "node scripts/sync-common.js",
+    "sync-common:dry": "node scripts/sync-common.js --dry-run",
+    "sync-common:clean": "node scripts/sync-common.js --clean"
   },
   "engines": {
     "node": ">=18"
