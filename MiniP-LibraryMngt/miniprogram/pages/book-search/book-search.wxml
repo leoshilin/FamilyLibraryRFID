@@ -2,7 +2,9 @@
 
   <!-- 搜索区域 -->
   <view class="search-bar">
-    <input class="search-input" placeholder="输入书名或作者" value="{{keyword}}" bindinput="onKeywordInput"
+    <input class="search-input" placeholder="书名或作者" value="{{keyword}}" bindinput="onKeywordInput"
+      confirm-type="search" bindconfirm="onSearch" />
+    <input class="search-input isbn-input" placeholder="ISBN" value="{{isbn}}" bindinput="onIsbnInput"
       confirm-type="search" bindconfirm="onSearch" />
     <button class="search-btn" bindtap="onSearch">搜索</button>
   </view>
@@ -37,6 +39,16 @@
           <view class="date-picker">{{ endDate || '结束日期' }}</view>
         </picker>
       </view>
+    </view>
+
+    <!-- 书架筛选 -->
+    <view class="form-item">
+      <text class="label">书架</text>
+      <picker range="{{bookshelfOptions}}" range-key="name" value="{{bookshelfIndex}}" bindchange="onBookshelfChange">
+        <view class="picker">
+          {{ bookshelfOptions[bookshelfIndex].name }}
+        </view>
+      </picker>
     </view>
 
     <button class="confirm-btn" bindtap="onSearch">

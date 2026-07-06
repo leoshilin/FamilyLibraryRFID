@@ -1,11 +1,13 @@
 const eventBus = require('../../utils/eventBus')
 const EVENTS = require('../../utils/events')
+const bookshelfServices = require('../../services/bookshelfServices')
 
 Page({
   data: {
     familyId: '', //首页传入
     operator: '', //首页传入
     keyword: '',
+    isbn: '', // ISBN精确匹配
     showAdvanced: false,
 
     statusOptions: [
@@ -17,7 +19,11 @@ Page({
 
     startDate: '',
     endDate: '',
-    
+
+    // 书架筛选
+    bookshelfOptions: [{ name: '全部书架', _id: '' }], // 首项为"全部"
+    bookshelfIndex: 0,
+
     books: [],    
     page: 1,
     pageSize: 10,
@@ -36,11 +42,40 @@ Page({
       operator:  options.operator || null
     })
 
+    // 加载书架列表（用于高级搜索中的书架筛选）
+    this.loadBookshelves()
+
     this.fetchBooks(true)
+  },
+
+  // 加载书架列表
+  async loadBookshelves() {
+    const familyId = this.data.familyId
+    if (!familyId) return
+
+    try {
+      const result = await bookshelfServices.list(familyId)
+      if (result.success) {
+        // 首项为"全部书架"，后面追加实际书架
+        this.setData({
+          bookshelfOptions: [{ name: '全部书架', _id: '' }, ...result.list]
+        })
+      }
+    } catch (err) {
+      console.error('loadBookshelves error:', err)
+    }
   },
 
   onKeywordInput(e) {
     this.setData({ keyword: e.detail.value })
+  },
+
+  onIsbnInput(e) {
+    this.setData({ isbn: e.detail.value })
+  },
+
+  onBookshelfChange(e) {
+    this.setData({ bookshelfIndex: e.detail.value })
   },
 
   toggleAdvanced() {
@@ -104,8 +139,9 @@ Page({
       data: {   
         familyId: this.data.familyId,     
         keyword: this.data.keyword,
+        isbn: this.data.isbn,
+        bookshelfId: this.data.bookshelfOptions[this.data.bookshelfIndex]._id,
         status: STATUS_MAP[this.data.statusIndex],
-//        statusIndex: this.data.statusIndex,
         startDate: this.data.startDate,
         endDate: this.data.endDate,        
         page: this.data.page,

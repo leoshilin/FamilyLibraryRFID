@@ -1,11 +1,14 @@
 const eventBus = require('../../utils/eventBus')
 const EVENTS = require('../../utils/events')
+const bookshelfServices = require('../../services/bookshelfServices')
 
 Page({
     
   data: {
     familyId: '', // 当前家庭（首页参数传入）
-    bookshelfId: 'bs01', // 当前书架（先写死，后续从全局获取）
+    bookshelfId: '', // 当前书架（从书架选择中获取）
+    bookshelfIndex: 0, // 书架选择器索引
+    bookshelves: [], // 书架列表
     mode: 'view', // scan | view
     isbn: '',
     loading: true,
@@ -36,6 +39,8 @@ Page({
     if (mode === 'scan') {
       // 上架前确认，不存在实体书籍，但根据isbn可能存在主数据
       this.loadFromISBN(isbn)
+      // 加载当前家庭的书架列表供用户选择
+      this.loadBookshelves(familyId)
     } else {
       // 书籍信息展示，使用book_item中id代表实体书籍对象
       const eventChannel = this.getOpenerEventChannel()
@@ -64,6 +69,34 @@ Page({
 
   onBack() {
     wx.navigateBack({ delta: 1 })
+  },
+
+  // 加载当前家庭的书架列表
+  async loadBookshelves(familyId) {
+    if (!familyId) return
+
+    try {
+      const result = await bookshelfServices.list(familyId)
+
+      if (result.success && result.list.length > 0) {
+        this.setData({
+          bookshelves: result.list,
+          bookshelfId: result.list[0]._id,
+          bookshelfIndex: 0
+        })
+      }
+    } catch (err) {
+      console.error('loadBookshelves error:', err)
+    }
+  },
+
+  // 书架选择变更
+  onBookshelfChange(e) {
+    const index = e.detail.value
+    this.setData({
+      bookshelfIndex: index,
+      bookshelfId: this.data.bookshelves[index]._id
+    })
   },
 
   loadFromISBN(isbn){

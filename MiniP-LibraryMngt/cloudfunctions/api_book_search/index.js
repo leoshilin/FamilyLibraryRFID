@@ -11,7 +11,9 @@ exports.main = async (event) => {
   console.log('收到参数:', event)
   const {
     familyId,
-    keyword = '',    
+    keyword = '',
+    isbn = '',
+    bookshelfId = '',
     status = 'in_stock',
     startDate,
     endDate,    
@@ -45,6 +47,11 @@ exports.main = async (event) => {
       itemMatch.status = 'off_stock'
     }
 
+    // ---- 书架筛选 ----
+    if (bookshelfId) {
+      itemMatch.bookshelf_id = bookshelfId
+    }
+
     // ---- 上架时间筛选 ----
     if (startDate || endDate) {
       const dateCond = []
@@ -63,25 +70,39 @@ exports.main = async (event) => {
     }
     
     // ===============================
-    // 2️⃣ 构造 meta 模糊匹配条件
+    // 2️⃣ 构造 meta 匹配条件（模糊 + ISBN精确）
     // ===============================
 
     let metaMatch = {}
 
+    // 书名或作者模糊匹配
     if (keyword && keyword.trim()) {
       const reg = db.RegExp({
         regexp: keyword.trim(),
         options: 'i'
       })
 
-      metaMatch = _.or([{
+      const keywordCond = _.or([{
           'meta.title': reg
         },
         {
           'meta.authors': reg
         }
       ])
+
+      // 如果同时有 ISBN 精确匹配，取交集
+      if (isbn && isbn.trim()) {
+        metaMatch = _.and([
+          keywordCond,
+          { 'meta.isbn': isbn.trim() }
+        ])
+      } else {
+        metaMatch = keywordCond
       }
+    } else if (isbn && isbn.trim()) {
+      // 仅 ISBN 精确匹配
+      metaMatch = { 'meta.isbn': isbn.trim() }
+    }
 
     // ===============================
     // 3️⃣ 聚合查询（核心）
@@ -108,10 +129,26 @@ exports.main = async (event) => {
         preserveNullAndEmptyArrays: true
       })
 
-    // meta 模糊匹配
-    if (keyword && keyword.trim()) {
+      // 关联 bookshelf（获取书架名称）
+      .lookup({
+        from: 'bookshelf',
+        localField: 'bookshelf_id',
+        foreignField: '_id',
+        as: 'bookshelf'
+      })
+
+      // bookshelf 数组转对象
+      .unwind({
+        path: '$bookshelf',
+        preserveNullAndEmptyArrays: true
+      })
+
+    // meta 匹配
+    const hasMetaMatch = (keyword && keyword.trim()) || (isbn && isbn.trim())
+    if (hasMetaMatch) {
       agg.match(metaMatch)
     }
+
     // 排序
     agg.sort({
       created_at: -1
@@ -140,6 +177,16 @@ exports.main = async (event) => {
         path: '$meta',
         preserveNullAndEmptyArrays: true
       })
+      .lookup({
+        from: 'bookshelf',
+        localField: 'bookshelf_id',
+        foreignField: '_id',
+        as: 'bookshelf'
+      })
+      .unwind({
+        path: '$bookshelf',
+        preserveNullAndEmptyArrays: true
+      })
       .match(metaMatch)
       .count('total')
       .end()
@@ -156,6 +203,8 @@ exports.main = async (event) => {
       // ===== item 字段 =====
       item_id: item._id,
       family_id: item.family_id,
+      bookshelf_id: item.bookshelf_id || '',
+      bookshelf_name: item.bookshelf?.name || '',
       status: item.status,
       created_at: item.created_at,
       rfid_tag_id: item.rfid_tag_id || null,

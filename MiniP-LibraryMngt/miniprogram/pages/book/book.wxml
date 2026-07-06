@@ -3,7 +3,7 @@
   <view class="nav-bar">
     <view class="back-btn" bindtap="onBack">← 返回</view>
     <view class="nav-title">
-      {{ mode === 'scan' ? '确认入库' : '图书详情' }}
+      {{ mode === 'scan' ? '确认上架' : '图书详情' }}
     </view>
     <view class="nav-right"></view>
   </view>
@@ -123,6 +123,24 @@
           </text>
         </view>
 
+        <!-- view模式下显示书架 -->
+        <view wx:if="{{mode === 'view'}}" class="field">
+          <text class="label">书架</text>
+          <text class="value">{{book.bookshelf_name || '未知'}}</text>
+        </view>
+
+      </view>
+
+      <!-- scan模式下书架选择 -->
+      <view wx:if="{{mode === 'scan'}}" class="group-card">
+        <view class="field">
+          <text class="label">书架</text>
+          <picker range="{{bookshelves}}" range-key="name" value="{{bookshelfIndex}}" bindchange="onBookshelfChange">
+            <view class="value">
+              {{bookshelves.length > 0 ? bookshelves[bookshelfIndex].name : '请选择书架'}}
+            </view>
+          </picker>
+        </view>
       </view>
 
     </view>

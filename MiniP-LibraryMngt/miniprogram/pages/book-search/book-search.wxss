@@ -9,6 +9,7 @@
   display: flex;
   padding: 20rpx;
   background: #fff;
+  gap: 12rpx;
 }
 
 .search-input {
@@ -17,6 +18,10 @@
   border-radius: 12rpx;
   padding: 16rpx;
   font-size: 28rpx;
+}
+
+.isbn-input {
+  max-width: 200rpx;
 }
 
 .search-btn {

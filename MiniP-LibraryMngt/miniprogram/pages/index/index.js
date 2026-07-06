@@ -140,6 +140,13 @@ Page({
     })
   },
 
+  // 跳转到"我的"页面（设置入口）
+  goSetting() {
+    wx.switchTab({
+      url: '/pages/mine/mine'
+    })
+  },
+
   // 最近上架-查看全部 点击后跳转到书籍查询页
   onViewAllTap() {
     const familyId = this.data.familyId
