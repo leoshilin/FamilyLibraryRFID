@@ -47,7 +47,7 @@
   <!-- 书架管理 -->
   <view class="section" wx:if="{{family}}">
     <view class="section-header">
-      <text class="section-title">书架管理</text>
+      <text class="section-title">书架管理（{{bookshelves.length}}个书架）</text>
       <text
         wx:if="{{permissions.canCreateBookshelf}}"
         class="add-link"
@@ -64,6 +64,7 @@
       >
         <view>
           <text class="item-name">{{item.name}}</text>
+          <text class="item-subtitle">{{item.bookCount || 0}}本在架</text>
         </view>
         <view class="item-actions">
           <text
