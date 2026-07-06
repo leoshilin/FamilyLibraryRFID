@@ -1,88 +1,199 @@
+<!-- 未注册用户 -->
 <view wx:if="{{!registered}}">
 
-<view class="card user-card">
-
-  <view class="user-info">
-
-    <view class="avatar">
-      👤
+  <view class="card user-card">
+    <view class="user-info">
+      <view class="avatar">👤</view>
+      <view class="user-text">
+        <text class="user-name">未注册用户</text>
+        <text class="user-role">请先注册系统账号</text>
+      </view>
     </view>
+  </view>
 
-    <view class="user-text">
-
-      <text class="user-name">
-        未注册用户
-      </text>
-
-      <text class="user-role">
-        请先注册系统账号
-      </text>
-
-    </view>
-
+  <view class="register-button" bindtap="onRegisterTap">
+    注册用户
   </view>
 
 </view>
 
-<view
-  class="register-button"
-  bindtap="onRegisterTap"
->
-  注册用户
-</view>
-
-</view>
-
+<!-- 已注册用户 -->
 <view wx:if="{{registered}}">
 
-<!-- 用户信息 -->
+  <!-- 用户信息 -->
+  <view class="card user-card" bindtap="onEditUserTap">
+    <view class="user-info">
+      <view class="avatar">👤</view>
+      <view class="user-text">
+        <text class="user-name">{{user.nickName}}</text>
+        <text class="user-role">已注册用户</text>
+      </view>
+    </view>
+    <text class="arrow">›</text>
+  </view>
 
-<view
-  class="card user-card"
-  bindtap="onEditUserTap"
->
+  <!-- 当前家庭 -->
+  <view class="card family-card" bindtap="onFamilyTap">
+    <view>
+      <text class="card-title">当前家庭</text>
+      <view class="family-name-row">
+        <text class="family-name">{{family ? family.name : '未加入家庭'}}</text>
+        <text wx:if="{{familyRole}}" class="role-tag role-{{familyRole}}">{{familyRole}}</text>
+      </view>
+    </view>
+    <text class="arrow">›</text>
+  </view>
 
-  <view class="user-info">
-
-    <view class="avatar">
-      👤
+  <!-- 书架管理 -->
+  <view class="section" wx:if="{{family}}">
+    <view class="section-header">
+      <text class="section-title">书架管理</text>
+      <text
+        wx:if="{{permissions.canCreateBookshelf}}"
+        class="add-link"
+        bindtap="onOpenCreateBookshelf"
+      >+ 添加书架</text>
     </view>
 
-    <view class="user-text">
+    <!-- 书架列表 -->
+    <view wx:if="{{bookshelves.length > 0}}">
+      <view
+        wx:for="{{bookshelves}}"
+        wx:key="_id"
+        class="list-item"
+      >
+        <view>
+          <text class="item-name">{{item.name}}</text>
+        </view>
+        <view class="item-actions">
+          <text
+            wx:if="{{permissions.canUpdateBookshelf}}"
+            class="action-btn"
+            bindtap="onEditBookshelf"
+            data-bookshelf-id="{{item._id}}"
+            data-name="{{item.name}}"
+          >编辑</text>
+          <text
+            wx:if="{{permissions.canDeleteBookshelf}}"
+            class="action-btn action-delete"
+            bindtap="onDeleteBookshelf"
+            data-bookshelf-id="{{item._id}}"
+            data-name="{{item.name}}"
+          >删除</text>
+        </view>
+      </view>
+    </view>
 
-      <text class="user-name">
-        {{user.nickName}}
-      </text>
-
-      <text class="user-role">
-        已注册用户
-      </text>
-
-    </view>    
+    <view wx:else class="empty-tip">暂无书架</view>
   </view>
-  <text class="arrow">›</text>
+
 </view>
 
-<!-- 当前家庭 -->
+<!-- ======================== -->
+<!--  家庭选择弹窗              -->
+<!-- ======================== -->
+<view class="modal-mask" wx:if="{{showFamilyPicker}}" bindtap="onCloseFamilyPicker"></view>
+<view class="modal-card" wx:if="{{showFamilyPicker}}">
 
-<view class="card family-card">
-
-  <view>
-
-    <text class="card-title">
-      当前家庭
-    </text>
-
-    <text class="family-name">
-      {{family ? family.name : '未加入家庭'}}
-    </text>
-
+  <view class="modal-header">
+    <text class="modal-title">选择家庭</text>
+    <text class="modal-close" bindtap="onCloseFamilyPicker">✕</text>
   </view>
 
-  <text class="arrow">›</text>
+  <scroll-view scroll-y class="modal-body">
+    <view
+      wx:for="{{familyList}}"
+      wx:key="familyId"
+      class="family-picker-item {{item.isCurrent ? 'family-current' : ''}}"
+      bindtap="onSwitchFamily"
+      data-family-id="{{item.familyId}}"
+    >
+      <view class="picker-item-main">
+        <text class="picker-item-name">{{item.name}}</text>
+        <text class="role-tag role-{{item.role}}">{{item.role}}</text>
+        <text wx:if="{{item.isCurrent}}" class="current-badge">当前</text>
+      </view>
+
+      <view class="picker-item-actions" wx:if="{{item.role === 'OWNER' && permissions.canUpdateFamily}}">
+        <text
+          class="action-btn"
+          catchtap="onEditFamily"
+          data-family-id="{{item.familyId}}"
+          data-name="{{item.name}}"
+        >编辑</text>
+        <text
+          wx:if="{{permissions.canDeleteFamily}}"
+          class="action-btn action-delete"
+          catchtap="onDeleteFamily"
+          data-family-id="{{item.familyId}}"
+          data-name="{{item.name}}"
+        >删除</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="modal-footer" wx:if="{{permissions.canCreateFamily}}">
+    <view class="btn-primary" bindtap="onOpenCreateFamily">创建新家庭</view>
+  </view>
 
 </view>
 
-<!-- 后续统计区域 -->
+<!-- ======================== -->
+<!--  家庭表单弹窗（创建/编辑）  -->
+<!-- ======================== -->
+<view class="modal-mask" wx:if="{{showFamilyForm}}" bindtap="onCloseFamilyForm"></view>
+<view class="modal-card modal-form" wx:if="{{showFamilyForm}}">
+
+  <view class="modal-header">
+    <text class="modal-title">{{familyFormMode === 'create' ? '创建家庭' : '修改家庭名称'}}</text>
+    <text class="modal-close" bindtap="onCloseFamilyForm">✕</text>
+  </view>
+
+  <view class="modal-body">
+    <input
+      class="form-input"
+      placeholder="请输入家庭名称"
+      value="{{familyFormName}}"
+      bindinput="onFamilyNameInput"
+      focus="{{true}}"
+    />
+  </view>
+
+  <view class="modal-footer">
+    <view class="btn-secondary" bindtap="onCloseFamilyForm">取消</view>
+    <view class="btn-primary" bindtap="onSubmitFamily">
+      {{familyFormMode === 'create' ? '创建' : '保存'}}
+    </view>
+  </view>
+
+</view>
+
+<!-- ======================== -->
+<!--  书架表单弹窗（创建/编辑）  -->
+<!-- ======================== -->
+<view class="modal-mask" wx:if="{{showBookshelfForm}}" bindtap="onCloseBookshelfForm"></view>
+<view class="modal-card modal-form" wx:if="{{showBookshelfForm}}">
+
+  <view class="modal-header">
+    <text class="modal-title">{{bookshelfFormMode === 'create' ? '创建书架' : '修改书架名称'}}</text>
+    <text class="modal-close" bindtap="onCloseBookshelfForm">✕</text>
+  </view>
+
+  <view class="modal-body">
+    <input
+      class="form-input"
+      placeholder="请输入书架名称"
+      value="{{bookshelfFormName}}"
+      bindinput="onBookshelfNameInput"
+      focus="{{true}}"
+    />
+  </view>
+
+  <view class="modal-footer">
+    <view class="btn-secondary" bindtap="onCloseBookshelfForm">取消</view>
+    <view class="btn-primary" bindtap="onSubmitBookshelf">
+      {{bookshelfFormMode === 'create' ? '创建' : '保存'}}
+    </view>
+  </view>
 
 </view>

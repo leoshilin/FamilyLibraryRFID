@@ -14,6 +14,11 @@ const getCurrent = () => {
   return callFunction('api_family_getCurrent')
 }
 
+// 获取当前用户所属的所有家庭列表
+const list = () => {
+  return callFunction('api_family_list')
+}
+
 // 创建家庭（可选 name，默认为"我的家庭"）
 const create = (name) => {
   return callFunction('api_family_create', {
@@ -36,9 +41,18 @@ const remove = (familyId) => {
   })
 }
 
+// 切换当前默认家庭
+const switchCurrent = (familyId) => {
+  return callFunction('api_family_switchCurrent', {
+    familyId
+  })
+}
+
 module.exports = {
   getCurrent,
+  list,
   create,
   update,
-  remove
+  remove,
+  switchCurrent
 }
