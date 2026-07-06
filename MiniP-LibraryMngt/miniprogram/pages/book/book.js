@@ -56,12 +56,18 @@ Page({
         this.setData({
           book,
           isbn: book.isbn,
+          familyId: book.family_id,
           loading: false,
           metaExists: true,
           submitting: false,
           canEditMeta: false
         })
         console.log(`book on page, title=${book.title}, status=${book.status}`)
+
+        // 查看模式下也加载书架列表，供用户修改书架
+        if (book.family_id) {
+          this.loadBookshelves(book.family_id, book.bookshelf_id)
+        }
       })
     }
   },
@@ -72,17 +78,25 @@ Page({
   },
 
   // 加载当前家庭的书架列表
-  async loadBookshelves(familyId) {
+  // currentBookshelfId：查看模式下传入书籍当前书架ID，用于定位选择器索引
+  async loadBookshelves(familyId, currentBookshelfId) {
     if (!familyId) return
 
     try {
       const result = await bookshelfServices.list(familyId)
 
       if (result.success && result.list.length > 0) {
+        // 定位当前书架在列表中的索引
+        let index = 0
+        if (currentBookshelfId) {
+          const found = result.list.findIndex(s => s._id === currentBookshelfId)
+          if (found >= 0) index = found
+        }
+
         this.setData({
           bookshelves: result.list,
-          bookshelfId: result.list[0]._id,
-          bookshelfIndex: 0
+          bookshelfId: result.list[index]._id,
+          bookshelfIndex: index
         })
       }
     } catch (err) {
@@ -90,13 +104,62 @@ Page({
     }
   },
 
-  // 书架选择变更
+  // 书架选择变更（scan模式）
   onBookshelfChange(e) {
     const index = e.detail.value
     this.setData({
       bookshelfIndex: index,
       bookshelfId: this.data.bookshelves[index]._id
     })
+  },
+
+  // 书架选择变更（view模式），修改后调用云函数更新
+  async onViewBookshelfChange(e) {
+    const index = e.detail.value
+    const newBookshelfId = this.data.bookshelves[index]._id
+    const oldBookshelfId = this.data.bookshelfId
+
+    // 书架未变更则不处理
+    if (newBookshelfId === oldBookshelfId) return
+
+    const { book, operator, familyId } = this.data
+
+    wx.showLoading({ title: '更新中...' })
+
+    try {
+      const res = await wx.cloud.callFunction({
+        name: 'api_bookitem_updateBookshelf',
+        data: {
+          itemId: book.item_id,
+          familyId: familyId || book.family_id,
+          bookshelfId: newBookshelfId,
+          operator
+        }
+      })
+
+      wx.hideLoading()
+
+      if (res.result.success) {
+        this.setData({
+          bookshelfIndex: index,
+          bookshelfId: newBookshelfId,
+          'book.bookshelf_id': newBookshelfId,
+          'book.bookshelf_name': res.result.bookshelf_name || this.data.bookshelves[index].name
+        })
+        wx.showToast({ title: '已更新书架', icon: 'success' })
+
+        // 通知其他页面书架已变更
+        eventBus.emit(EVENTS.BOOK_META_UPDATED, {
+          familyId: familyId || book.family_id
+        })
+      } else {
+        wx.showToast({ title: res.result.message || '更新失败', icon: 'none' })
+      }
+    } catch (err) {
+      wx.hideLoading()
+      console.error('onViewBookshelfChange error:', err)
+      wx.showToast({ title: '更新失败', icon: 'none' })
+    }
   },
 
   loadFromISBN(isbn){

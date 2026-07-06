@@ -1,0 +1,58 @@
+/* 设置页面样式 */
+.page {
+  min-height: 100vh;
+  background: #f2f2f7;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 顶部导航栏 */
+.nav-bar {
+  height: 96rpx;
+  padding: 0 24rpx;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(20rpx);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid #e5e5ea;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* 返回按钮 */
+.back-btn {
+  font-size: 30rpx;
+  color: #1677ff;
+  font-weight: 500;
+  min-width: 120rpx;
+}
+
+/* 标题 */
+.nav-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #111;
+  text-align: center;
+  flex: 1;
+}
+
+/* 占位 */
+.nav-right {
+  min-width: 120rpx;
+}
+
+/* 内容区域 */
+.content {
+  flex: 1;
+  padding: 30rpx;
+}
+
+/* 空提示 */
+.empty-tip {
+  text-align: center;
+  padding: 120rpx 0;
+  color: #999;
+  font-size: 28rpx;
+}

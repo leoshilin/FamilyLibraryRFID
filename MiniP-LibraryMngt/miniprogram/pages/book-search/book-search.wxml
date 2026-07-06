@@ -1,11 +1,12 @@
 <view class="page">
 
-  <!-- 搜索区域 -->
+  <!-- 搜索区域：基础检索仅ISBN（可扫码） -->
   <view class="search-bar">
-    <input class="search-input" placeholder="书名或作者" value="{{keyword}}" bindinput="onKeywordInput"
+    <input class="search-input" placeholder="ISBN" value="{{isbn}}" bindinput="onIsbnInput"
       confirm-type="search" bindconfirm="onSearch" />
-    <input class="search-input isbn-input" placeholder="ISBN" value="{{isbn}}" bindinput="onIsbnInput"
-      confirm-type="search" bindconfirm="onSearch" />
+    <view class="scan-btn" bindtap="onScanISBN">
+      <image src="/images/icons/scan.png" class="scan-icon" />
+    </view>
     <button class="search-btn" bindtap="onSearch">搜索</button>
   </view>
 
@@ -16,6 +17,13 @@
 
   <!-- 高级搜索区域 -->
   <view wx:if="{{showAdvanced}}" class="advanced-panel">
+
+    <!-- 书名或作者（模糊匹配） -->
+    <view class="form-item">
+      <text class="label">书名或作者</text>
+      <input class="adv-input" placeholder="输入书名或作者关键词" value="{{keyword}}" bindinput="onKeywordInput"
+        confirm-type="search" bindconfirm="onSearch" />
+    </view>
 
     <!-- 上架状态 -->
     <view class="form-item">

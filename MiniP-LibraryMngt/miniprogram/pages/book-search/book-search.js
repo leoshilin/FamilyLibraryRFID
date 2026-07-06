@@ -74,6 +74,23 @@ Page({
     this.setData({ isbn: e.detail.value })
   },
 
+  // 扫码检索ISBN
+  onScanISBN() {
+    wx.scanCode({
+      scanType: ['barCode'],
+      success: res => {
+        const isbn = res.result
+        console.log('扫描到 ISBN:', isbn)
+        this.setData({ isbn })
+        // 扫码后自动检索
+        this.onSearch()
+      },
+      fail: err => {
+        console.error('扫码失败：', err)
+      }
+    })
+  },
+
   onBookshelfChange(e) {
     this.setData({ bookshelfIndex: e.detail.value })
   },

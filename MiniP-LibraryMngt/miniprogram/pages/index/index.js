@@ -1,13 +1,14 @@
 // index.js
 const eventBus = require('../../utils/eventBus')
 const EVENTS = require('../../utils/events')
+const familyServices = require('../../services/familyServices')
 
 Page({
   data: {
     isbn: '',
     bookInfo: null,
     recentBooks: [],
-    familyId: 'fm00001',
+    familyId: '', // 当前家庭ID（由 api_family_getCurrent 动态获取）
     operator: 'admin-shilin',
 
     //页面是否需要更新的控制，靠eventBus触发事件后更新该控制符号，然后在回到页面onShow时做判断并更新
@@ -19,6 +20,11 @@ Page({
       familyId,
       operator
     } = this.data
+
+    if (!familyId) {
+      wx.showToast({ title: '请先选择家庭', icon: 'none' })
+      return
+    }
   
     wx.scanCode({
       scanType: ['barCode'],
@@ -48,17 +54,16 @@ Page({
   },
  
   
-  // 获取最近上架书籍信息
+  // 页面载入时设置 eventBus 监听，数据加载在 onShow 中触发
   onLoad() {
-    //页面载入时首次刷新页面，并设置更新控制器 = false
-    this.api_recentbook_search()
-    this.data.needRefresh=false
+    this.data.needRefresh = false
 
-    // 设置 eventBus中触发事件的响应函数，此处不做更新，仅仅标志“脏状态”
+    // 设置 eventBus中触发事件的响应函数，此处不做更新，仅仅标志"脏状态"
     this.refreshHandler = (payload) => {      
       console.log(`index pg payload is: familyId = ${payload.familyId}`)
-      if (payload.familyId === this.data.familyId) {
-      this.data.needRefresh = true
+      // 家庭ID未加载或匹配时都需要刷新
+      if (!this.data.familyId || payload.familyId === this.data.familyId) {
+        this.data.needRefresh = true
       }
     }
 
@@ -78,11 +83,34 @@ Page({
   },
 
   onShow() {
-    //页面刷新，判断页面刷新控制器的状态（由eventBus触发的事件响应中设置）后调用刷新
+    //每次显示页面时重新加载当前家庭（处理家庭切换场景），并按需刷新最近书籍
     console.log(`index pg onShow, needRefresh is ${this.data.needRefresh}`)
-    if (this.data.needRefresh) {
-      this.api_recentbook_search()
-      this.data.needRefresh = false
+    this.loadCurrentFamily(this.data.needRefresh)
+    this.data.needRefresh = false
+  },
+
+  // 加载当前家庭信息，forceRefresh 为 true 时强制刷新最近书籍
+  async loadCurrentFamily(forceRefresh = false) {
+    try {
+      const result = await familyServices.getCurrent()
+
+      if (result.success && result.family) {
+        const familyChanged = this.data.familyId !== result.family._id
+        this.setData({ familyId: result.family._id })
+
+        // 家庭变更或需要刷新时重新加载最近书籍
+        if (familyChanged || forceRefresh) {
+          this.api_recentbook_search()
+        }
+      } else {
+        // 无当前家庭，清空数据
+        this.setData({
+          familyId: '',
+          recentBooks: []
+        })
+      }
+    } catch (err) {
+      console.error('loadCurrentFamily error:', err)
     }
   },
 
@@ -90,6 +118,8 @@ Page({
     const {    
       familyId      
     } = this.data  
+
+    if (!familyId) return
 
     try {
       const res = await wx.cloud.callFunction({
@@ -112,15 +142,13 @@ Page({
   // 页面下拉触发
   onPullDownRefresh() {
     console.log("用户下拉刷新首页");
-    this.loadHomeData(() => {
-      // 数据加载完成后停止下拉刷新
-      wx.stopPullDownRefresh();
-    });
+    this.loadCurrentFamily(true)
+    wx.stopPullDownRefresh();
   },
 
   // 加载首页数据方法
   loadHomeData(callback) {    
-    this.api_recentbook_search()
+    this.loadCurrentFamily(true)
   },
   
   // 最近上架书目清单中点击书籍跳转到书籍详情页
@@ -140,10 +168,10 @@ Page({
     })
   },
 
-  // 跳转到"我的"页面（设置入口）
+  // 跳转到设置页面
   goSetting() {
-    wx.switchTab({
-      url: '/pages/mine/mine'
+    wx.navigateTo({
+      url: '/pages/settings/settings'
     })
   },
 
@@ -151,6 +179,11 @@ Page({
   onViewAllTap() {
     const familyId = this.data.familyId
     const operator = this.data.operator
+
+    if (!familyId) {
+      wx.showToast({ title: '请先选择家庭', icon: 'none' })
+      return
+    }
     
     wx.navigateTo({
       url: `/pages/book-search/book-search?familyId=${familyId}&operator=${operator}`

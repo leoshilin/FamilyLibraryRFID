@@ -203,6 +203,19 @@
   color: #111;
 }
 
+/* 书架选择器（view模式可修改） */
+.bookshelf-picker {
+  color: #1677ff;
+  display: flex;
+  align-items: center;
+}
+
+.picker-arrow {
+  margin-left: 8rpx;
+  font-size: 32rpx;
+  color: #ccc;
+}
+
 .input {
   text-align: right;
   font-size: 28rpx;

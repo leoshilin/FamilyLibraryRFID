@@ -3,7 +3,8 @@
     "pages/index/index",
     "pages/mine/mine",
     "pages/book/book",
-    "pages/book-search/book-search"
+    "pages/book-search/book-search",
+    "pages/settings/settings"
   ],
   "window": {
     "navigationBarTitleText": "书海小家",

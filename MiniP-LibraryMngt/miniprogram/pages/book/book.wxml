@@ -123,10 +123,16 @@
           </text>
         </view>
 
-        <!-- view模式下显示书架 -->
+        <!-- view模式下显示书架（可修改） -->
         <view wx:if="{{mode === 'view'}}" class="field">
           <text class="label">书架</text>
-          <text class="value">{{book.bookshelf_name || '未知'}}</text>
+          <picker wx:if="{{bookshelves.length > 0}}" range="{{bookshelves}}" range-key="name" value="{{bookshelfIndex}}" bindchange="onViewBookshelfChange">
+            <view class="value bookshelf-picker">
+              {{bookshelves[bookshelfIndex].name || book.bookshelf_name || '未知'}}
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+          <text wx:else class="value">{{book.bookshelf_name || '未知'}}</text>
         </view>
 
       </view>

@@ -1,0 +1,15 @@
+<view class="page">
+  <!-- 顶部导航栏 -->
+  <view class="nav-bar">
+    <view class="back-btn" bindtap="onBack">← 返回</view>
+    <view class="nav-title">设置</view>
+    <view class="nav-right"></view>
+  </view>
+
+  <!-- 设置内容区域（占位） -->
+  <view class="content">
+    <view class="empty-tip">
+      <text>设置功能开发中…</text>
+    </view>
+  </view>
+</view>
