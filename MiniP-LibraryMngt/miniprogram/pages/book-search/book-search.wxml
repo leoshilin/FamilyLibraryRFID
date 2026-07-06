@@ -1,13 +1,12 @@
 <view class="page">
 
-  <!-- 搜索区域：基础检索仅ISBN（可扫码） -->
-  <view class="search-bar">
-    <input class="search-input" placeholder="ISBN" value="{{isbn}}" bindinput="onIsbnInput"
-      confirm-type="search" bindconfirm="onSearch" />
-    <view class="scan-btn" bindtap="onScanISBN">
+  <!-- 扫码检索区域（参考首页添加藏书卡片样式） -->
+  <view class="scan-card" bindtap="onScanISBN">
+    <view class="scan-card-content">
       <image src="/images/icons/scan.png" class="scan-icon" />
+      <text class="scan-text">扫码检索</text>
     </view>
-    <button class="search-btn" bindtap="onSearch">搜索</button>
+    <text class="arrow">›</text>
   </view>
 
   <!-- 高级搜索展开按钮 -->
@@ -21,8 +20,7 @@
     <!-- 书名或作者（模糊匹配） -->
     <view class="form-item">
       <text class="label">书名或作者</text>
-      <input class="adv-input" placeholder="输入书名或作者关键词" value="{{keyword}}" bindinput="onKeywordInput"
-        confirm-type="search" bindconfirm="onSearch" />
+      <input class="adv-input" placeholder="输入书名或作者关键词" value="{{keyword}}" bindinput="onKeywordInput" />
     </view>
 
     <!-- 上架状态 -->
@@ -59,13 +57,14 @@
       </picker>
     </view>
 
-    <button class="confirm-btn" bindtap="onSearch">
+    <button class="confirm-btn" bindtap="onApplyFilter">
       应用筛选
     </button>
   </view>
 
   <!-- 图书列表 -->
-  <scroll-view scroll-y class="list" lower-threshold="50" bindscrolltolower="onReachBottom">   <view class="book-list">
+  <scroll-view scroll-y class="list" lower-threshold="50" bindscrolltolower="onReachBottom">
+    <view class="book-list">
       <block wx:for="{{books}}" wx:key="item_id">
         <view class="swipe-item">
 
@@ -127,8 +126,12 @@
   <view class="loading" wx:if="{{loadingMore}}">
     加载中...
   </view>
-  
-  <view class="loading" wx:if="{{!hasMore}}">
+
+  <view class="loading" wx:if="{{!hasMore && books.length > 0}}">
     没有更多数据了
+  </view>
+
+  <view class="loading" wx:if="{{books.length === 0 && !loadingMore}}">
+    暂无图书
   </view>
 </view>

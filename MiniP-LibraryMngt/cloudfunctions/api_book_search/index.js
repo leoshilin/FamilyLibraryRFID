@@ -7,7 +7,7 @@ const _ = db.command
 
 // 云函数入口函数
 exports.main = async (event) => {
-  console.log('api_book_search: start') 
+  console.log('api_book_search: start')
   console.log('收到参数:', event)
   const {
     familyId,
@@ -16,7 +16,7 @@ exports.main = async (event) => {
     bookshelfId = '',
     status = 'in_stock',
     startDate,
-    endDate,    
+    endDate,
     page = 1,
     pageSize = 10
   } = event
@@ -68,7 +68,7 @@ exports.main = async (event) => {
         dateCond[0] :
         _.and(dateCond)
     }
-    
+
     // ===============================
     // 2️⃣ 构造 meta 匹配条件（模糊 + ISBN精确）
     // ===============================
@@ -104,67 +104,59 @@ exports.main = async (event) => {
       metaMatch = { 'meta.isbn': isbn.trim() }
     }
 
+    const hasMetaMatch = (keyword && keyword.trim()) || (isbn && isbn.trim())
+
     // ===============================
     // 3️⃣ 聚合查询（核心）
     // ===============================
+    // 注意：aggregate 的 match/lookup/unwind/sort/skip/limit 等方法
+    // 返回新的 Aggregate 对象，必须捕获返回值才能正确构建管道
 
-    //构建agg：聚合查询构建器。在执行.end 前并没有结果
-    const agg = await db.collection('book_item')
+    // 构建基础管道：item筛选 → 关联meta → 关联bookshelf
+    let agg = db.collection('book_item')
       .aggregate()
-
-      // item 层筛选
       .match(itemMatch)
-
-      // 关联 meta
       .lookup({
         from: 'book_meta',
         localField: 'book_meta_id',
         foreignField: '_id',
         as: 'meta'
       })
-
-      // meta 数组转对象
       .unwind({
         path: '$meta',
         preserveNullAndEmptyArrays: true
       })
-
-      // 关联 bookshelf（获取书架名称）
       .lookup({
         from: 'bookshelf',
         localField: 'bookshelf_id',
         foreignField: '_id',
         as: 'bookshelf'
       })
-
-      // bookshelf 数组转对象
       .unwind({
         path: '$bookshelf',
         preserveNullAndEmptyArrays: true
       })
 
-    // meta 匹配
-    const hasMetaMatch = (keyword && keyword.trim()) || (isbn && isbn.trim())
+    // meta 匹配（ISBN / 关键词）
     if (hasMetaMatch) {
-      agg.match(metaMatch)
+      agg = agg.match(metaMatch)
     }
 
-    // 排序
-    agg.sort({
-      created_at: -1
-    })
+    // 排序 + 分页
+    agg = agg.sort({ created_at: -1 })
+    agg = agg.skip(skip)
+    agg = agg.limit(pageSize)
 
-    // 分页
-    agg.skip(skip)
-    agg.limit(pageSize)
-
-    //.end 执行查询，并赋值
+    // 执行查询
     const aggregateRes = await agg.end()
 
     console.log('itemMatch =', itemMatch)
+    console.log('metaMatch =', metaMatch)
 
-    // 获取整体数据的总条数 total,返回前端做分页判断处理
-    const countAgg = await db.collection('book_item')
+    // ===============================
+    // 3️⃣-2 获取总条数（用于前端分页）
+    // ===============================
+    let countAgg = db.collection('book_item')
       .aggregate()
       .match(itemMatch)
       .lookup({
@@ -187,11 +179,15 @@ exports.main = async (event) => {
         path: '$bookshelf',
         preserveNullAndEmptyArrays: true
       })
-      .match(metaMatch)
-      .count('total')
-      .end()
 
-    const total = countAgg.list.length ? countAgg.list[0].total : 0
+    if (hasMetaMatch) {
+      countAgg = countAgg.match(metaMatch)
+    }
+
+    countAgg = countAgg.count('total')
+
+    const countResult = await countAgg.end()
+    const total = countResult.list.length ? countResult.list[0].total : 0
 
     const list = aggregateRes.list || []
 

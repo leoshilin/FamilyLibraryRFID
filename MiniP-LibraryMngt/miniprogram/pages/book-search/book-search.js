@@ -7,7 +7,7 @@ Page({
     familyId: '', //首页传入
     operator: '', //首页传入
     keyword: '',
-    isbn: '', // ISBN精确匹配
+    isbn: '', // ISBN精确匹配（仅通过扫码设置）
     showAdvanced: false,
 
     statusOptions: [
@@ -24,27 +24,27 @@ Page({
     bookshelfOptions: [{ name: '全部书架', _id: '' }], // 首项为"全部"
     bookshelfIndex: 0,
 
-    books: [],    
+    books: [],
     page: 1,
     pageSize: 10,
     loadingMore: false,
     hasMore: true,
 
-    currentExpandedId: null, // 当前滑开的行        
+    currentExpandedId: null, // 当前滑开的行
   },
-  
+
   onLoad(options) {
     console.log('book_search.onLoad: start')
-    console.log('book_search: currentExpandedId:', this.data.currentExpandedId)
-    
-    this.setData ({
+
+    this.setData({
       familyId: options.familyId || null,
-      operator:  options.operator || null
+      operator: options.operator || null
     })
 
     // 加载书架列表（用于高级搜索中的书架筛选）
     this.loadBookshelves()
 
+    // 首次加载全部图书
     this.fetchBooks(true)
   },
 
@@ -66,29 +66,12 @@ Page({
     }
   },
 
+  // ========================
+  //  输入事件
+  // ========================
+
   onKeywordInput(e) {
     this.setData({ keyword: e.detail.value })
-  },
-
-  onIsbnInput(e) {
-    this.setData({ isbn: e.detail.value })
-  },
-
-  // 扫码检索ISBN
-  onScanISBN() {
-    wx.scanCode({
-      scanType: ['barCode'],
-      success: res => {
-        const isbn = res.result
-        console.log('扫描到 ISBN:', isbn)
-        this.setData({ isbn })
-        // 扫码后自动检索
-        this.onSearch()
-      },
-      fail: err => {
-        console.error('扫码失败：', err)
-      }
-    })
   },
 
   onBookshelfChange(e) {
@@ -111,22 +94,54 @@ Page({
 
   onEndDateChange(e) {
     this.setData({ endDate: e.detail.value })
-  },  
+  },
 
-  //搜索按钮 或 高级搜索按钮的action
-  onSearch() {
+  // ========================
+  //  搜索触发
+  // ========================
+
+  // 扫码检索ISBN — 扫码后直接搜索
+  onScanISBN() {
+    wx.scanCode({
+      scanType: ['barCode'],
+      success: res => {
+        const isbn = res.result
+        console.log('扫描到 ISBN:', isbn)
+
+        // 扫码后设置ISBN并直接搜索
+        this.setData({ isbn })
+        this.doSearch()
+      },
+      fail: err => {
+        console.error('扫码失败：', err)
+      }
+    })
+  },
+
+  // 高级搜索 — 应用筛选
+  // 清除ISBN（高级筛选与扫码检索互不干扰），按高级条件搜索
+  onApplyFilter() {
+    this.setData({ isbn: '' })
+    this.doSearch()
+  },
+
+  // 执行搜索（统一入口）
+  doSearch() {
     this.setData({
       page: 1,
       books: [],
       hasMore: true,
+      loadingMore: false,
       showAdvanced: false,
-      
-      //页面控制，执行检索时收起展开行
-      currentExpandedId: null,    
+      currentExpandedId: null,
     })
 
     this.fetchBooks(true)
   },
+
+  // ========================
+  //  数据获取
+  // ========================
 
   async fetchBooks(reset = false) {
     console.log('book_search.fetchBooks: start')
@@ -146,75 +161,85 @@ Page({
     }
 
     if (this.data.loadingMore || !this.data.hasMore) return
-    
+
     console.log('book_search.fetchBooks: CP1')
 
     this.setData({ loadingMore: true })
 
-    const res = await wx.cloud.callFunction({
-      name: 'api_book_search',
-      data: {   
-        familyId: this.data.familyId,     
-        keyword: this.data.keyword,
-        isbn: this.data.isbn,
-        bookshelfId: this.data.bookshelfOptions[this.data.bookshelfIndex]._id,
-        status: STATUS_MAP[this.data.statusIndex],
-        startDate: this.data.startDate,
-        endDate: this.data.endDate,        
-        page: this.data.page,
-        pageSize: this.data.pageSize
-      }
-    })
-
-    const list = res.result.data || []
-    console.log(`book_search.fetchBooks read ${list.length} books from api_book_search`)
-
-    // 替换所有cover_url 原来的cloud云地址为可访问的临时访问地址
-    // 1️⃣ 取出所有非空 fileID
-    const fileList = list
-      .filter(item => item.cover_url)
-      .map(item => item.cover_url)
-
-    // 2️⃣ 批量获取临时地址
-    if (fileList.length > 0) {
-      const tempRes = await wx.cloud.getTempFileURL({
-        fileList
-      })
-
-      // 3️⃣ 建立映射关系
-      const urlMap = {}
-      tempRes.fileList.forEach(file => {
-        urlMap[file.fileID] = file.tempFileURL
-      })
-
-      // 4️⃣ 替换原 cover_url
-      list.forEach(item => {
-        if (item.cover_url && urlMap[item.cover_url]) {
-          item.cover_url = urlMap[item.cover_url]
+    try {
+      const res = await wx.cloud.callFunction({
+        name: 'api_book_search',
+        data: {
+          familyId: this.data.familyId,
+          keyword: this.data.keyword,
+          isbn: this.data.isbn,
+          bookshelfId: this.data.bookshelfOptions[this.data.bookshelfIndex]._id,
+          status: STATUS_MAP[this.data.statusIndex],
+          startDate: this.data.startDate,
+          endDate: this.data.endDate,
+          page: this.data.page,
+          pageSize: this.data.pageSize
         }
       })
-    }
 
-    const books = reset ? list : this.data.books.concat(list)
-    const total = res.result.total
-    this.setData({
-      books,
-      loadingMore: false,
-      page: this.data.page + 1,
-      hasMore: books.length < total 
-    })
+      const list = res.result.data || []
+      console.log(`book_search.fetchBooks read ${list.length} books from api_book_search`)
+
+      // 替换所有cover_url 原来的cloud云地址为可访问的临时访问地址
+      // 1️⃣ 取出所有非空 fileID
+      const fileList = list
+        .filter(item => item.cover_url)
+        .map(item => item.cover_url)
+
+      // 2️⃣ 批量获取临时地址
+      if (fileList.length > 0) {
+        const tempRes = await wx.cloud.getTempFileURL({
+          fileList
+        })
+
+        // 3️⃣ 建立映射关系
+        const urlMap = {}
+        tempRes.fileList.forEach(file => {
+          urlMap[file.fileID] = file.tempFileURL
+        })
+
+        // 4️⃣ 替换原 cover_url
+        list.forEach(item => {
+          if (item.cover_url && urlMap[item.cover_url]) {
+            item.cover_url = urlMap[item.cover_url]
+          }
+        })
+      }
+
+      const books = reset ? list : this.data.books.concat(list)
+      const total = res.result.total
+      this.setData({
+        books,
+        loadingMore: false,
+        page: this.data.page + 1,
+        hasMore: books.length < total
+      })
+    } catch (err) {
+      console.error('fetchBooks error:', err)
+      this.setData({ loadingMore: false })
+      wx.showToast({ title: '查询失败', icon: 'none' })
+    }
   },
-  
+
+  // ========================
+  //  列表交互
+  // ========================
+
   onBookTap(e) {
     console.log('onBookTap start')
     const index = e.currentTarget.dataset.index
 
     const books = this.data.books
     const itemId = books[index].item_id
-    console.log('itemId is:',itemId)
+    console.log('itemId is:', itemId)
 
     const currentId = this.data.currentExpandedId
-    console.log('currentId before set is:',currentId)
+    console.log('currentId before set is:', currentId)
 
     this.setData({
       currentExpandedId: currentId === itemId ? null : itemId
@@ -303,7 +328,7 @@ Page({
 
     console.log('绑定RFID:', book.title)
 
-    
+
     // RFID逻辑
   },
 
@@ -376,7 +401,7 @@ Page({
   handleDetail(e){
     console.log('handleDetail start')
 
-    const index = e.currentTarget.dataset.index   
+    const index = e.currentTarget.dataset.index
     const book = this.data.books[index]
     this.setData({
       currentExpandedId: null
@@ -389,10 +414,10 @@ Page({
       success: (res) => {
         res.eventChannel.emit('bookData', book)
         console.log('emit done')
-      }              
+      }
     })
     console.log (`navigate to url: /pages/book/book?mode=view`)
-    console.log('before jump, book=',book)        
+    console.log('before jump, book=',book)
   },
 
   //重新上架
@@ -470,14 +495,4 @@ Page({
     }
   },
 
-  /*loadMore() {
-    console.log('loadMore start')
-    if (!this.data.loadingMore) {
-      this.fetchBooks()
-    }
-  },
-  */
-
-
-
-  })
+})
