@@ -1,0 +1,14 @@
+{
+  "name": "script_data_migration",
+  "version": "1.0.0",
+  "description": "数据迁移脚本：批量修正 book_item 和 inventory_change_log 表字段值",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}
