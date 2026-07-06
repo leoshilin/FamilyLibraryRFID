@@ -8,8 +8,10 @@
  * 3. inventory_change_log 表：所有行新增 bookshelf_id 字段
  *
  * 使用方式：
- *   在微信开发者工具中右键部署该云函数后，
- *   在云开发控制台 → 云函数 → script_data_migration → 测试 中直接触发即可。
+ *   1. 在微信开发者工具中右键部署该云函数（上传并部署：云端安装依赖）
+ *   2. 右键 → 云端测试，测试参数输入 {}，点击运行测试
+ *
+ * 注意：如遇超时，请在云开发控制台将超时时间调整为 20 秒以上。
  */
 
 const cloud = require('wx-server-sdk')
@@ -23,30 +25,17 @@ const TARGET_BOOKSHELF_ID = '188ebdaf6a4b73ab0074c6b50a49ee91'
 const TARGET_FAMILY_ID = '188ebdaf6a4b73ab0074c6b410e78ba7'
 const TARGET_OPERATOR = 'e3193f066a47cbf2001b42ea40e4a8f1'
 
-// 每批获取的记录数（云函数 get() 单次上限 100）
-const BATCH_SIZE = 100
-
 exports.main = async (event) => {
   console.log('=== 数据迁移脚本开始 ===')
 
   const results = {
-    book_item: {
-      total: 0,
-      updated: 0,
-      failed: 0,
-      errors: []
-    },
-    inventory_change_log: {
-      total: 0,
-      updated: 0,
-      failed: 0,
-      errors: []
-    }
+    book_item: { total: 0, updated: 0, errors: [] },
+    inventory_change_log: { total: 0, updated: 0, errors: [] }
   }
 
   // ============================================
   // 1. 更新 book_item 表
-  //    bookshelf_id / family_id / operator 统一赋值
+  //    使用 where({}).update() 批量更新，一次调用完成全部记录
   // ============================================
   console.log('--- 开始处理 book_item 表 ---')
 
@@ -55,58 +44,31 @@ exports.main = async (event) => {
     results.book_item.total = countRes.total
     console.log(`book_item 总记录数: ${countRes.total}`)
 
-    if (countRes.total === 0) {
-      console.log('book_item 表为空，跳过')
-    } else {
-      let skip = 0
-
-      while (true) {
-        // 分批获取记录 ID
-        const batch = await db.collection('book_item')
-          .skip(skip)
-          .limit(BATCH_SIZE)
-          .field({ _id: true })
-          .get()
-
-        if (batch.data.length === 0) break
-
-        // 逐条更新（update 会自动设置字段，不存在则创建）
-        for (const item of batch.data) {
-          try {
-            await db.collection('book_item').doc(item._id).update({
-              data: {
-                bookshelf_id: TARGET_BOOKSHELF_ID,
-                family_id: TARGET_FAMILY_ID,
-                operator: TARGET_OPERATOR
-              }
-            })
-            results.book_item.updated++
-          } catch (err) {
-            results.book_item.failed++
-            results.book_item.errors.push({
-              _id: item._id,
-              error: err.message
-            })
-            console.error(`book_item ${item._id} 更新失败:`, err.message)
+    if (countRes.total > 0) {
+      // where({}).update() 批量更新所有记录（云函数端无条数限制）
+      const updateRes = await db.collection('book_item')
+        .where({})
+        .update({
+          data: {
+            bookshelf_id: TARGET_BOOKSHELF_ID,
+            family_id: TARGET_FAMILY_ID,
+            operator: TARGET_OPERATOR
           }
-        }
+        })
 
-        const processed = skip + batch.data.length
-        console.log(`book_item 进度: ${processed}/${countRes.total}`)
-
-        skip += batch.data.length
-        if (batch.data.length < BATCH_SIZE) break
-      }
+      results.book_item.updated = updateRes.stats.updated
+      console.log(`book_item 更新完成: ${updateRes.stats.updated}/${countRes.total}`)
+    } else {
+      console.log('book_item 表为空，跳过')
     }
   } catch (err) {
     console.error('book_item 表处理异常:', err)
-    results.book_item.errors.push({ error: err.message })
+    results.book_item.errors.push(err.message)
   }
 
   // ============================================
   // 2 & 3. 更新 inventory_change_log 表
-  //    family_id / operator 统一赋值
-  //    新增 bookshelf_id 字段
+  //    family_id / operator 统一赋值 + 新增 bookshelf_id 字段
   // ============================================
   console.log('--- 开始处理 inventory_change_log 表 ---')
 
@@ -115,60 +77,33 @@ exports.main = async (event) => {
     results.inventory_change_log.total = countRes.total
     console.log(`inventory_change_log 总记录数: ${countRes.total}`)
 
-    if (countRes.total === 0) {
-      console.log('inventory_change_log 表为空，跳过')
-    } else {
-      let skip = 0
-
-      while (true) {
-        // 分批获取记录 ID
-        const batch = await db.collection('inventory_change_log')
-          .skip(skip)
-          .limit(BATCH_SIZE)
-          .field({ _id: true })
-          .get()
-
-        if (batch.data.length === 0) break
-
-        // 逐条更新（update 会自动设置字段，不存在则创建）
-        for (const item of batch.data) {
-          try {
-            await db.collection('inventory_change_log').doc(item._id).update({
-              data: {
-                family_id: TARGET_FAMILY_ID,
-                operator: TARGET_OPERATOR,
-                bookshelf_id: TARGET_BOOKSHELF_ID
-              }
-            })
-            results.inventory_change_log.updated++
-          } catch (err) {
-            results.inventory_change_log.failed++
-            results.inventory_change_log.errors.push({
-              _id: item._id,
-              error: err.message
-            })
-            console.error(`inventory_change_log ${item._id} 更新失败:`, err.message)
+    if (countRes.total > 0) {
+      // where({}).update() 批量更新所有记录（云函数端无条数限制）
+      const updateRes = await db.collection('inventory_change_log')
+        .where({})
+        .update({
+          data: {
+            family_id: TARGET_FAMILY_ID,
+            operator: TARGET_OPERATOR,
+            bookshelf_id: TARGET_BOOKSHELF_ID
           }
-        }
+        })
 
-        const processed = skip + batch.data.length
-        console.log(`inventory_change_log 进度: ${processed}/${countRes.total}`)
-
-        skip += batch.data.length
-        if (batch.data.length < BATCH_SIZE) break
-      }
+      results.inventory_change_log.updated = updateRes.stats.updated
+      console.log(`inventory_change_log 更新完成: ${updateRes.stats.updated}/${countRes.total}`)
+    } else {
+      console.log('inventory_change_log 表为空，跳过')
     }
   } catch (err) {
     console.error('inventory_change_log 表处理异常:', err)
-    results.inventory_change_log.errors.push({ error: err.message })
+    results.inventory_change_log.errors.push(err.message)
   }
 
   // ============================================
   // 输出汇总结果
   // ============================================
   console.log('=== 数据迁移脚本完成 ===')
-  console.log('汇总结果:')
-  console.log(JSON.stringify(results, null, 2))
+  console.log('汇总结果:', JSON.stringify(results, null, 2))
 
   return {
     success: true,
