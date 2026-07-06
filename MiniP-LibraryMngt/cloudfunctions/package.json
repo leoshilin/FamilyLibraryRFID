@@ -1,0 +1,12 @@
+{
+  "name": "familylibraryrfid-cloudfunctions",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Development tools for FamilyLibraryRFID cloud functions.",
+  "scripts": {
+    "sync-common": "node scripts/sync-common.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
