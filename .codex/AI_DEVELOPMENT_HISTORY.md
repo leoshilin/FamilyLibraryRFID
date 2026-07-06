@@ -10,11 +10,23 @@
 
 ---
 ### 云函数的Shared Module的处理方式
-在cloudfunctions下，common 放到模板目录：_template/common，下面配置共通代码模块（比如： permission.js）。今后如有变动在此维护。
-一旦更新后都必须使用脚本把common同步到每一个云函数目录下。
+在cloudfunctions下，Shared Module的处理方式规定如下：
 
+  * _shared/ 是公共源码目录，下面配置共通代码模块（比如： permission.js），共通代码模块的修改只允许通过此目录进行。api_xxx/common/ 是自动生成目录，禁止手工修改。
+  * 所有公共模块统一通过 require('./common/...') 引用。
+  * 修改 _shared 后，必须执行 npm run sync-common，再上传相关云函数。
 
+```
+    修改 _shared
+            ↓
+    npm run sync-common
+            ↓
+    所有云函数同步
+            ↓
+    上传云函数
+```
 ---
+
 ## 权限取消Action层的模型简化
 项目最初的权限设计同时使用了 Action 和 Permission 两个概念，例如：
 
