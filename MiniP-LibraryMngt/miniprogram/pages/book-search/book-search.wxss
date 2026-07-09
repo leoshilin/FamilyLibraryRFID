@@ -3,172 +3,316 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow:hidden;
 }
 
 /* ======================== */
-/*  扫码检索卡片             */
+/* 检索方式 Tab */
 /* ======================== */
-.scan-card {
-  margin: 20rpx;
-  padding: 36rpx;
-  border-radius: 28rpx;
-  background: #ffffff;
+
+.search-tabs {
   display: flex;
-  justify-content: space-between;
+  margin: 20rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 24rpx 0;
+  font-size: 30rpx;
+  color: #666;
+  background: #fff;
+}
+
+.tab.active {
+  background: #1677ff;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ======================== */
+/* ISBN 检索 */
+/* ======================== */
+
+.isbn-panel {
+  margin: 0 20rpx 20rpx;
+  padding: 24rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.isbn-search-row {
+  display: flex;
   align-items: center;
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 0 24rpx;
+  height: 96rpx;
   box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
 }
 
-.scan-card-content {
+.isbn-input {
+  flex: 1;
+  height: 96rpx;
+  font-size: 30rpx;
+}
+
+.search-icon,
+.scan-icon {
+    width:42rpx;
+    height:42rpx;
+    margin-left:28rpx;
+}
+
+/* ======================== */
+/* 条件检索 (左右布局)*/
+/* ======================== */
+
+.advanced-panel {
+  margin: 0 20rpx 20rpx;
+  padding: 24rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+}
+
+/* 每一行 */
+.form-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+/* 左侧标题 */
+.form-label {
+  width: 160rpx;
+  flex-shrink: 0;
+  font-size: 28rpx;
+  color: #666;
+}
+
+/* 输入框 */
+.form-input {
+  flex: 1;
+  height: 72rpx;
+  padding: 0 20rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  font-size: 28rpx;
   display: flex;
   align-items: center;
 }
 
-.scan-icon {
-  width: 60rpx;
-  height: 60rpx;
-  margin-right: 40rpx;
+/* picker */
+.form-picker {
+  flex: 1;
+  min-height: 72rpx;
+  padding: 0 20rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  font-size: 28rpx;
+  color: #333;
 }
 
-.scan-text {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #111;
+/* 日期 */
+.date-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
 }
 
-.arrow {
-  font-size: 40rpx;
-  color: #ccc;
-}
-
-/* ======================== */
-/*  高级搜索                 */
-/* ======================== */
-.advanced-toggle {
-  padding: 20rpx;
+.date-picker {
+  flex: 1;
+  height: 72rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   font-size: 26rpx;
-  color: #1677ff;
-  background: #fff;
+  padding: 18rpx;
 }
 
-.advanced-panel {
-  background: #fff;
-  padding: 20rpx;
-  border-top: 1rpx solid #eee;
+.date-sep {
+  margin: 0 12rpx;
+  color: #888;
+  flex-shrink: 0;
 }
+
+/* 搜索按钮 */
+.confirm-btn {
+  margin-top: 12rpx;
+  background: #1677ff;
+  color: #fff;
+  border-radius: 14rpx;
+  font-size: 30rpx;
+}
+
+/* ======================== */
+/* 条件摘要（折叠状态） */
+/* ======================== */
+
+.condition-summary {
+  margin: 0 20rpx 20rpx;
+  padding: 24rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.summary-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #222;
+}
+
+.summary-edit {
+  color: #1677ff;
+  font-size: 26rpx;
+}
+
+.summary-item {
+  display: flex;
+  margin-top: 8rpx;
+  line-height: 40rpx;
+}
+
+.summary-label {
+  color: #888;
+  font-size: 26rpx;
+  flex-shrink: 0;
+}
+
+.summary-value {
+  color: #333;
+  font-size: 26rpx;
+  word-break: break-all;
+}
+/* ======================== */
+/* 表单 */
+/* ======================== */
 
 .form-item {
-  margin-bottom: 20rpx;
+  margin-bottom: 24rpx;
 }
 
-.label {
-  font-size: 26rpx;
-  color: #666;
+.adv-input {
+  padding: 18rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  font-size: 30rpx;
 }
 
 .picker {
-  margin-top: 12rpx;
-  padding: 16rpx;
-  background: #f5f5f5;
-  border-radius: 12rpx;
-}
-
-/* 高级检索输入框 */
-.adv-input {
-  margin-top: 12rpx;
-  padding: 16rpx;
+  padding: 18rpx;
   background: #f5f5f5;
   border-radius: 12rpx;
   font-size: 28rpx;
 }
 
-.date-row {
-  display: flex;
-  align-items: center;
-  margin-top: 12rpx;
-}
-
-.date-picker {
-  flex: 1;
-  padding: 16rpx;
-  background: #f5f5f5;
-  border-radius: 12rpx;
-  text-align: center;
-}
 
 .date-sep {
   margin: 0 16rpx;
-}
-
-.confirm-btn {
-  margin-top: 20rpx;
-  background: #1677ff;
-  color: #fff;
-  border-radius: 16rpx;
+  color: #666;
 }
 
 /* ======================== */
-/*  图书列表                 */
+/* ISBN 按钮 */
 /* ======================== */
+
+
+/* ======================== */
+/* 图书列表 */
+/* ======================== */
+
 .list {
-  flex: 1;
-  height: 100vh;
+  flex: 1;  
+  min-height:0;
+}
+
+.book-list {
+  padding: 0 20rpx 20rpx;
+}
+
+/* 每一本书 */
+
+.swipe-item {
+  margin-bottom: 20rpx;
+  background: #fff;
+  border-radius: 18rpx;
+  overflow: hidden;
+}
+
+/* 主体 */
+
+.book-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
 }
 
 .cover {
   width: 120rpx;
   height: 160rpx;
   border-radius: 8rpx;
-  margin-right: 20rpx;
   flex-shrink: 0;
 }
 
 .info {
   flex: 1;
-  margin-left: 20rpx;
+  margin-left: 24rpx;
 }
 
 .title-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .title {
   font-size: 30rpx;
   font-weight: 600;
+  color: #222;
 }
 
 .author {
-  margin-top: 10rpx;
+  margin-top: 12rpx;
   font-size: 26rpx;
   color: #888;
 }
 
+/* 下架 */
+
+.off-book {
+  opacity: 0.6;
+}
+
 .off-tag {
   margin-left: 12rpx;
+  padding: 2rpx 10rpx;
   font-size: 22rpx;
   color: #ff4d4f;
   border: 1rpx solid #ff4d4f;
   border-radius: 8rpx;
-  padding: 2rpx 8rpx;
 }
 
-.loading {
-  text-align: center;
-  padding: 20rpx;
-  color: #999;
-}
-
-.book-list {
-  background: #f5f6f8;
-}
-
-.swipe-item {
-  background: #fff;
-  border-radius: 16rpx;
-  margin-bottom: 20rpx;
-  overflow: hidden;
-}
+/* ======================== */
+/* 操作按钮 */
+/* ======================== */
 
 .actions {
   display: flex;
@@ -178,29 +322,43 @@
 }
 
 .btn {
-  width: 160rpx;
+  flex: 1;
+  height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 12rpx;
   color: #fff;
   font-size: 28rpx;
 }
 
-.btn.detail { background: #409eff; }
-.btn.off    { background: #e6a23c; }
-.btn.rfid   { background: #67c23a; }
-.btn.on     { background: #409eff; }
-.btn.delete { background: #f56c6c; }
-
-.book-item {
-  background: #fff;
-  padding: 24rpx;
-  display: flex;
-  align-items: center;
-  position: relative;
-  z-index: 2;
+.btn.detail {
+  background: #409eff;
 }
 
-.off-book {
-  opacity: 0.6;
+.btn.off {
+  background: #e6a23c;
+}
+
+.btn.rfid {
+  background: #67c23a;
+}
+
+.btn.on {
+  background: #409eff;
+}
+
+.btn.delete {
+  background: #f56c6c;
+}
+
+/* ======================== */
+/* 底部提示 */
+/* ======================== */
+
+.loading {
+  padding: 24rpx;
+  text-align: center;
+  color: #999;
+  font-size: 26rpx;
 }

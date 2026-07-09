@@ -4,11 +4,21 @@ const bookshelfServices = require('../../services/bookshelfServices')
 
 Page({
   data: {
-    familyId: '', //首页传入
-    operator: '', //首页传入
+    familyId: '',        // 首页传入
+    operator: '',        // 首页传入
+
+    // 检索模式：isbn / condition
+    searchMode: 'isbn',
+
+    // 条件检索是否折叠（true=显示摘要）
+    conditionCollapsed: false,
+    conditionSummary: [],
+
+    // ISBN 精确检索
+    isbn: '',
+
+    // 条件检索
     keyword: '',
-    isbn: '', // ISBN精确匹配（仅通过扫码设置）
-    showAdvanced: false,
 
     statusOptions: [
       '仅搜索上架中图书',
@@ -21,249 +31,532 @@ Page({
     endDate: '',
 
     // 书架筛选
-    bookshelfOptions: [{ name: '全部书架', _id: '' }], // 首项为"全部"
+    bookshelfOptions: [
+      {
+        name: '全部书架',
+        _id: ''
+      }
+    ],
     bookshelfIndex: 0,
 
+    // 查询结果
     books: [],
+
     page: 1,
     pageSize: 10,
+
     loadingMore: false,
     hasMore: true,
 
-    currentExpandedId: null, // 当前滑开的行
+    currentExpandedId: null
   },
 
   onLoad(options) {
     console.log('book_search.onLoad: start')
 
     this.setData({
-      familyId: options.familyId || null,
-      operator: options.operator || null
+      familyId: options.familyId || '',
+      operator: options.operator || ''
     })
 
-    // 加载书架列表（用于高级搜索中的书架筛选）
     this.loadBookshelves()
 
-    // 首次加载全部图书
     this.fetchBooks(true)
   },
 
-  // 加载书架列表
+  // ========================
+  // 书架
+  // ========================
+
   async loadBookshelves() {
+
     const familyId = this.data.familyId
+
     if (!familyId) return
 
     try {
+
       const result = await bookshelfServices.list(familyId)
+
       if (result.success) {
-        // 首项为"全部书架"，后面追加实际书架
+
         this.setData({
-          bookshelfOptions: [{ name: '全部书架', _id: '' }, ...result.list]
+          bookshelfOptions: [
+            {
+              name: '全部书架',
+              _id: ''
+            },
+            ...result.list
+          ]
         })
+
       }
+
     } catch (err) {
+
       console.error('loadBookshelves error:', err)
+
     }
+
   },
 
   // ========================
-  //  输入事件
+  // 检索方式
   // ========================
 
+  onSearchModeChange(e) {
+
+    const mode = e.currentTarget.dataset.mode
+
+    this.setData({
+      searchMode: mode
+    })
+
+    if (mode === 'isbn') {
+
+      this.setData({
+        keyword: '',
+        startDate: '',
+        endDate: '',
+        bookshelfIndex: 0,
+        statusIndex: 0,
+        conditionCollapsed: false
+      })
+
+    } else {
+
+      this.setData({
+        isbn: '',
+        conditionCollapsed: false
+      })
+
+    }
+
+  },
+
+  // 展开条件筛选
+  expandConditionFilter() {
+    this.setData({
+      conditionCollapsed: false
+    })
+  },
+
+  // ========================
+  // 输入事件
+  // ========================
+
+  onISBNInput(e) {
+
+    this.setData({
+      isbn: e.detail.value.trim()
+    })
+
+  },
+
+  onClearISBN() {
+
+    this.setData({
+      isbn: ''
+    })
+
+  },
+
   onKeywordInput(e) {
-    this.setData({ keyword: e.detail.value })
+
+    this.setData({
+      keyword: e.detail.value
+    })
+
   },
 
   onBookshelfChange(e) {
-    this.setData({ bookshelfIndex: e.detail.value })
-  },
 
-  toggleAdvanced() {
     this.setData({
-      showAdvanced: !this.data.showAdvanced
+      bookshelfIndex: Number(e.detail.value)
     })
+
   },
 
   onStatusChange(e) {
-    this.setData({ statusIndex: e.detail.value })
+
+    this.setData({
+      statusIndex: Number(e.detail.value)
+    })
+
   },
 
   onStartDateChange(e) {
-    this.setData({ startDate: e.detail.value })
+
+    this.setData({
+      startDate: e.detail.value
+    })
+
   },
 
   onEndDateChange(e) {
-    this.setData({ endDate: e.detail.value })
-  },
 
-  // ========================
-  //  搜索触发
-  // ========================
-
-  // 扫码检索ISBN — 扫码后直接搜索
-  onScanISBN() {
-    wx.scanCode({
-      scanType: ['barCode'],
-      success: res => {
-        const isbn = res.result
-        console.log('扫描到 ISBN:', isbn)
-
-        // 扫码后设置ISBN并直接搜索
-        this.setData({ isbn })
-        this.doSearch()
-      },
-      fail: err => {
-        console.error('扫码失败：', err)
-      }
-    })
-  },
-
-  // 高级搜索 — 应用筛选
-  // 清除ISBN（高级筛选与扫码检索互不干扰），按高级条件搜索
-  onApplyFilter() {
-    this.setData({ isbn: '' })
-    this.doSearch()
-  },
-
-  // 执行搜索（统一入口）
-  doSearch() {
     this.setData({
-      page: 1,
-      books: [],
-      hasMore: true,
-      loadingMore: false,
-      showAdvanced: false,
-      currentExpandedId: null,
+      endDate: e.detail.value
     })
 
-    this.fetchBooks(true)
   },
 
   // ========================
-  //  数据获取
+  // 搜索触发
   // ========================
 
-  async fetchBooks(reset = false) {
-    console.log('book_search.fetchBooks: start')
+    // ISBN扫码
+    onScanISBN() {
 
-    const STATUS_MAP = [
-      'in_stock',
-      'all',
-      'off_stock'
-    ]
+      wx.scanCode({
+  
+        scanType: ['barCode'],
+  
+        success: (res) => {
+  
+          const isbn = (res.result || '').trim()
+  
+          console.log('扫描到 ISBN:', isbn)
+  
+          this.setData({
+            isbn
+        }, () => {
 
-    if (reset) {
-      this.setData({
-        page: 1,
-        hasMore: true,
-        books: []
-      })
-    }
+            // 扫码成功后立即搜索
+            this.doSearch()
 
-    if (this.data.loadingMore || !this.data.hasMore) return
-
-    console.log('book_search.fetchBooks: CP1')
-
-    this.setData({ loadingMore: true })
-
-    try {
-      const res = await wx.cloud.callFunction({
-        name: 'api_book_search',
-        data: {
-          familyId: this.data.familyId,
-          keyword: this.data.keyword,
-          isbn: this.data.isbn,
-          bookshelfId: this.data.bookshelfOptions[this.data.bookshelfIndex]._id,
-          status: STATUS_MAP[this.data.statusIndex],
-          startDate: this.data.startDate,
-          endDate: this.data.endDate,
-          page: this.data.page,
-          pageSize: this.data.pageSize
+        })
+  
+        },
+  
+        fail: (err) => {
+  
+          console.error('扫码失败：', err)
+  
         }
+  
       })
+  
+    },
+  
+    // ========================
+    // 搜索
+    // ========================
+  
+    doSearch() {
 
-      const list = res.result.data || []
-      console.log(`book_search.fetchBooks read ${list.length} books from api_book_search`)
+      // 条件检索搜索完成后自动收起
+      const collapse =
+        this.data.searchMode === 'condition'
+    
+      this.setData({
+    
+        page: 1,
+        books: [],
+        hasMore: true,
+        loadingMore: false,
+        currentExpandedId: null,
+        conditionCollapsed: collapse,
+        conditionSummary: this.getConditionSummary()
+    
+      })
+    
+      this.fetchBooks(true)
+    
+    },
 
-      // 替换所有cover_url 原来的cloud云地址为可访问的临时访问地址
-      // 1️⃣ 取出所有非空 fileID
-      const fileList = list
-        .filter(item => item.cover_url)
-        .map(item => item.cover_url)
+    //计算筛选摘要的方法
+    getConditionSummary() {
 
-      // 2️⃣ 批量获取临时地址
-      if (fileList.length > 0) {
-        const tempRes = await wx.cloud.getTempFileURL({
-          fileList
-        })
-
-        // 3️⃣ 建立映射关系
-        const urlMap = {}
-        tempRes.fileList.forEach(file => {
-          urlMap[file.fileID] = file.tempFileURL
-        })
-
-        // 4️⃣ 替换原 cover_url
-        list.forEach(item => {
-          if (item.cover_url && urlMap[item.cover_url]) {
-            item.cover_url = urlMap[item.cover_url]
-          }
+      const summary = []
+    
+      if (this.data.keyword) {
+        summary.push({
+          label: '关键词',
+          value: this.data.keyword
         })
       }
-
-      const books = reset ? list : this.data.books.concat(list)
-      const total = res.result.total
+    
+      if (this.data.statusIndex !== 0) {
+        summary.push({
+          label: '状态',
+          value: this.data.statusOptions[this.data.statusIndex]
+        })
+      }
+    
+      if (this.data.bookshelfIndex !== 0) {
+        summary.push({
+          label: '书架',
+          value:
+            this.data.bookshelfOptions[
+              this.data.bookshelfIndex
+            ].name
+        })
+      }
+    
+      if (this.data.startDate || this.data.endDate) {
+    
+        summary.push({
+    
+          label: '上架时间',
+    
+          value:
+            `${this.data.startDate || '不限'} ~ ${
+              this.data.endDate || '不限'
+            }`
+    
+        })
+    
+      }
+    
+      return summary
+    
+    },
+  
+    // ========================
+    // 数据获取
+    // ========================
+  
+    async fetchBooks(reset = false) {
+  
+      console.log('book_search.fetchBooks: start')
+  
+      const STATUS_MAP = [
+  
+        'in_stock',
+  
+        'all',
+  
+        'off_stock'
+  
+      ]
+  
+      if (reset) {
+  
+        this.setData({
+  
+          page: 1,
+  
+          books: [],
+  
+          hasMore: true
+  
+        })
+  
+      }
+  
+      if (this.data.loadingMore || !this.data.hasMore) {
+  
+        return
+  
+      }
+  
       this.setData({
-        books,
-        loadingMore: false,
-        page: this.data.page + 1,
-        hasMore: books.length < total
+  
+        loadingMore: true
+  
       })
-    } catch (err) {
-      console.error('fetchBooks error:', err)
-      this.setData({ loadingMore: false })
-      wx.showToast({ title: '查询失败', icon: 'none' })
-    }
-  },
-
-  // ========================
-  //  列表交互
+  
+      try {
+  
+        const data = {
+  
+          familyId: this.data.familyId,
+  
+          page: this.data.page,
+  
+          pageSize: this.data.pageSize
+  
+        }
+  
+        if (this.data.searchMode === 'isbn') {
+  
+          data.isbn = this.data.isbn
+  
+        } else {
+  
+          data.keyword = this.data.keyword
+  
+          data.bookshelfId =
+            this.data.bookshelfOptions[
+              this.data.bookshelfIndex
+            ]._id
+  
+          data.status =
+            STATUS_MAP[this.data.statusIndex]
+  
+          data.startDate = this.data.startDate
+  
+          data.endDate = this.data.endDate
+  
+        }
+  
+        const res = await wx.cloud.callFunction({
+  
+          name: 'api_book_search',
+  
+          data
+  
+        })
+  
+        const list = res.result.data || []
+  
+        console.log(
+  
+          `book_search.fetchBooks read ${list.length} books from api_book_search`
+  
+        )
+  
+        // ========================
+        // cover转换临时地址
+        // ========================
+  
+        const fileList = list
+  
+          .filter(item => item.cover_url)
+  
+          .map(item => item.cover_url)
+  
+        if (fileList.length > 0) {
+  
+          const tempRes = await wx.cloud.getTempFileURL({
+  
+            fileList
+  
+          })
+  
+          const urlMap = {}
+  
+          tempRes.fileList.forEach(file => {
+  
+            urlMap[file.fileID] = file.tempFileURL
+  
+          })
+  
+          list.forEach(item => {
+  
+            if (
+  
+              item.cover_url &&
+  
+              urlMap[item.cover_url]
+  
+            ) {
+  
+              item.cover_url =
+  
+                urlMap[item.cover_url]
+  
+            }
+  
+          })
+  
+        }
+  
+        const books = reset
+  
+          ? list
+  
+          : this.data.books.concat(list)
+  
+        const total = res.result.total
+  
+        this.setData({
+  
+          books,
+  
+          loadingMore: false,
+  
+          page: this.data.page + 1,
+  
+          hasMore: books.length < total
+  
+        })
+  
+      } catch (err) {
+  
+        console.error('fetchBooks error:', err)
+  
+        this.setData({
+  
+          loadingMore: false
+  
+        })
+  
+        wx.showToast({
+  
+          title: '查询失败',
+  
+          icon: 'none'
+  
+        })
+  
+      }
+  
+    },
+  
+      // ========================
+  // 列表交互
   // ========================
 
   onBookTap(e) {
+
     console.log('onBookTap start')
+
     const index = e.currentTarget.dataset.index
-
     const books = this.data.books
-    const itemId = books[index].item_id
-    console.log('itemId is:', itemId)
 
+    const itemId = books[index].item_id
     const currentId = this.data.currentExpandedId
-    console.log('currentId before set is:', currentId)
 
     this.setData({
       currentExpandedId: currentId === itemId ? null : itemId
     })
+
   },
 
+  // ========================
+  // 下架
+  // ========================
+
   handleOff(e) {
+
     console.log('handleOff: start')
 
     const index = e.currentTarget.dataset.index
     const book = this.data.books[index]
 
-    // 下架逻辑
+    this.setData({
+      currentExpandedId: null
+    })
+
     wx.showActionSheet({
+
       itemList: ['废旧处理', '捐赠', '丢失'],
+
       success: (res) => {
 
-        const reasons = ['scrap', 'donation', 'lost']
+        const reasons = [
+          'scrap',
+          'donation',
+          'lost'
+        ]
+
+        const reasonTexts = [
+          '废旧处理',
+          '捐赠',
+          '丢失'
+        ]
+
         const reason = reasons[res.tapIndex]
-        const reasonText = ['废旧处理', '捐赠', '丢失'][res.tapIndex]
+        const reasonText = reasonTexts[res.tapIndex]
 
         wx.showModal({
+
           title: '确认下架',
+
           content: `确定将《${book.title}》标记为${reasonText}吗？`,
+
           success: async (confirmRes) => {
 
             if (!confirmRes.confirm) return
@@ -272,129 +565,189 @@ Page({
               title: '处理中...'
             })
 
-            const operator = this.data.operator
-
             try {
+
               const result = await wx.cloud.callFunction({
+
                 name: 'api_bookitem_offstock',
+
                 data: {
+
                   item_id: book.item_id,
+
                   family_id: book.family_id,
-                  operator: operator,
-                  reason: reason
+
+                  operator: this.data.operator,
+
+                  reason
+
                 }
+
               })
 
               wx.hideLoading()
 
               if (result.result.success) {
+
                 wx.showToast({
                   title: '已下架'
                 })
-                //eventBus中注册共有事件，供其他页面响应更新
+
                 eventBus.emit(EVENTS.BOOK_ITEM_UNLISTED, {
+
                   itemId: book.item_id,
+
                   familyId: book.family_id
+
                 })
-                //本页面需马上更新
+
                 this.fetchBooks(true)
+
               } else {
+
                 throw result.result.error
+
               }
 
             } catch (err) {
+
               wx.hideLoading()
+
               wx.showToast({
+
                 title: '下架失败',
+
                 icon: 'none'
+
               })
+
               console.error(err)
+
             }
+
           }
+
         })
+
       }
+
     })
-    console.log('下架:', this.data.books[index].title)
+
   },
 
-  handleRFID(e){
+  // ========================
+  // RFID
+  // ========================
+
+  handleRFID(e) {
+
     console.log('handleRFID start')
 
     const index = e.currentTarget.dataset.index
     const book = this.data.books[index]
+
     this.setData({
-     currentExpandedId: null
-   })
+      currentExpandedId: null
+    })
 
     console.log('绑定RFID:', book.title)
 
+    // TODO：
+    // 后续进入 RFID 绑定流程
 
-    // RFID逻辑
   },
 
-  //彻底删除
-  async handleDelete(e){
+  // ========================
+  // 删除
+  // ========================
+
+  async handleDelete(e) {
+
     console.log('handleDelete start')
 
     const index = e.currentTarget.dataset.index
     const book = this.data.books[index]
-    const operator = this.data.operator
-    console.log(`handleDelete: operator=${operator}`)
-     this.setData({
+
+    this.setData({
       currentExpandedId: null
     })
 
-    console.log('彻底删除:', book.title)
-    // 彻底删除前确认
-    const {
-      confirm
-    } = await wx.showModal({
+    const { confirm } = await wx.showModal({
+
       title: '彻底删除确认',
+
       content: `确定彻底删除《${book.title}》吗？删除后无法恢复，请慎重`
+
     })
+
     if (!confirm) return
 
-    // 彻底删除
     wx.showLoading({
+
       title: '删除中...'
+
     })
 
     try {
+
       const result = await wx.cloud.callFunction({
+
         name: 'api_bookitem_delete',
+
         data: {
+
           item_id: book.item_id,
+
           family_id: book.family_id,
-          operator: operator
+
+          operator: this.data.operator
+
         }
+
       })
 
       wx.hideLoading()
 
       if (result.result.success) {
+
         wx.showToast({
+
           title: '已删除'
+
         })
 
-        //eventBus中注册共有事件，供其他页面响应更新
         eventBus.emit(EVENTS.BOOK_ITEM_DELETED, {
+
           itemId: book.item_id,
+
           familyId: book.family_id
+
         })
-        //立即刷新本页数据
+
         this.fetchBooks(true)
+
       } else {
+
         throw result.result.error
+
       }
+
     } catch (err) {
+
       wx.hideLoading()
+
       wx.showToast({
+
         title: '删除书籍失败',
+
         icon: 'none'
+
       })
+
       console.error(err)
+
     }
-    console.log('删除书籍完毕:', book.title)
+
   },
 
   //跳转到详情页

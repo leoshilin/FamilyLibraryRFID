@@ -1,137 +1,363 @@
 <view class="page">
 
-  <!-- 扫码检索区域（参考首页添加藏书卡片样式） -->
-  <view class="scan-card" bindtap="onScanISBN">
-    <view class="scan-card-content">
-      <image src="/images/icons/scan.png" class="scan-icon" />
-      <text class="scan-text">扫码检索</text>
-    </view>
-    <text class="arrow">›</text>
+<!-- ======================== -->
+<!-- 检索方式 -->
+<!-- ======================== -->
+<view class="search-tabs">
+
+  <view
+    class="tab {{searchMode === 'isbn' ? 'active' : ''}}"
+    data-mode="isbn"
+    bindtap="onSearchModeChange">
+    ISBN检索
   </view>
 
-  <!-- 高级搜索展开按钮 -->
-  <view class="advanced-toggle" bindtap="toggleAdvanced">
-    <text>{{ showAdvanced ? '收起高级搜索' : '高级搜索' }}</text>
+  <view
+    class="tab {{searchMode === 'condition' ? 'active' : ''}}"
+    data-mode="condition"
+    bindtap="onSearchModeChange">
+    条件检索
   </view>
 
-  <!-- 高级搜索区域 -->
-  <view wx:if="{{showAdvanced}}" class="advanced-panel">
+</view>
 
-    <!-- 书名或作者（模糊匹配） -->
-    <view class="form-item">
-      <text class="label">书名或作者</text>
-      <input class="adv-input" placeholder="输入书名或作者关键词" value="{{keyword}}" bindinput="onKeywordInput" />
-    </view>
+<view
+    wx:if="{{searchMode==='isbn'}}"
+    class="isbn-panel">
+<view class="isbn-search-row">
 
-    <!-- 上架状态 -->
-    <view class="form-item">
-      <text class="label">图书状态</text>
-      <picker mode="selector" range="{{statusOptions}}" value="{{statusIndex}}" bindchange="onStatusChange">
-        <view class="picker">
-          {{ statusOptions[statusIndex] }}
-        </view>
-      </picker>
-    </view>
+  <input
+    class="isbn-input"
+    placeholder="请输入ISBN或点击扫码"
+    value="{{isbn}}"
+    bindinput="onISBNInput"
+    confirm-type="search"
+    bindconfirm="doSearch"/>
 
-    <!-- 上架时间 -->
-    <view class="form-item">
-      <text class="label">上架时间</text>
-      <view class="date-row">
-        <picker mode="date" bindchange="onStartDateChange">
-          <view class="date-picker">{{ startDate || '开始日期' }}</view>
-        </picker>
-        <text class="date-sep">至</text>
-        <picker mode="date" bindchange="onEndDateChange">
-          <view class="date-picker">{{ endDate || '结束日期' }}</view>
-        </picker>
+<image
+    class="scan-icon"
+    src="/images/icons/scan.png"
+    bindtap="onScanISBN"/>
+
+<image
+    class="search-icon"
+    src="/images/icons/search.png"
+    bindtap="doSearch"/>
+    
+</view>
+</view>
+
+<!-- ======================== -->
+<!-- 条件检索 -->
+<!-- ======================== -->
+
+<block wx:if="{{searchMode === 'condition'}}">
+
+<!-- 已折叠 -->
+<view
+  wx:if="{{conditionCollapsed}}"
+  class="condition-summary">
+
+  <view class="summary-header">
+    <text class="summary-title">当前筛选</text>
+
+    <text
+      class="summary-edit"
+      bindtap="expandConditionFilter">
+      修改筛选 >
+    </text>
+  </view>
+
+  <block
+    wx:if="{{conditionSummary.length > 0}}">
+
+    <block
+      wx:for="{{conditionSummary}}"
+      wx:key="label">
+
+      <view class="summary-item">
+
+        <text class="summary-label">
+          {{item.label}}：
+        </text>
+
+        <text class="summary-value">
+          {{item.value}}
+        </text>
+
       </view>
-    </view>
 
-    <!-- 书架筛选 -->
-    <view class="form-item">
-      <text class="label">书架</text>
-      <picker range="{{bookshelfOptions}}" range-key="name" value="{{bookshelfIndex}}" bindchange="onBookshelfChange">
-        <view class="picker">
-          {{ bookshelfOptions[bookshelfIndex].name }}
+    </block>
+
+  </block>
+
+  <view
+    wx:else
+    class="summary-item">
+
+    <text class="summary-value">
+      当前未设置筛选条件
+    </text>
+
+  </view>
+
+</view>
+
+
+<!-- 展开状态 -->
+<view
+  wx:else
+  class="advanced-panel">
+
+  <!-- 关键词 -->
+  <view class="form-row">
+
+    <text class="form-label">
+      关键词
+    </text>
+
+    <input
+      class="form-input"
+      placeholder="输入书名或作者"
+      value="{{keyword}}"
+      bindinput="onKeywordInput"/>
+
+  </view>
+
+
+  <!-- 图书状态 -->
+  <view class="form-row">
+
+    <text class="form-label">
+      图书状态
+    </text>
+
+    <picker
+      mode="selector"
+      range="{{statusOptions}}"
+      value="{{statusIndex}}"
+      bindchange="onStatusChange">
+
+      <view class="form-picker">
+        {{statusOptions[statusIndex]}}
+      </view>
+
+    </picker>
+
+  </view>
+
+
+  <!-- 上架时间 -->
+  <view class="form-row">
+
+    <text class="form-label">
+      上架时间
+    </text>
+
+    <view class="date-row">
+
+      <picker
+        mode="date"
+        bindchange="onStartDateChange">
+
+        <view class="date-picker">
+          {{startDate || '开始日期'}}
         </view>
+
       </picker>
+
+      <text class="date-sep">
+        至
+      </text>
+
+      <picker
+        mode="date"
+        bindchange="onEndDateChange">
+
+        <view class="date-picker">
+          {{endDate || '结束日期'}}
+        </view>
+
+      </picker>
+
     </view>
 
-    <button class="confirm-btn" bindtap="onApplyFilter">
-      应用筛选
-    </button>
   </view>
 
-  <!-- 图书列表 -->
-  <scroll-view scroll-y class="list" lower-threshold="50" bindscrolltolower="onReachBottom">
-    <view class="book-list">
-      <block wx:for="{{books}}" wx:key="item_id">
-        <view class="swipe-item">
 
-          <!-- 主内容 -->
-          <view class="book-item {{item.status === 'off_stock' ? 'off-book' : ''}}" bindtap="onBookTap"
-            data-index="{{index}}">
-            <image class="cover" src="{{item.cover_url}}" mode="aspectFill" />
+  <!-- 书架 -->
+  <view class="form-row">
 
-            <view class="info">
-              <view class="title-row">
-                <text class="title">{{item.title}}</text>
-                <text wx:if="{{item.status === 'off_stock'}}" class="off-tag">
-                  已下架
-                </text>
-              </view>
-              <text class="author">{{item.authors}}</text>
+    <text class="form-label">
+      书架
+    </text>
+
+    <picker
+      range="{{bookshelfOptions}}"
+      range-key="name"
+      value="{{bookshelfIndex}}"
+      bindchange="onBookshelfChange">
+
+      <view class="form-picker">
+        {{bookshelfOptions[bookshelfIndex].name}}
+      </view>
+
+    </picker>
+
+  </view>
+
+
+  <button
+    class="confirm-btn"
+    bindtap="doSearch">
+
+    搜索
+
+  </button>
+
+</view>
+
+</block>
+
+<!-- ======================== -->
+<!-- 图书列表 -->
+<!-- ======================== -->
+<scroll-view
+  scroll-y
+  class="list"
+  lower-threshold="50"
+  bindscrolltolower="onReachBottom">
+
+  <view class="book-list">
+
+    <block
+      wx:for="{{books}}"
+      wx:key="item_id">
+
+      <view class="swipe-item">
+
+        <!-- 图书信息 -->
+        <view
+          class="book-item {{item.status === 'off_stock' ? 'off-book' : ''}}"
+          bindtap="onBookTap"
+          data-index="{{index}}">
+
+          <image
+            class="cover"
+            src="{{item.cover_url}}"
+            mode="aspectFill" />
+
+          <view class="info">
+
+            <view class="title-row">
+
+              <text class="title">
+                {{item.title}}
+              </text>
+
+              <text
+                wx:if="{{item.status === 'off_stock'}}"
+                class="off-tag">
+                已下架
+              </text>
+
             </view>
-          </view>
 
-          <!-- 展开按钮区域 -->
-          <view class="actions" wx:if="{{currentExpandedId === item.item_id}}">
+            <text class="author">
+              {{item.authors}}
+            </text>
 
-            <!-- 上架中 -->
-            <block wx:if="{{item.status === 'in_stock'}}">
-
-              <view class="btn detail" catchtap="handleDetail" data-index="{{index}}">
-                详情
-              </view>
-
-              <view class="btn off" catchtap="handleOff" data-index="{{index}}">
-                下架
-              </view>
-
-              <view class="btn rfid" catchtap="handleRFID" data-index="{{index}}">
-                {{ item.rfid_tag_id ? '重新绑定RFID' : '绑定RFID' }}
-              </view>
-            </block>
-
-            <!-- 已下架 -->
-            <block wx:elif="{{item.status === 'off_stock'}}">
-              <view class="btn detail" catchtap="handleDetail" data-index="{{index}}">
-                详情
-              </view>
-
-              <view class="btn on" catchtap="handleOn" data-index="{{index}}">
-                重新上架
-              </view>
-
-              <view class="btn delete" catchtap="handleDelete" data-index="{{index}}">
-                彻底删除
-              </view>
-            </block>
           </view>
 
         </view>
-      </block>
-    </view>
-  </scroll-view>
-  <view class="loading" wx:if="{{loadingMore}}">
-    加载中...
+
+        <!-- 展开按钮 -->
+        <view
+          class="actions"
+          wx:if="{{currentExpandedId === item.item_id}}">
+
+          <!-- 上架图书 -->
+          <block wx:if="{{item.status === 'in_stock'}}">
+
+            <view
+              class="btn detail"
+              catchtap="handleDetail"
+              data-index="{{index}}">
+              详情
+            </view>
+
+            <view
+              class="btn off"
+              catchtap="handleOff"
+              data-index="{{index}}">
+              下架
+            </view>
+
+            <view
+              class="btn rfid"
+              catchtap="handleRFID"
+              data-index="{{index}}">
+              {{item.rfid_tag_id ? '重新绑定RFID' : '绑定RFID'}}
+            </view>
+
+          </block>
+
+          <!-- 已下架图书 -->
+          <block wx:elif="{{item.status === 'off_stock'}}">
+
+            <view
+              class="btn detail"
+              catchtap="handleDetail"
+              data-index="{{index}}">
+              详情
+            </view>
+
+            <view
+              class="btn on"
+              catchtap="handleOn"
+              data-index="{{index}}">
+              重新上架
+            </view>
+
+            <view
+              class="btn delete"
+              catchtap="handleDelete"
+              data-index="{{index}}">
+              彻底删除
+            </view>
+
+          </block>
+
+        </view>
+
+      </view>
+
+    </block>
+
   </view>
 
-  <view class="loading" wx:if="{{!hasMore && books.length > 0}}">
-    没有更多数据了
-  </view>
+</scroll-view>
 
-  <view class="loading" wx:if="{{books.length === 0 && !loadingMore}}">
-    暂无图书
-  </view>
+<!-- ======================== -->
+<!-- 底部提示 -->
+<!-- ======================== -->
+
+<view
+  class="loading"
+  wx:if="{{loadingMore}}">
+  加载中...
+</view>
+
+<view
+  class="loading"
+  wx:if="{{!hasMore && books.length > 0}}">
+  没有更多数据了
+</view>
+
+<view
+  class="loading"
+  wx:if="{{books.length === 0 && !loadingMore}}">
+  暂无图书
+</view>
+
 </view>

@@ -128,8 +128,32 @@ Page({
       })
 
       if (res.result.success) {
-        this.setData({
-          recentBooks: res.result.list
+        const list = res.result.list || []
+        const fileList = list
+          .filter(item => item.cover_url)
+          .map(item => item.cover_url)
+
+          if (fileList.length > 0) {
+
+            const tempRes = await wx.cloud.getTempFileURL({
+              fileList
+            })
+          
+            const urlMap = {}
+          
+            tempRes.fileList.forEach(file => {
+              urlMap[file.fileID] = file.tempFileURL
+            })
+          
+            list.forEach(item => {
+              if (urlMap[item.cover_url]) {
+                item.cover_url = urlMap[item.cover_url]
+              }
+            })
+          
+          }
+          this.setData({
+          recentBooks: list
         })
       }
       console.log('Page api_recentbook_search: recentBooks=', this.data.recentBooks)
