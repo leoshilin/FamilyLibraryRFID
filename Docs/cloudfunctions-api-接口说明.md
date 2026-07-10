@@ -51,6 +51,7 @@ currentFamilyId
 |A4| api_bookitem_restock       | BookItem |
 |A5| api_bookitem_delete        | BookItem |
 |A6| api_bookitem_get           | BookItem |
+|A21| api_bookitem_updateBookshelf           | BookItem |
 |A7| api_book_search            | Search   |
 |A8| api_recentbook_search            | Search   |
 |A9| api_bookmeta_getByIsbn     | BookMeta |
@@ -59,6 +60,7 @@ currentFamilyId
 |A12| api_family_create | family |
 |A13| api_family_update | family |
 |A14| api_family_delete | family |
+|A22| api_family_list | family |
 |A15| api_bookshelf_create | bookshelf |
 |A16| api_bookshelf_update | bookshelf |
 |A17| api_bookshelf_delete | bookshelf |
@@ -77,6 +79,8 @@ currentFamilyId
 |D1| api_user_login | user |
 |D2| api_user_register | user |
 |D3| api_user_get | user |
+|D4| api_user_update | user |
+
 
 
 
@@ -318,6 +322,42 @@ status=off_stock
 
 
 ---
+## A21. api_bookitem_updateBookshelf
+
+### 功能
+* 修改指定实体书所在书架（移动图书）.
+
+### 入参
+{ 
+  itemId, 
+  familyId, 
+  bookshelfId, 
+  operator 
+}
+
+### 处理规则
+
+- **权限**：`BOOKITEM_UPDATE`（经 `checkPermission` 校验）
+
+### 返回
+- 成功返回：
+{ 
+  success: true, 
+  bookshelf_name 
+}
+
+- 失败返回：
+{ 
+  success:false, 
+  message 
+}，
+  
+  含：
+  - `itemId不能为空` / `familyId不能为空` / `bookshelfId不能为空`
+  - `目标书架不存在或已失效` / `目标书架不属于当前家庭`
+  - `书籍不存在或已删除` / `书架未变更`（幂等）
+
+---
 
 ## A7. api_book_search
 
@@ -329,10 +369,13 @@ status=off_stock
 
 * 支持：
 
-  - 标题模糊
-  - 作者模糊
-  - 状态筛选
-  - 时间筛选
+  - ISBN 精确筛选 （与Keyword取交集（`_.and`））
+  - Keyword 模糊筛选
+    - 标题模糊
+    - 作者模糊
+  - bookshelfId: 书架筛选
+  - 状态筛选： 上架，下架
+  - 时间筛选： 上架期间
   - 分页
 
 ### 入参
@@ -347,6 +390,7 @@ status=off_stock
 }
 
 ### 处理规则
+- 默认 `in_stock`、默认 `pageSize=10`、按 `created_at` 倒序
 
 ### 返回
 {
@@ -506,7 +550,11 @@ Google Books
 name 可选。为空时默认“我的家庭”。
 
 ### 处理规则
-创建家庭是特殊权限，只要注册用户即可创建，不依赖 user_family。
+- 创建家庭是特殊权限，只要注册用户即可创建，不依赖 user_family。
+- 校验用户是否已作为 `OWNER` 创建过家庭（一个用户只可创建一个家庭的限制，失败返回"当前用户已创建家庭"）
+- 创建默认书架"我的书架" 
+- 在 `user_family` 建立 `OWNER` 关系 
+- 更新 `user.currentFamilyId`。
 
 ### 返回
 - 成功返回：
@@ -623,6 +671,30 @@ name 可选。为空时默认“我的家庭”。
     "success": false,
     "message": "当前家庭下存在有效书架，请先删除书架"
   }
+
+---
+
+## A22. api_family_list
+### 功能
+ * 获取当前用户所属的全部家庭（自建 + 受邀加入）。
+
+### 入参
+ 无（openid 后端解析）
+
+### 返回
+{ 
+  success: true, 
+  list: [ { familyId, name, role, status, isCurrent } ] 
+}
+
+无家庭返回 
+{ 
+  success:true, 
+  list:[] 
+}
+
+### 处理规则
+* 该接口**不做 RBAC 校验**（仅 `getCurrentUser`）
 
 ---
 
@@ -770,9 +842,11 @@ familyId 必填
       "name": "我的书架",
       "sort_order": 1,
       "status": "ACTIVE"
+      "bookCount": 100 //在架图书数
     }
   ]
 }
+
 
 ---
 
@@ -795,7 +869,11 @@ familyId 必填
 
 ## A20. api_family_switchCurrent
 ### 功能
-切换当前家庭
+切换当前登录用户的默认访问家庭（user.currentFamilyId）。
+
+说明：
+- 仅校验"登录用户是否属于目标家庭"（user_family 存在对应记录），不做 OWNER / MEMBER 角色级权限校验；任何已激活家庭成员均可切换。
+- 切换后影响后续依赖 currentFamilyId 默认值的接口。
 
 ### 入参
 {
@@ -803,12 +881,51 @@ familyId 必填
 }
 
 ### 处理规则
-  检查是否属于该家庭
-  ↓
-  更新user.currentFamilyId
+获取当前登录用户：openid → user（getCurrentUser）
+校验 familyId 必填
+校验用户已注册且 status = ACTIVE
+查询 user_family 校验用户属于该家庭（userId + familyId 存在记录）
+查询目标 family，必须存在且 status = ACTIVE
+更新 user.currentFamilyId = familyId
+（不写 updated_at / updated_by；不做角色权限校验）
 
 ### 返回
+- 成功返回：
+{
+  "success": true
+}
 
+- 失败返回示例：
+  {
+    "success": false,
+    "message": "familyId不能为空"
+  }
+
+  {
+    "success": false,
+    "message": "用户未注册"
+  }
+
+  {
+    "success": false,
+    "message": "用户状态不可用"
+  }
+
+  {
+    "success": false,
+    "message": "用户不属于该家庭"
+  }
+
+  {
+    "success": false,
+    "message": "家庭不存在或已失效"
+  }
+
+- 异常：
+  {
+    "success": false,
+    "message": "<err.message>"
+  }
 ---
 
 # B. 手机端创建任务
@@ -1287,6 +1404,48 @@ cloud.getWXContext()
   }
 }
 ```
+
+---
+
+## D4. api_user_update
+### 功能
+```
+更新当前登录用户的昵称。
+```
+
+### 入参
+`{ 
+nickName 
+}`
+
+### 处理
+- **前置**：用户须已注册且 `status=ACTIVE`，
+否则返回 
+`{ 
+success:false, 
+message:'用户不存在'/'用户状态不可用' 
+}`
+
+
+### 返回
+* 成功返回：
+`{ 
+  success: true, 
+  user: { ...更新后user, nickName, updated_at } 
+}`
+
+* 失败返回：
+`{ 
+  success:false, 
+  message:'用户名不能为空' 
+  }` 
+  
+* 或异常 
+  `{ 
+    success:false, 
+    error 
+  }`
+
 
 ---
 
