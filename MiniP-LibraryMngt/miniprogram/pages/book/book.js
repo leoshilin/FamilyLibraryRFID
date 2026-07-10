@@ -51,6 +51,11 @@ Page({
           console.warn('未收到 book 数据')
           return
         }
+        // 归一化状态字段：搜索结果返回 inventoryStatus / inStockStatus，
+        // 而详情页 WXML 使用 book.status 控制底部操作区，此处补齐以免按钮消失
+        if (!book.status) {
+          book.status = book.inventoryStatus || book.inStockStatus || ''
+        }
         this.setData({
           book,
           isbn: book.isbn,
@@ -777,6 +782,63 @@ Page({
     })
     console.log('下架:', book.title)
   },
+
+  // 彻底删除（查看模式）
+  async onDelete() {
+    console.log('book.onDelete start')
+
+    const book = this.data.book
+
+    if (!book || !book.item_id) {
+      wx.showToast({ title: '书籍数据异常', icon: 'none' })
+      return
+    }
+
+    const { confirm } = await wx.showModal({
+      title: '彻底删除确认',
+      content: `确定彻底删除《${book.title}》吗？删除后无法恢复，请慎重`
+    })
+
+    if (!confirm) return
+
+    wx.showLoading({ title: '删除中...' })
+
+    try {
+      // familyId 由服务端按 currentFamilyId 解析，前端不再下传
+      const result = await wx.cloud.callFunction({
+        name: 'api_bookitem_delete',
+        data: {
+          item_id: book.item_id
+        }
+      })
+
+      wx.hideLoading()
+
+      if (result.result.success) {
+        wx.showToast({ title: '已删除' })
+
+        //eventBus中注册共有事件，供其他页面响应更新
+        eventBus.emit(EVENTS.BOOK_ITEM_DELETED, {
+          itemId: book.item_id,
+          familyId: book.family_id
+        })
+        //返回前页
+        wx.navigateBack({ delta: 1 })
+      } else {
+        throw result.result.error
+      }
+    } catch (err) {
+      wx.hideLoading()
+      wx.showToast({ title: '删除书籍失败', icon: 'none' })
+      console.error(err)
+    }
+  },
+
+  // 绑定 RFID（TODO：后续进入 RFID 绑定流程）
+  onBindRFID() {
+    console.log('book.onBindRFID: 功能开发中')
+    wx.showToast({ title: 'RFID 绑定功能开发中', icon: 'none' })
+  }
 
 
 })

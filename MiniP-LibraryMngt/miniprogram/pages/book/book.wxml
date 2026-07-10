@@ -161,7 +161,7 @@
       </block>
 
       <!-- 查看模式 -->
-      <block wx:eliff="{{mode === 'view'}}"></block>
+      <block wx:elif="{{mode === 'view'}}">
         <!-- 已下架图书 -->
         <block wx:if="{{book.status === 'off_stock'}}">        
           <button class="primary-btn" bindtap="handleOn">
@@ -181,6 +181,8 @@
             {{ book.rfid ? '重新绑定RFID' : '绑定RFID' }}
           </button>
         </block>
+      </block>
+
       </view>
 
     <!-- canvas 隐藏模式 -->
