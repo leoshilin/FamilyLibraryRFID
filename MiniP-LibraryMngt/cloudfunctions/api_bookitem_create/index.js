@@ -8,6 +8,8 @@ const cloud = require('wx-server-sdk')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
 
+const { getCurrentUser } = require('./common/permission')
+
 // 写入时做格式清洗
 function normalizeInput(input) {
   return {
@@ -32,7 +34,6 @@ exports.main = async (event) => {
   const {
     isbn,
     familyId,
-    operator,
     bookshelfId,
     book,
     editionType
@@ -41,10 +42,16 @@ exports.main = async (event) => {
   const db = cloud.database()
   const now = new Date()
 
+  // 反查操作人：不再由客户端传入 operator，统一从登录态解析当前用户
+  const wxContext = cloud.getWXContext()
+  const user = await getCurrentUser(db, wxContext.OPENID)
+  if (!user) {
+    return { success: false, message: '用户未注册' }
+  }
+
   console.log('api_bookitem_create params:', {
     isbn,
     familyId,
-    operator,
     bookshelfId,
     book,
     editionType
@@ -129,7 +136,7 @@ exports.main = async (event) => {
         family_id: familyId,
         change_type: 'in_stock',
         reason: 'new book',
-        operator: operator,
+        operator: user._id,
         created_at: now
       }
     })

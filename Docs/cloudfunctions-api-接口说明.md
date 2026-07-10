@@ -926,6 +926,39 @@ familyId 必填
     "success": false,
     "message": "<err.message>"
   }
+
+
+- 失败返回示例：
+  {
+    "success": false,
+    "message": "familyId不能为空"
+  }
+
+  {
+    "success": false,
+    "message": "用户未注册"
+  }
+
+  {
+    "success": false,
+    "message": "用户状态不可用"
+  }
+
+  {
+    "success": false,
+    "message": "用户不属于该家庭"
+  }
+
+  {
+    "success": false,
+    "message": "家庭不存在或已失效"
+  }
+
+- 异常：
+  {
+    "success": false,
+    "message": "<err.message>"
+  }
 ---
 
 # B. 手机端创建任务

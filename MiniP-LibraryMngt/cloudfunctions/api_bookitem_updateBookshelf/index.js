@@ -1,6 +1,6 @@
 /* Function
  * 修改指定实体书籍所在的书架
- * 入参：itemId, familyId, bookshelfId, operator
+ * 入参：itemId, familyId, bookshelfId（operator 由服务端从登录态反查，不再由客户端传入）
  * 权限：BOOKITEM_UPDATE
  */
 
@@ -28,11 +28,10 @@ exports.main = async (event) => {
   const {
     itemId,
     familyId,
-    bookshelfId,
-    operator
+    bookshelfId
   } = event
 
-  console.log(`api_bookitem_updateBookshelf: openid=${openid}, itemId=${itemId}, familyId=${familyId}, bookshelfId=${bookshelfId}, operator=${operator}`)
+  console.log(`api_bookitem_updateBookshelf: openid=${openid}, itemId=${itemId}, familyId=${familyId}, bookshelfId=${bookshelfId}`)
 
   // 参数校验
   if (!itemId) {
@@ -102,7 +101,7 @@ exports.main = async (event) => {
       data: {
         bookshelf_id: bookshelfId,
         updated_at: now,
-        operator: operator
+        operator: perm.user._id
       }
     })
 

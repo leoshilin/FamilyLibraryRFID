@@ -15,7 +15,6 @@ Page({
     submitting: false,
     error: '',
     book: {},
-    operator: '', //首页传入
     metaExists: false,      // book_meta 是否存在
     canEditMeta: false // 当前是否有权限修改 meta（你现在默认 true）    
   },
@@ -28,12 +27,10 @@ Page({
     const mode = options.mode || 'view'
     const isbn = options.isbn || null
     const familyId = options.familyId || null
-    const operator = options.operator || null
     this.setData({
       mode,
       isbn,
-      familyId,
-      operator
+      familyId
     })
 
     if (mode === 'scan') {
@@ -122,7 +119,7 @@ Page({
     // 书架未变更则不处理
     if (newBookshelfId === oldBookshelfId) return
 
-    const { book, operator, familyId } = this.data
+    const { book, familyId } = this.data
 
     wx.showLoading({ title: '更新中...' })
 
@@ -132,8 +129,7 @@ Page({
         data: {
           itemId: book.item_id,
           familyId: familyId || book.family_id,
-          bookshelfId: newBookshelfId,
-          operator
+          bookshelfId: newBookshelfId
         }
       })
 
@@ -540,8 +536,7 @@ Page({
       familyId,
       bookshelfId,
       book,
-      editionType,
-      operator
+      editionType
     } = this.data
   
     console.log(`callCommit Para: isbn=${isbn},familyId=${familyId},book=${book},editionType=${editionType}`)
@@ -550,7 +545,6 @@ Page({
       data: {
         isbn,
         familyId,
-        operator,
         bookshelfId,
         book,
         editionType
@@ -656,8 +650,6 @@ Page({
     console.log('book.handleOn start')
 
     const book = this.data.book
-    const operator = this.data.operator
-    console.log(`book.handleOn: book.title=${book.title},operator=${operator}`)
 
     console.log('重新上架准备:', book.title)
     // 重新上架前确认
@@ -679,8 +671,7 @@ Page({
         name: 'api_bookitem_restock',
         data: {
           item_id: book.item_id,
-          family_id: book.family_id,
-          operator: operator
+          family_id: book.family_id
         }
       })
 
@@ -741,15 +732,12 @@ Page({
               title: '处理中...'
             })
 
-            const operator = this.data.operator
-
             try {
               const result = await wx.cloud.callFunction({
                 name: 'api_bookitem_offstock',
                 data: {
                   item_id: book.item_id,
                   family_id: book.family_id,
-                  operator: operator,
                   reason: reason
                 }
               })
