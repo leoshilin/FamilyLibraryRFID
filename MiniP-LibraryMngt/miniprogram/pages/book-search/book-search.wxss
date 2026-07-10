@@ -390,11 +390,13 @@
   align-self:center;
 }
 
-/* 文字行高与容器高度一致，确保字形中线与分割线中线重合 */
+/* 收紧行高至与字号一致，使行盒恰好包裹字形、字形中线与行盒中线重合；
+   再经容器 align-items:center 居中，1rpx 分割线即可对齐文字视觉中线，
+   而非对齐行盒顶部（此前 line-height 大于字号导致行盒偏高、中线偏移） */
 .loading-text{
   padding:0 24rpx;
   color:#999;
   font-size:26rpx;
-  line-height:40rpx;
+  line-height:1;
   white-space:nowrap;
 }
