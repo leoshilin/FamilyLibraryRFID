@@ -795,7 +795,11 @@ familyId 必填
 
 ## A20. api_family_switchCurrent
 ### 功能
-切换当前家庭
+切换当前登录用户的默认访问家庭（user.currentFamilyId）。
+
+说明：
+- 仅校验"登录用户是否属于目标家庭"（user_family 存在对应记录），不做 OWNER / MEMBER 角色级权限校验；任何已激活家庭成员均可切换。
+- 切换后影响后续依赖 currentFamilyId 默认值的接口。
 
 ### 入参
 {
@@ -803,11 +807,51 @@ familyId 必填
 }
 
 ### 处理规则
-  检查是否属于该家庭
-  ↓
-  更新user.currentFamilyId
+获取当前登录用户：openid → user（getCurrentUser）
+校验 familyId 必填
+校验用户已注册且 status = ACTIVE
+查询 user_family 校验用户属于该家庭（userId + familyId 存在记录）
+查询目标 family，必须存在且 status = ACTIVE
+更新 user.currentFamilyId = familyId
+（不写 updated_at / updated_by；不做角色权限校验）
 
 ### 返回
+- 成功返回：
+{
+  "success": true
+}
+
+- 失败返回示例：
+  {
+    "success": false,
+    "message": "familyId不能为空"
+  }
+
+  {
+    "success": false,
+    "message": "用户未注册"
+  }
+
+  {
+    "success": false,
+    "message": "用户状态不可用"
+  }
+
+  {
+    "success": false,
+    "message": "用户不属于该家庭"
+  }
+
+  {
+    "success": false,
+    "message": "家庭不存在或已失效"
+  }
+
+- 异常：
+  {
+    "success": false,
+    "message": "<err.message>"
+  }
 
 ---
 
