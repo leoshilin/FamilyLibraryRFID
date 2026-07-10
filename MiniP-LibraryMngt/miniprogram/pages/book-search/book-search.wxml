@@ -306,13 +306,15 @@
 
     <!-- 正在加载 -->
 
-    <view class="loading loading-line" wx:if="{{loadingMore}}">
+    <view class="loading-line" wx:if="{{loadingMore}}">
 
       <view class="loading-divider"></view>
 
       <text class="loading-text">
         正在加载更多图书...
       </text>
+
+      <view class="loading-divider"></view>
 
     </view>
 
@@ -332,12 +334,16 @@
     
     <!-- 无数据 -->
     
-    <view class="loading" wx:if="{{!loadingMore && books.length === 0}}">
-    
+    <view class="loading-line" wx:if="{{!loadingMore && books.length === 0}}">
+
+      <view class="loading-divider"></view>
+
       <text class="loading-text">
         没有找到符合条件的图书
       </text>
-    
+
+      <view class="loading-divider"></view>
+
     </view>
     
     </view>
