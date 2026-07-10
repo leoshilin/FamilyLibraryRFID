@@ -4,8 +4,57 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
 const db = cloud.database()
 
+// 将 book_item 文档转换为前端实体（camelCase，对齐文档 A6）
+function toBookItemEntity(item) {
+  if (!item) return null
+  return {
+    _id: item._id,
+    familyId: item.family_id,
+    bookshelfId: item.bookshelf_id,
+    bookMetaId: item.book_meta_id,
+    setIndex: item.set_index,
+    editionType: item.edition_type,
+    status: item.status,
+    rfidTagId: item.rfid_tag_id || null,
+    fgDelete: item.fg_delete || false,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at
+  }
+}
+
+// 将 book_meta 文档转换为前端实体（camelCase，对齐文档 A6）
+function toBookMetaEntity(meta) {
+  if (!meta) return null
+  return {
+    _id: meta._id,
+    isbn: meta.isbn,
+    title: meta.title ?? '',
+    authors: meta.authors ?? '',
+    publisher: meta.publisher ?? '',
+    publishYear: meta.publish_year ?? '',
+    price: meta.price ?? '',
+    binding: meta.binding ?? '',
+    cover_url: meta.cover_url ?? '',
+    isSet: meta.is_set ?? false,
+    setTotalCount: meta.set_total_count ?? 0,
+    source: meta.source ?? ''
+  }
+}
+
+// 将 bookshelf 文档转换为前端实体（camelCase，对齐文档 A6）
+function toBookshelfEntity(shelf) {
+  if (!shelf) return null
+  return {
+    _id: shelf._id,
+    familyId: shelf.familyId,
+    name: shelf.name,
+    sortOrder: shelf.sort_order,
+    status: shelf.status
+  }
+}
+
 // 云函数入口函数
-// 使用book_item 的 id查询
+// 使用 book_item 的 id 查询，自动关联 book_meta 与 bookshelf，返回完整展示对象
 exports.main = async (event, context) => {
   console.log('api_bookitem_get: start')
   const { itemId } = event
@@ -19,8 +68,8 @@ exports.main = async (event, context) => {
   try {
     // 1️⃣ 查询 book_item
     const itemRes = await db.collection('book_item')
-                            .doc(itemId)
-                            .get()
+                              .doc(itemId)
+                              .get()
 
     if (!itemRes.data) {
       return {
@@ -29,55 +78,49 @@ exports.main = async (event, context) => {
       }
     }
 
-    const bookItem = itemRes.data    
-    console.log(`api_bookitem_get: read ${bookItem ? 1 : 0} books from book_item`)
+    const bookItem = toBookItemEntity(itemRes.data)
+    console.log(`api_bookitem_get: read book_item done, itemId=${itemId}`)
 
-     // 2️⃣ 查询 book_meta（可能不存在）
-     let bookMeta = null
+    // 2️⃣ 查询 book_meta（可能不存在，容错）
+    let bookMeta = null
+    try {
+      const metaRes = await db.collection('book_meta')
+                              .doc(bookItem.bookMetaId)
+                              .get()
+      bookMeta = toBookMetaEntity(metaRes.data || null)
+    } catch (e) {
+      // meta 不存在时，忽略异常
+      bookMeta = null
+    }
+    console.log(`api_bookitem_get: read book_meta done, exists=${!!bookMeta}`)
 
-     try {
-       const metaRes = await db.collection('book_meta')
-                               .doc(bookItem.book_meta_id)
-                               .get()
- 
-       bookMeta = metaRes.data || null
- 
-     } catch (e) {
-       // meta 不存在时，忽略异常
-       bookMeta = null
-     }
-     
-     console.log(`api_bookitem_get: read ${bookMeta ? 1 : 0} Meta data from book_meta`)
- 
-     // 3️⃣ 拼接返回对象（meta 不存在时返回空值：为了适配页面显示）
-     const book = {
-       title: bookMeta?.title || '',
-       authors: bookMeta?.authors || '',
-       cover_url: bookMeta?.cover_url || '',
-       publisher: bookMeta?.publisher || '',
-       publishYear: bookMeta?.publish_year || '',
-       price: bookMeta?.price || '',
-       binding: bookMeta?.binding || '',
-       isbn: bookMeta?.isbn || 'ISBN错误',
-       isSet: bookMeta?.is_set ?? false,
-       setTotalCount: bookMeta?.set_total_count || 0,
-       setIndex: bookItem.set_index,
-       rfid: bookItem.rfid_tag_id,
-       inStockDate: bookItem.created_at       
-     }
- 
-     return {
-       success: true,
-       data: book
-     }
- 
-   } catch (err) {
- 
-     console.error('api_bookitem_get error:', err)
- 
-     return {
-       success: false,
-       message: '数据库查询失败'
-     }
-   }
- }
+    // 3️⃣ 查询 bookshelf（可能不存在或已失效，容错）
+    let bookshelf = null
+    try {
+      const shelfRes = await db.collection('bookshelf')
+                              .doc(bookItem.bookshelfId)
+                              .get()
+      bookshelf = toBookshelfEntity(shelfRes.data || null)
+    } catch (e) {
+      bookshelf = null
+    }
+    console.log(`api_bookitem_get: read bookshelf done, exists=${!!bookshelf}`)
+
+    // 返回完整展示对象（对齐文档 A6：bookItem + bookMeta + bookshelf）
+    return {
+      success: true,
+      bookItem,
+      bookMeta,
+      bookshelf
+    }
+
+  } catch (err) {
+
+    console.error('api_bookitem_get error:', err)
+
+    return {
+      success: false,
+      message: '数据库查询失败'
+    }
+  }
+}

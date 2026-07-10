@@ -257,7 +257,31 @@ Page({
         return
       }
 
-      const book = result.data
+      const { bookItem, bookMeta, bookshelf } = result
+
+      // 拍平为页面所需的单层 book 结构（保持原有字段名，兼容页面其它逻辑）
+      const book = {
+        // —— 来自 bookMeta ——
+        title: bookMeta?.title || '',
+        authors: bookMeta?.authors || '',
+        cover_url: bookMeta?.cover_url || '',
+        publisher: bookMeta?.publisher || '',
+        publishYear: bookMeta?.publishYear || '',
+        price: bookMeta?.price || '',
+        binding: bookMeta?.binding || '',
+        isbn: bookMeta?.isbn || '',
+        isSet: bookMeta?.isSet ?? false,
+        setTotalCount: bookMeta?.setTotalCount || 0,
+        // —— 来自 bookItem ——
+        setIndex: bookItem?.setIndex,
+        rfid: bookItem?.rfidTagId,
+        inStockDate: bookItem?.createdAt,
+        status: bookItem?.status,
+        // —— 来自 bookshelf（详情页展示用）——
+        bookshelfId: bookItem?.bookshelfId || bookshelf?._id || '',
+        bookshelfName: bookshelf?.name || ''
+      }
+
       // 避免访问失效：如果有封面，每次扫ISBN过来后重新获取封面图的临时访问地址
       if (book.cover_url) {
         const tempRes = await wx.cloud.getTempFileURL({
