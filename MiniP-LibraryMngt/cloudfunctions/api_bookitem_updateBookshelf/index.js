@@ -15,7 +15,8 @@ const db = cloud.database()
 const {
   PERMISSIONS,
   RESOURCE_TYPES,
-  checkPermission
+  checkPermission,
+  getCurrentUser
 } = require('./common/permission')
 
 // 云函数入口函数
@@ -27,21 +28,27 @@ exports.main = async (event) => {
 
   const {
     itemId,
-    familyId,
     bookshelfId
   } = event
 
-  console.log(`api_bookitem_updateBookshelf: openid=${openid}, itemId=${itemId}, familyId=${familyId}, bookshelfId=${bookshelfId}`)
+  console.log(`api_bookitem_updateBookshelf: openid=${openid}, itemId=${itemId}, bookshelfId=${bookshelfId}`)
 
   // 参数校验
   if (!itemId) {
     return { success: false, message: 'itemId不能为空' }
   }
-  if (!familyId) {
-    return { success: false, message: 'familyId不能为空' }
-  }
   if (!bookshelfId) {
     return { success: false, message: 'bookshelfId不能为空' }
+  }
+
+  // 反查操作人 & 当前家庭：不再由客户端传入 operator/familyId（结论 A+B+C）
+  const user = await getCurrentUser(db, openid)
+  if (!user) {
+    return { success: false, message: '用户未注册' }
+  }
+  const familyId = user.currentFamilyId
+  if (!familyId) {
+    return { success: false, message: '未选择当前家庭' }
   }
 
   try {

@@ -33,7 +33,6 @@ exports.main = async (event) => {
   console.log('api_bookitem_create start')
   const {
     isbn,
-    familyId,
     bookshelfId,
     book,
     editionType
@@ -47,6 +46,12 @@ exports.main = async (event) => {
   const user = await getCurrentUser(db, wxContext.OPENID)
   if (!user) {
     return { success: false, message: '用户未注册' }
+  }
+
+  // 反查当前家庭：不再由客户端传入 familyId，统一从登录态解析（结论 B+C）
+  const familyId = user.currentFamilyId
+  if (!familyId) {
+    return { success: false, message: '未选择当前家庭' }
   }
 
   console.log('api_bookitem_create params:', {

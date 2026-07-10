@@ -12,8 +12,7 @@ const { getCurrentUser } = require('./common/permission')
 // 云函数入口函数
 exports.main = async (event) => {
   const {
-    item_id,
-    family_id
+    item_id
   } = event
   const now = new Date()
 
@@ -24,7 +23,13 @@ exports.main = async (event) => {
     return { success: false, message: '用户未注册' }
   }
 
-  console.log(`api_bookitem_delete start, item_id=${item_id}, family_id=${family_id}`)
+  // 反查当前家庭：不再由客户端传入 familyId，统一从登录态解析（结论 B+C）
+  const familyId = user.currentFamilyId
+  if (!familyId) {
+    return { success: false, message: '未选择当前家庭' }
+  }
+
+  console.log(`api_bookitem_delete start, item_id=${item_id}, family_id=${familyId}`)
 
   // 执行删除前的事务代码
   const transaction = await db.startTransaction()
@@ -34,12 +39,12 @@ exports.main = async (event) => {
     const itemRes = await transaction.collection('book_item')
       .where({
         _id: item_id,
-        family_id: family_id
+        family_id: familyId
       })
       .get()
 
     if (!itemRes.data.length) {
-      throw new Error(`当前家庭${family_id}下不存在书籍${item_id}`)
+      throw new Error(`当前家庭${familyId}下不存在书籍${item_id}`)
     }
 
     const item = itemRes.data[0]
@@ -55,7 +60,7 @@ exports.main = async (event) => {
     await db.collection('book_item')
       .where({
         _id: item_id,
-        family_id: family_id
+        family_id: familyId
       })
       .update({
         data: {
@@ -69,7 +74,7 @@ exports.main = async (event) => {
       .add({
         data: {
           item_id: item_id,
-          family_id: family_id,
+          family_id: familyId,
           change_type: 'book delete',          
           operator: user._id,
           reason: '管理员删除（逻辑）',

@@ -38,7 +38,7 @@ Page({
 
          // 扫码成功后跳转二级页面                     
         wx.navigateTo({
-          url: `/pages/book/book?mode=scan&isbn=${isbn}&familyId=${familyId}`
+          url: `/pages/book/book?mode=scan&isbn=${isbn}`
         })
       },
       fail: err => {
@@ -122,7 +122,7 @@ Page({
     try {
       const res = await wx.cloud.callFunction({
         name: 'api_recentbook_search',
-        data: { familyId }
+        data: {}
       })
 
       if (res.result.success) {
@@ -204,7 +204,7 @@ Page({
     }
     
     wx.navigateTo({
-      url: `/pages/book-search/book-search?familyId=${familyId}`
+      url: '/pages/book-search/book-search'
     })
   }
 });

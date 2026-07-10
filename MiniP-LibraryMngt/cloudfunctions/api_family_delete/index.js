@@ -60,6 +60,21 @@ exports.main = async (event) => {
       return { success: false, message: '当前家庭下存在有效书架，请先删除书架' }
     }
 
+    // 3b. 删除家庭守卫：检查是否仍有其他成员以该家庭为当前家庭
+    // 豁免删除者本人（其 currentFamilyId 会在事务 4b 中清除）
+    const _ = db.command
+    const otherMemberRes = await db.collection('user')
+      .where({
+        currentFamilyId: familyId,
+        _id: _.neq(perm.user._id)
+      })
+      .limit(1)
+      .get()
+
+    if (otherMemberRes.data && otherMemberRes.data.length > 0) {
+      return { success: false, message: '还有其他成员正以该家庭为当前家庭，无法删除' }
+    }
+
     const now = new Date()
 
     // 4. 使用事务：删除家庭 + 清理用户 currentFamilyId
