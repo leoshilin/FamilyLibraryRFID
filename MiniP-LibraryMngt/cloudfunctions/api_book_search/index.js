@@ -42,9 +42,9 @@ exports.main = async (event) => {
 
     // ---- 状态筛选 ----
     if (status === 'in_stock') {
-      itemMatch.status = 'in_stock'
+      itemMatch.inventory_status = 'in_stock'
     } else if (status === 'off_stock') {
-      itemMatch.status = 'off_stock'
+      itemMatch.inventory_status = 'off_stock'
     }
 
     // ---- 书架筛选 ----
@@ -201,7 +201,7 @@ exports.main = async (event) => {
       family_id: item.family_id,
       bookshelf_id: item.bookshelf_id || '',
       bookshelf_name: item.bookshelf?.name || '',
-      status: item.status,
+      inventoryStatus: item.inventory_status,
       created_at: item.created_at,
       rfid_tag_id: item.rfid_tag_id || null,
 

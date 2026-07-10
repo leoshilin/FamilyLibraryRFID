@@ -38,8 +38,8 @@ exports.main = async (event) => {
 
     const item = itemRes.data[0]
 
-    if (item.status !== 'off_stock') {
-      throw new Error(`书籍${item_id}当前状态${item.status}下不可重新上架`)
+    if (item.inventory_status !== 'off_stock') {
+      throw new Error(`书籍${item_id}当前状态${item.inventory_status}下不可重新上架`)
     }
 
     // 1️⃣ 更新 book_item 状态
@@ -50,7 +50,7 @@ exports.main = async (event) => {
       })
       .update({
         data: {
-          status: 'in_stock',
+          inventory_status: 'in_stock',
           created_at: now,
           updated_at: now,
           operator: operator

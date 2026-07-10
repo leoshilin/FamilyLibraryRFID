@@ -276,7 +276,7 @@ Page({
         setIndex: bookItem?.setIndex,
         rfid: bookItem?.rfidTagId,
         inStockDate: bookItem?.createdAt,
-        status: bookItem?.status,
+        status: bookItem?.inventoryStatus,
         // —— 来自 bookshelf（详情页展示用）——
         bookshelfId: bookItem?.bookshelfId || bookshelf?._id || '',
         bookshelfName: bookshelf?.name || ''

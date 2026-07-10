@@ -21,7 +21,7 @@ exports.main = async (event, context) => {
     // 1️⃣ 获取最近5个上架的实体书，但仅限上架中（不包含已下架的）
     const itemRes = await db.collection('book_item')
       .where({
-        status: 'in_stock',
+        inventory_status: 'in_stock',
         family_id: familyId,        
         fg_delete: false //非删除数据
       })
@@ -72,10 +72,10 @@ exports.main = async (event, context) => {
         isSet: meta ? meta.is_set : false,
         setTotalCount: meta ? meta.set_total_count : 0,
         setIndex: item.set_index,
-        status: item.status,
+        inventoryStatus: item.inventory_status,
         rfid: item.rfid_tag_id,
         inStockDate: item.created_at, //上架日
-        inStockStatus: item.status //上架状态 in_stock, off_stock
+        inStockStatus: item.inventory_status //上架状态 in_stock, off_stock
       }
     })
     return {

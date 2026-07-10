@@ -231,7 +231,7 @@
       <view class="swipe-item">
 
         <!-- 图书信息 -->
-        <view class="book-item {{item.status === 'off_stock' ? 'off-book' : ''}}" bindtap="onBookTap" data-index="{{index}}">
+        <view class="book-item {{item.inventoryStatus === 'off_stock' ? 'off-book' : ''}}" bindtap="onBookTap" data-index="{{index}}">
 
           <image class="cover" src="{{item.cover_url}}" mode="aspectFill" />
 
@@ -243,7 +243,7 @@
                 {{item.title}}
               </text>
 
-              <text wx:if="{{item.status === 'off_stock'}}" class="off-tag">
+              <text wx:if="{{item.inventoryStatus === 'off_stock'}}" class="off-tag">
                 已下架
               </text>
 
@@ -261,7 +261,7 @@
         <view class="actions" wx:if="{{currentExpandedId === item.item_id}}">
 
           <!-- 上架图书 -->
-          <block wx:if="{{item.status === 'in_stock'}}">
+          <block wx:if="{{item.inventoryStatus === 'in_stock'}}">
 
             <view class="btn detail" catchtap="handleDetail" data-index="{{index}}">
               详情
@@ -278,7 +278,7 @@
           </block>
 
           <!-- 已下架 -->
-          <block wx:elif="{{item.status === 'off_stock'}}">
+          <block wx:elif="{{item.inventoryStatus === 'off_stock'}}">
 
             <view class="btn detail" catchtap="handleDetail" data-index="{{index}}">
               详情

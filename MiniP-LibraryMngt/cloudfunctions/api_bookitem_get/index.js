@@ -14,7 +14,7 @@ function toBookItemEntity(item) {
     bookMetaId: item.book_meta_id,
     setIndex: item.set_index,
     editionType: item.edition_type,
-    status: item.status,
+    inventoryStatus: item.inventory_status,
     rfidTagId: item.rfid_tag_id || null,
     fgDelete: item.fg_delete || false,
     createdAt: item.created_at,

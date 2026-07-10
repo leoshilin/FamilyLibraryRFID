@@ -35,10 +35,10 @@ exports.main = async (event) => {
 
     const item = itemRes.data[0]
 
-    const isNotOffStock = item.status !== 'off_stock'
+    const isNotOffStock = item.inventory_status !== 'off_stock'
     const isDeleted = item.fg_delete === true
     if (isNotOffStock || isDeleted) {
-      throw new Error(`书籍${item_id}当前状态${item.status}下不可删除`)
+      throw new Error(`书籍${item_id}当前状态${item.inventory_status}下不可删除`)
     }
 
 
