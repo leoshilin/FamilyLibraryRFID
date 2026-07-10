@@ -60,6 +60,8 @@
 - **影响**：前端若按文档取 `res.bookItem` 会得到 `undefined`，导致上架后无法拿到新书详情。
 - **建议**：以代码为准，修正文档——返回字段为 `bookItemId`（string），删除"返回 bookItem 对象"的注释与示例。
 
+- **Todo: 修改代码，需返回对象: done**
+
 ## E-2【严重】A6 api_bookitem_get 返回结构完全不符
 
 - **文档原记录**（P309-317）：返回三层对象
@@ -76,11 +78,14 @@
 - **影响**：文档与代码契约完全错位，前端对接必然报错。
 - **建议**：按真实返回重写「返回」章节。
 
+- **Todo: 修改代码：done**
+
 ## E-3【澄清】A6 文档备注"loadFromId 好像没被调用"——经核实属实
 
 - 文档 P285 备注：`该函数被 async loadFromId(itemId) 调用，但loadFromId好像没有被任何地方调用。需确认逻辑`。
 - **核实结果**：前端 `miniprogram/pages/book/book.js` 确实定义了 `loadFromId`（L236），其内部调用了 `api_bookitem_get`（L244），但全仓检索**只有定义、无任何调用点**（`this.loadFromId(...)` 不存在）。
 - **结论**：`api_bookitem_get` 当前是**孤立接口**（仅被一个未被调用的内部方法引用）。文档疑问属实，建议标注为"接口已实现但当前无调用方，待确认是否保留或接入页面"。
+- **Todo: 已记录**
 
 ## E-4【严重】D3 api_user_get 名称与功能均错误
 
@@ -94,6 +99,7 @@
   1. 删除错误的「D3 api_user_get」条目；
   2. 改记为「api_user_update（更新昵称）」并补入参/返回（见 M-3）；
   3. 若业务确需"按 id 获取用户"，应另行设计（当前无此能力）。
+- **Todo: 此处报告错误。该函数还未实现。当前唯一需要通过openid获取userid的处理在api_user_login的处理中完成，因此暂时不需要实现本函数**
 
 ## E-5【中等】A19 api_bookshelf_reorder 记录的接口不存在
 

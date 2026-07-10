@@ -282,7 +282,7 @@ status=off_stock
 ## A6. api_bookitem_get
 
 （原 getBookItem）
-需研究：该函数被 async loadFromId(itemId)  调用，但loadFromId好像没有被任何地方调用。需确认逻辑
+需研究：该函数被 async loadFromId(itemId)  调用，但loadFromId没有被任何地方调用。接口已实现但当前无调用方，待确认是否保留或接入页面。
 
 ### 功能
 
