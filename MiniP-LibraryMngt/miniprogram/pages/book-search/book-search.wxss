@@ -356,23 +356,35 @@
 /* 底部提示 */
 /* ======================== */
 
+/* 固定底栏：位于 .page 内、列表 scroll-view 之后，
+   作为 flex 纵向容器的末位元素常驻页面底部（不随列表滚动） */
+.list-footer{
+  flex-shrink:0;          /* 不被压缩，始终保留在底部 */
+  padding:0 20rpx;        /* 与上方列表左右边距保持一致 */
+  background:#f5f6f8;      /* 与页面背景一致，避免透出列表内容 */
+}
+
 /* 三类提示统一结构：[分割线][文字][分割线]
-   使用 flex + align-items:center 使文字与左右分割线在交叉轴居中 */
+   给容器显式高度 + align-items:center，
+   使 1rpx 分割线在固定高度内与文字垂直居中对齐
+   （容器高度自推导时细线会按行盒而非字形居中，导致偏上） */
 .loading-line{
   display:flex;
   align-items:center;
+  justify-content:center;
+  height:40rpx;
   width:100%;
-  padding:40rpx 0 60rpx;
+  padding:30rpx 0;
 }
 
 .loading-divider{
   flex:1;
   height:1rpx;
   background:#e5e5e5;
+  align-self:center;
 }
 
-/* 显式 line-height 锚定行盒高度，避免默认 normal 行高导致
-   1rpx 分割线相对于文字字形偏移（视觉上贴近文字顶部） */
+/* 文字行高与容器高度一致，确保字形中线与分割线中线重合 */
 .loading-text{
   padding:0 24rpx;
   color:#999;

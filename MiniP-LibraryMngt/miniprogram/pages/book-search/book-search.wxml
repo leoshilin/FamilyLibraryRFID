@@ -300,54 +300,58 @@
 
     </block>
 
-    <!-- ======================== -->
-    <!-- 列表底部提示 -->
-    <!-- ======================== -->
-
-    <!-- 正在加载 -->
-
-    <view class="loading-line" wx:if="{{loadingMore}}">
-
-      <view class="loading-divider"></view>
-
-      <text class="loading-text">
-        正在加载更多图书...
-      </text>
-
-      <view class="loading-divider"></view>
-
     </view>
 
-    <!-- 已全部显示 -->
-
-    <view class="loading-line" wx:if="{{!loadingMore && !hasMore && books.length>0}}">
-    
-      <view class="loading-divider"></view>
-    
-      <text class="loading-text">
-        已显示全部图书
-      </text>
-    
-      <view class="loading-divider"></view>
-    
-    </view>
-    
-    <!-- 无数据 -->
-    
-    <view class="loading-line" wx:if="{{!loadingMore && books.length === 0}}">
-
-      <view class="loading-divider"></view>
-
-      <text class="loading-text">
-        没有找到符合条件的图书
-      </text>
-
-      <view class="loading-divider"></view>
-
-    </view>
-    
-    </view>
-    
     </scroll-view>
-    
+
+    <!-- ======================== -->
+    <!-- 固定底栏：检索状态提示（不随列表滚动，常驻页面底部） -->
+    <!-- ======================== -->
+
+    <view class="list-footer">
+
+      <!-- 正在加载 -->
+
+      <view class="loading-line" wx:if="{{loadingMore}}">
+
+        <view class="loading-divider"></view>
+
+        <text class="loading-text">
+          正在加载更多图书...
+        </text>
+
+        <view class="loading-divider"></view>
+
+      </view>
+
+      <!-- 已全部显示 -->
+
+      <view class="loading-line" wx:if="{{!loadingMore && !hasMore && books.length>0}}">
+      
+        <view class="loading-divider"></view>
+      
+        <text class="loading-text">
+          已显示全部图书
+        </text>
+      
+        <view class="loading-divider"></view>
+      
+      </view>
+      
+      <!-- 无数据 -->
+      
+      <view class="loading-line" wx:if="{{!loadingMore && books.length === 0}}">
+
+        <view class="loading-divider"></view>
+
+        <text class="loading-text">
+          没有找到符合条件的图书
+        </text>
+
+        <view class="loading-divider"></view>
+
+      </view>
+
+    </view>
+
     </view>
