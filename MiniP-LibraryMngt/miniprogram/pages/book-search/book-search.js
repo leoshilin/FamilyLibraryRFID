@@ -48,6 +48,10 @@ Page({
     loadingMore: false,
     hasMore: true,
 
+    // 页面首次渲染完成标记：过渡动画期间不展示底栏消息，
+    // 避免“正在加载更多图书…”抢先盖在首页 TabBar 位置
+    pageReady: false,
+
     currentExpandedId: null
   },
 
@@ -62,6 +66,14 @@ Page({
     this.loadBookshelves()
 
     this.fetchBooks(true)
+  },
+
+  onReady() {
+    // 首次渲染完成后再展示底部状态消息，
+    // 防止跳转过渡动画期间底栏消息抢先显示在首页 TabBar 位置
+    this.setData({
+      pageReady: true
+    })
   },
 
   // ========================

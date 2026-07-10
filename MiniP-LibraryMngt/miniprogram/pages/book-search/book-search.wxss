@@ -357,10 +357,17 @@
 /* ======================== */
 
 /* 固定底栏：位于 .page 内、列表 scroll-view 之后，
-   作为 flex 纵向容器的末位元素常驻页面底部（不随列表滚动） */
+   作为 flex 纵向容器的末位元素常驻页面底部（不随列表滚动）。
+   高度与首页 TabBar 内容区一致(约100rpx)，并适配底部安全区，
+   使消息位于与首页 TabBar 相同的高度，而非紧贴屏幕底线 */
 .list-footer{
   flex-shrink:0;          /* 不被压缩，始终保留在底部 */
+  min-height:100rpx;      /* 与首页 TabBar 内容区高度对齐 */
   padding:0 20rpx;        /* 与上方列表左右边距保持一致 */
+  padding-bottom:env(safe-area-inset-bottom);  /* 适配底部安全区，同 TabBar 处于安全区之上 */
+  display:flex;
+  align-items:center;     /* 消息在底栏带内垂直居中 */
+  justify-content:center;
   background:#f5f6f8;      /* 与页面背景一致，避免透出列表内容 */
 }
 
@@ -374,7 +381,6 @@
   justify-content:center;
   height:40rpx;
   width:100%;
-  padding:30rpx 0;
 }
 
 .loading-divider{

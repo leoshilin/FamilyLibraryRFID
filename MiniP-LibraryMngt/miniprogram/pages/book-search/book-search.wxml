@@ -308,7 +308,7 @@
     <!-- 固定底栏：检索状态提示（不随列表滚动，常驻页面底部） -->
     <!-- ======================== -->
 
-    <view class="list-footer">
+    <view class="list-footer" wx:if="{{pageReady}}">
 
       <!-- 正在加载 -->
 
