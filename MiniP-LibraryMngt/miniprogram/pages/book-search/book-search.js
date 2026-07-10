@@ -5,7 +5,6 @@ const bookshelfServices = require('../../services/bookshelfServices')
 Page({
   data: {
     familyId: '',        // 首页传入
-    operator: '',        // 首页传入
 
     // 检索模式：isbn / condition
     searchMode: 'isbn',
@@ -59,8 +58,7 @@ Page({
     console.log('book_search.onLoad: start')
 
     this.setData({
-      familyId: options.familyId || '',
-      operator: options.operator || ''
+      familyId: options.familyId || ''
     })
 
     this.loadBookshelves()
@@ -593,8 +591,6 @@ Page({
 
                   family_id: book.family_id,
 
-                  operator: this.data.operator,
-
                   reason
 
                 }
@@ -714,9 +710,7 @@ Page({
 
           item_id: book.item_id,
 
-          family_id: book.family_id,
-
-          operator: this.data.operator
+          family_id: book.family_id
 
         }
 
@@ -795,8 +789,6 @@ Page({
 
     const index = e.currentTarget.dataset.index
     const book = this.data.books[index]
-    const operator = this.data.operator
-    console.log(`handleOn: operator=${operator}`)
 
     this.setData({
       currentExpandedId: null
@@ -823,8 +815,7 @@ Page({
         name: 'api_bookitem_restock',
         data: {
           item_id: book.item_id,
-          family_id: book.family_id,
-          operator: operator
+          family_id: book.family_id
         }
       })
 

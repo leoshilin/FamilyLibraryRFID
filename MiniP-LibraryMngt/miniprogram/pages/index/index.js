@@ -9,7 +9,6 @@ Page({
     bookInfo: null,
     recentBooks: [],
     familyId: '', // 当前家庭ID（由 api_family_getCurrent 动态获取）
-    operator: 'admin-shilin',
 
     //页面是否需要更新的控制，靠eventBus触发事件后更新该控制符号，然后在回到页面onShow时做判断并更新
     needRefresh: false
@@ -17,8 +16,7 @@ Page({
  
   scanISBN() {
     const {  
-      familyId,
-      operator
+      familyId
     } = this.data
 
     if (!familyId) {
@@ -40,7 +38,7 @@ Page({
 
          // 扫码成功后跳转二级页面                     
         wx.navigateTo({
-          url: `/pages/book/book?mode=scan&isbn=${isbn}&familyId=${familyId}&operator=${operator}`
+          url: `/pages/book/book?mode=scan&isbn=${isbn}&familyId=${familyId}`
         })
       },
       fail: err => {
@@ -178,13 +176,10 @@ Page({
   // 最近上架书目清单中点击书籍跳转到书籍详情页
   onBookTap(e) {
     //const id = e.currentTarget.dataset.id
-    const operator = this.data.operator
-
-    console.log (`navigate to url: /pages/book/book?mode=view&operator=${operator}`)
     const book = e.currentTarget.dataset.book
     console.log('before jump, book=',book)
     wx.navigateTo({
-      url: `/pages/book/book?mode=view&operator=${operator}`,
+      url: `/pages/book/book?mode=view`,
       success: (res) => {
         res.eventChannel.emit('bookData', book)
         console.log('emit done')
@@ -202,7 +197,6 @@ Page({
   // 最近上架-查看全部 点击后跳转到书籍查询页
   onViewAllTap() {
     const familyId = this.data.familyId
-    const operator = this.data.operator
 
     if (!familyId) {
       wx.showToast({ title: '请先选择家庭', icon: 'none' })
@@ -210,7 +204,7 @@ Page({
     }
     
     wx.navigateTo({
-      url: `/pages/book-search/book-search?familyId=${familyId}&operator=${operator}`
+      url: `/pages/book-search/book-search?familyId=${familyId}`
     })
   }
 });

@@ -9,16 +9,25 @@ cloud.init({
 const db = cloud.database()
 const _ = db.command
 
+const { getCurrentUser } = require('./common/permission')
+
 // 云函数入口函数
 exports.main = async (event) => {
 
   const {
     item_id,
-    family_id,
-    operator
+    family_id
   } = event
   const now = new Date()
-  console.log(`onBokItem start, item_id=${item_id}, family_id=${family_id}, operator=${operator}`)
+
+  // 反查操作人：不再由客户端传入 operator，统一从登录态解析当前用户
+  const wxContext = cloud.getWXContext()
+  const user = await getCurrentUser(db, wxContext.OPENID)
+  if (!user) {
+    return { success: false, message: '用户未注册' }
+  }
+
+  console.log(`onBokItem start, item_id=${item_id}, family_id=${family_id}`)
 
   // 执行重新上架的事务代码
   const transaction = await db.startTransaction()
@@ -53,7 +62,7 @@ exports.main = async (event) => {
           inventory_status: 'in_stock',
           created_at: now,
           updated_at: now,
-          operator: operator
+          operator: user._id
         }
       })
 
@@ -65,7 +74,7 @@ exports.main = async (event) => {
           family_id: family_id,
           change_type: 'in_stock',
           reason: '重新上架',
-          operator: operator,
+          operator: user._id,
           created_at: now
         }
       })

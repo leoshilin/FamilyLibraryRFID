@@ -7,15 +7,24 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
 const db = cloud.database()
 const _ = db.command
 
+const { getCurrentUser } = require('./common/permission')
+
 // 云函数入口函数
 exports.main = async (event) => {
   const {
     item_id,
-    family_id,
-    operator
+    family_id
   } = event
   const now = new Date()
-  console.log(`api_bookitem_delete start, item_id=${item_id}, family_id=${family_id}, operator=${operator}`)
+
+  // 反查操作人：不再由客户端传入 operator，统一从登录态解析当前用户
+  const wxContext = cloud.getWXContext()
+  const user = await getCurrentUser(db, wxContext.OPENID)
+  if (!user) {
+    return { success: false, message: '用户未注册' }
+  }
+
+  console.log(`api_bookitem_delete start, item_id=${item_id}, family_id=${family_id}`)
 
   // 执行删除前的事务代码
   const transaction = await db.startTransaction()
@@ -62,7 +71,7 @@ exports.main = async (event) => {
           item_id: item_id,
           family_id: family_id,
           change_type: 'book delete',          
-          operator: operator,
+          operator: user._id,
           reason: '管理员删除（逻辑）',
           created_at: now
         }
