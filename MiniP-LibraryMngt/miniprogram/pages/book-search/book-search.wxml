@@ -222,30 +222,18 @@
 <!-- ======================== -->
 <!-- 图书列表 -->
 <!-- ======================== -->
-<scroll-view
-  scroll-y
-  class="list"
-  lower-threshold="50"
-  bindscrolltolower="onReachBottom">
+<scroll-view scroll-y class="list" lower-threshold="50" bindscrolltolower="onReachBottom">
 
   <view class="book-list">
 
-    <block
-      wx:for="{{books}}"
-      wx:key="item_id">
+    <block wx:for="{{books}}" wx:key="item_id">
 
       <view class="swipe-item">
 
         <!-- 图书信息 -->
-        <view
-          class="book-item {{item.status === 'off_stock' ? 'off-book' : ''}}"
-          bindtap="onBookTap"
-          data-index="{{index}}">
+        <view class="book-item {{item.status === 'off_stock' ? 'off-book' : ''}}" bindtap="onBookTap" data-index="{{index}}">
 
-          <image
-            class="cover"
-            src="{{item.cover_url}}"
-            mode="aspectFill" />
+          <image class="cover" src="{{item.cover_url}}" mode="aspectFill" />
 
           <view class="info">
 
@@ -255,9 +243,7 @@
                 {{item.title}}
               </text>
 
-              <text
-                wx:if="{{item.status === 'off_stock'}}"
-                class="off-tag">
+              <text wx:if="{{item.status === 'off_stock'}}" class="off-tag">
                 已下架
               </text>
 
@@ -272,57 +258,37 @@
         </view>
 
         <!-- 展开按钮 -->
-        <view
-          class="actions"
-          wx:if="{{currentExpandedId === item.item_id}}">
+        <view class="actions" wx:if="{{currentExpandedId === item.item_id}}">
 
           <!-- 上架图书 -->
           <block wx:if="{{item.status === 'in_stock'}}">
 
-            <view
-              class="btn detail"
-              catchtap="handleDetail"
-              data-index="{{index}}">
+            <view class="btn detail" catchtap="handleDetail" data-index="{{index}}">
               详情
             </view>
 
-            <view
-              class="btn off"
-              catchtap="handleOff"
-              data-index="{{index}}">
+            <view class="btn off" catchtap="handleOff" data-index="{{index}}">
               下架
             </view>
 
-            <view
-              class="btn rfid"
-              catchtap="handleRFID"
-              data-index="{{index}}">
+            <view class="btn rfid" catchtap="handleRFID" data-index="{{index}}">
               {{item.rfid_tag_id ? '重新绑定RFID' : '绑定RFID'}}
             </view>
 
           </block>
 
-          <!-- 已下架图书 -->
+          <!-- 已下架 -->
           <block wx:elif="{{item.status === 'off_stock'}}">
 
-            <view
-              class="btn detail"
-              catchtap="handleDetail"
-              data-index="{{index}}">
+            <view class="btn detail" catchtap="handleDetail" data-index="{{index}}">
               详情
             </view>
 
-            <view
-              class="btn on"
-              catchtap="handleOn"
-              data-index="{{index}}">
+            <view class="btn on" catchtap="handleOn" data-index="{{index}}">
               重新上架
             </view>
 
-            <view
-              class="btn delete"
-              catchtap="handleDelete"
-              data-index="{{index}}">
+            <view class="btn delete" catchtap="handleDelete" data-index="{{index}}">
               彻底删除
             </view>
 
@@ -334,30 +300,48 @@
 
     </block>
 
-  </view>
+    <!-- ======================== -->
+    <!-- 列表底部提示 -->
+    <!-- ======================== -->
 
-</scroll-view>
+    <!-- 正在加载 -->
 
-<!-- ======================== -->
-<!-- 底部提示 -->
-<!-- ======================== -->
+    <view class="loading loading-line" wx:if="{{loadingMore}}">
 
-<view
-  class="loading"
-  wx:if="{{loadingMore}}">
-  加载中...
-</view>
+      <view class="loading-divider"></view>
 
-<view
-  class="loading"
-  wx:if="{{!hasMore && books.length > 0}}">
-  没有更多数据了
-</view>
+      <text class="loading-text">
+        正在加载更多图书...
+      </text>
 
-<view
-  class="loading"
-  wx:if="{{books.length === 0 && !loadingMore}}">
-  暂无图书
-</view>
+    </view>
 
-</view>
+    <!-- 已全部显示 -->
+
+    <view class="loading-line" wx:if="{{!loadingMore && !hasMore && books.length>0}}">
+    
+      <view class="loading-divider"></view>
+    
+      <text class="loading-text">
+        已显示全部图书
+      </text>
+    
+      <view class="loading-divider"></view>
+    
+    </view>
+    
+    <!-- 无数据 -->
+    
+    <view class="loading" wx:if="{{!loadingMore && books.length === 0}}">
+    
+      <text class="loading-text">
+        没有找到符合条件的图书
+      </text>
+    
+    </view>
+    
+    </view>
+    
+    </scroll-view>
+    
+    </view>

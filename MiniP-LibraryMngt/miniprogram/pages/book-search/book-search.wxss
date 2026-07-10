@@ -357,8 +357,28 @@
 /* ======================== */
 
 .loading {
-  padding: 24rpx;
+  padding: 40rpx 0 60rpx;
   text-align: center;
   color: #999;
   font-size: 26rpx;
+}
+
+.loading-line{
+  display:flex;
+  align-items:center;
+  width:100%;
+  padding:40rpx 0 60rpx;
+}
+
+.loading-divider{
+  flex:1;
+  height:1rpx;
+  background:#e5e5e5;
+}
+
+.loading-text{
+  padding:0 24rpx;
+  color:#999;
+  font-size:26rpx;
+  white-space:nowrap;
 }
