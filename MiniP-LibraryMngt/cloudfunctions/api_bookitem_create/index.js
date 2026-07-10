@@ -105,22 +105,37 @@ exports.main = async (event) => {
   })
   console.log('api_bookitem_create params: create book in book_item done: ',itemRes._id)
 
+  // 组装返回的 bookItem 实体（camelCase，对齐文档 A2：返回完整实体而非仅 ID）
+  const itemId = itemRes._id
+  const bookItem = {
+    _id: itemId,
+    familyId: familyId,
+    bookshelfId: bookshelfId,
+    bookMetaId: bookMetaId,
+    setIndex: book.isSet ? book.setIndex : null,
+    editionType: editionType,
+    status: 'in_stock',
+    rfidTagId: null,
+    fgDelete: false,
+    createdAt: now,
+    updatedAt: now
+  }
+
   // 3. 写入库存变更日志
-  item_id = itemRes._id
   await db.collection('inventory_change_log')
-  .add({
-    data: {
-      item_id: item_id,
-      family_id: familyId,
-      change_type: 'in_stock',
-      reason: 'new book',
-      operator: operator,
-      created_at: now
-    }
-  })
+    .add({
+      data: {
+        item_id: itemId,
+        family_id: familyId,
+        change_type: 'in_stock',
+        reason: 'new book',
+        operator: operator,
+        created_at: now
+      }
+    })
 
   return {
     success: true,
-    bookItemId: itemRes._id
+    bookItem: bookItem
   }
 }
