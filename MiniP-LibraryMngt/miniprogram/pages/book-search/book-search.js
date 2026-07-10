@@ -52,15 +52,41 @@ Page({
     // 避免“正在加载更多图书…”抢先盖在首页 TabBar 位置
     pageReady: false,
 
-    currentExpandedId: null
+    currentExpandedId: null,
+
+    // 标记：从详情页返回后是否需要刷新列表（由 eventBus 事件置位，onShow 消费）
+    needRefresh: false
   },
 
   onLoad(options) {
     console.log('book_search.onLoad: start')
 
+    // 监听来自详情页（或其它页面）的书籍变更事件，置位 needRefresh；
+    // 实际刷新在 onShow 中执行，避免在事件回调里直接刷新造成重复请求
+    this.refreshHandler = () => {
+      this.data.needRefresh = true
+    }
+    eventBus.on(EVENTS.BOOK_ITEM_LISTED, this.refreshHandler)
+    eventBus.on(EVENTS.BOOK_ITEM_UNLISTED, this.refreshHandler)
+    eventBus.on(EVENTS.BOOK_ITEM_DELETED, this.refreshHandler)
+
     // familyId 不再由 URL 传入，改由服务端按 currentFamilyId 解析；
     // 前端仅本地解析当前家庭用于书架筛选触发器与本地守卫
     this.initCurrentFamily()
+  },
+
+  onShow() {
+    // 从详情页（重新上架/下架/删除）返回后，若发生过书籍变更则刷新列表
+    if (this.data.needRefresh) {
+      this.data.needRefresh = false
+      this.fetchBooks(true)
+    }
+  },
+
+  onUnload() {
+    eventBus.off(EVENTS.BOOK_ITEM_LISTED, this.refreshHandler)
+    eventBus.off(EVENTS.BOOK_ITEM_UNLISTED, this.refreshHandler)
+    eventBus.off(EVENTS.BOOK_ITEM_DELETED, this.refreshHandler)
   },
 
   // 本地解析当前家庭并记录到 data.familyId（不下传给云函数）
