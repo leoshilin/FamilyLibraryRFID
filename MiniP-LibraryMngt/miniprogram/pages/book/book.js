@@ -1,6 +1,7 @@
 const eventBus = require('../../utils/eventBus')
 const EVENTS = require('../../utils/events')
 const bookshelfServices = require('../../services/bookshelfServices')
+const familyServices = require('../../services/familyServices')
 
 Page({
     
@@ -21,23 +22,23 @@ Page({
 
   onLoad(options) {
     // options 就是 URL ? 后面的参数
-    // mode驱动1，mode = scan, isbn, familyId, : 上架前数据确认 部分数据用户可修改； 
+    // mode驱动1，mode = scan, isbn : 上架前数据确认 部分数据用户可修改； 
     // mode驱动2，mode=view: 书籍信息只读展示
     // 首先确认book_meta中是否存在主数据，没有再用云函数获取数据信息    
+    // 注意：familyId 不再由 URL 传入，改由服务端按 currentFamilyId 解析；
+    //       前端仅本地记录（展示/书架选择/事件通知），不再下传给云函数
     const mode = options.mode || 'view'
     const isbn = options.isbn || null
-    const familyId = options.familyId || null
     this.setData({
       mode,
-      isbn,
-      familyId
+      isbn
     })
 
     if (mode === 'scan') {
       // 上架前确认，不存在实体书籍，但根据isbn可能存在主数据
       this.loadFromISBN(isbn)
-      // 加载当前家庭的书架列表供用户选择
-      this.loadBookshelves(familyId)
+      // 加载当前家庭的书架列表供用户选择（familyId 由 loadBookshelves 内部解析）
+      this.loadBookshelves()
     } else {
       // 书籍信息展示，使用book_item中id代表实体书籍对象
       const eventChannel = this.getOpenerEventChannel()
@@ -63,7 +64,7 @@ Page({
 
         // 查看模式下也加载书架列表，供用户修改书架
         if (book.family_id) {
-          this.loadBookshelves(book.family_id, book.bookshelf_id)
+          this.loadBookshelves(book.bookshelf_id)
         }
       })
     }
@@ -76,10 +77,17 @@ Page({
 
   // 加载当前家庭的书架列表
   // currentBookshelfId：查看模式下传入书籍当前书架ID，用于定位选择器索引
-  async loadBookshelves(familyId, currentBookshelfId) {
-    if (!familyId) return
-
+  // 说明：familyId 不再由前端下传，统一由服务端按 currentFamilyId 解析；
+  //       此处仅本地获取当前家庭用于触发加载与本地守卫，并把其记入 data.familyId 供事件通知使用
+  async loadBookshelves(currentBookshelfId) {
     try {
+      const current = await familyServices.getCurrent()
+      const familyId = (current && current.family && current.family._id) || ''
+      if (!familyId) return
+
+      // 记录当前家庭，供事件总线通知（如 BOOK_ITEM_LISTED）使用
+      this.setData({ familyId })
+
       const result = await bookshelfServices.list(familyId)
 
       if (result.success && result.list.length > 0) {
@@ -128,7 +136,6 @@ Page({
         name: 'api_bookitem_updateBookshelf',
         data: {
           itemId: book.item_id,
-          familyId: familyId || book.family_id,
           bookshelfId: newBookshelfId
         }
       })
@@ -511,7 +518,6 @@ Page({
   async callPrepare() {
     const {
       isbn,
-      familyId,
       book
     } = this.data
   
@@ -519,7 +525,6 @@ Page({
       name: 'api_bookitem_prepareCreate',
       data: {
         isbn,
-        familyId,
         book
       }
     })
@@ -533,18 +538,16 @@ Page({
   async callCommit() {
     const {
       isbn,
-      familyId,
       bookshelfId,
       book,
       editionType
     } = this.data
   
-    console.log(`callCommit Para: isbn=${isbn},familyId=${familyId},book=${book},editionType=${editionType}`)
+    console.log(`callCommit Para: isbn=${isbn},book=${book},editionType=${editionType}`)
     const res = await wx.cloud.callFunction({
       name: 'api_bookitem_create',
       data: {
         isbn,
-        familyId,
         bookshelfId,
         book,
         editionType
@@ -670,8 +673,7 @@ Page({
       const result = await wx.cloud.callFunction({
         name: 'api_bookitem_restock',
         data: {
-          item_id: book.item_id,
-          family_id: book.family_id
+          item_id: book.item_id
         }
       })
 
@@ -737,7 +739,6 @@ Page({
                 name: 'api_bookitem_offstock',
                 data: {
                   item_id: book.item_id,
-                  family_id: book.family_id,
                   reason: reason
                 }
               })

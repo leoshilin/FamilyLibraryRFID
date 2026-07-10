@@ -8,23 +8,26 @@ const db = cloud.database()
 const _ = db.command
 
 // 引入权限公共模块
-const { PERMISSIONS, checkPermission } = require('./common/permission')
+const { PERMISSIONS, checkPermission, getCurrentUser } = require('./common/permission')
 
 exports.main = async (event) => {
 
   const wxContext = cloud.getWXContext()
   const openid = wxContext.OPENID
 
-  const { familyId } = event
-
-  console.log(`api_bookshelf_list: openid=${openid}, familyId=${familyId}`)
-
-  // 参数校验
-  if (!familyId) {
-    return { success: false, message: 'familyId不能为空' }
-  }
+  console.log(`api_bookshelf_list: openid=${openid}`)
 
   try {
+
+    // 反查操作人 & 当前家庭：不再由客户端传入 operator/familyId，统一从登录态解析（结论 B+C）
+    const user = await getCurrentUser(db, openid)
+    if (!user) {
+      return { success: false, message: '用户未注册' }
+    }
+    const familyId = user.currentFamilyId
+    if (!familyId) {
+      return { success: false, message: '未选择当前家庭' }
+    }
 
     // 1. 权限检查
     const perm = await checkPermission({

@@ -1,6 +1,7 @@
 const eventBus = require('../../utils/eventBus')
 const EVENTS = require('../../utils/events')
 const bookshelfServices = require('../../services/bookshelfServices')
+const familyServices = require('../../services/familyServices')
 
 Page({
   data: {
@@ -57,13 +58,23 @@ Page({
   onLoad(options) {
     console.log('book_search.onLoad: start')
 
-    this.setData({
-      familyId: options.familyId || ''
-    })
+    // familyId 不再由 URL 传入，改由服务端按 currentFamilyId 解析；
+    // 前端仅本地解析当前家庭用于书架筛选触发器与本地守卫
+    this.initCurrentFamily()
+  },
 
-    this.loadBookshelves()
-
-    this.fetchBooks(true)
+  // 本地解析当前家庭并记录到 data.familyId（不下传给云函数）
+  async initCurrentFamily() {
+    try {
+      const current = await familyServices.getCurrent()
+      const familyId = (current && current.family && current.family._id) || ''
+      this.setData({ familyId })
+    } catch (err) {
+      console.error('initCurrentFamily error:', err)
+    } finally {
+      this.loadBookshelves()
+      this.fetchBooks(true)
+    }
   },
 
   onReady() {
@@ -374,13 +385,11 @@ Page({
       try {
   
         const data = {
-  
-          familyId: this.data.familyId,
-  
+
           page: this.data.page,
-  
+
           pageSize: this.data.pageSize
-  
+
         }
   
         if (this.data.searchMode === 'isbn') {
@@ -589,8 +598,6 @@ Page({
 
                   item_id: book.item_id,
 
-                  family_id: book.family_id,
-
                   reason
 
                 }
@@ -708,9 +715,7 @@ Page({
 
         data: {
 
-          item_id: book.item_id,
-
-          family_id: book.family_id
+          item_id: book.item_id
 
         }
 
@@ -814,8 +819,7 @@ Page({
       const result = await wx.cloud.callFunction({
         name: 'api_bookitem_restock',
         data: {
-          item_id: book.item_id,
-          family_id: book.family_id
+          item_id: book.item_id
         }
       })
 

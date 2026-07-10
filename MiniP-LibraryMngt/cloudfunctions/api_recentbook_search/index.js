@@ -8,15 +8,24 @@ cloud.init({
 const db = cloud.database()
 const _ = db.command
 
+const { getCurrentUser } = require('./common/permission')
+
 // 云函数入口函数
 
 exports.main = async (event, context) => {
-  const {
-    familyId
-  } = event
-
   try {
     console.log('api_recentbook_search: start')
+
+    // 反查操作人 & 当前家庭：不再由客户端传入 operator/familyId，统一从登录态解析（结论 B+C）
+    const wxContext = cloud.getWXContext()
+    const user = await getCurrentUser(db, wxContext.OPENID)
+    if (!user) {
+      return { success: false, message: '用户未注册' }
+    }
+    const familyId = user.currentFamilyId
+    if (!familyId) {
+      return { success: false, message: '未选择当前家庭' }
+    }
 
     // 1️⃣ 获取最近5个上架的实体书，但仅限上架中（不包含已下架的）
     const itemRes = await db.collection('book_item')

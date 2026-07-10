@@ -5,12 +5,13 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
 const db = cloud.database()
 const _ = db.command
 
+const { getCurrentUser } = require('./common/permission')
+
 // 云函数入口函数
 exports.main = async (event) => {
   console.log('api_book_search: start')
   console.log('收到参数:', event)
   const {
-    familyId,
     keyword = '',
     isbn = '',
     bookshelfId = '',
@@ -23,11 +24,15 @@ exports.main = async (event) => {
 
   try {
 
+    // 反查操作人 & 当前家庭：不再由客户端传入 operator/familyId，统一从登录态解析（结论 B+C）
+    const wxContext = cloud.getWXContext()
+    const user = await getCurrentUser(db, wxContext.OPENID)
+    if (!user) {
+      return { success: false, message: '用户未注册' }
+    }
+    const familyId = user.currentFamilyId
     if (!familyId) {
-      return {
-        success: false,
-        message: 'familyId 必填'
-      }
+      return { success: false, message: '未选择当前家庭' }
     }
     const skip = (page - 1) * pageSize
 
