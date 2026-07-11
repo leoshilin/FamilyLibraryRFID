@@ -107,8 +107,8 @@ exports.main = async (event) => {
     await db.collection('book_item').doc(itemId).update({
       data: {
         bookshelf_id: bookshelfId,
-        updated_at: now,
-        operator: perm.user._id
+        updated_at: now
+        // book_item 不再保留 operator：移动书架操作人统一记录于 inventory_change_log
       }
     })
 

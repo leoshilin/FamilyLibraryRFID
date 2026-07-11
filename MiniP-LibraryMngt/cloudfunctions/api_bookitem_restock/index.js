@@ -77,8 +77,8 @@ exports.main = async (event) => {
         data: {
           inventory_status: 'in_stock',
           on_shelf_at: now,
-          updated_at: now,
-          operator: user._id
+          updated_at: now
+          // book_item 不再保留 operator：上下架操作人统一记录于 inventory_change_log（见步骤 2）
         }
       })
 

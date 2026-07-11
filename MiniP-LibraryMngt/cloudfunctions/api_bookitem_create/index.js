@@ -120,7 +120,7 @@ exports.main = async (event) => {
       set_index: book.isSet ? book.setIndex : null,
       edition_type: editionType,
       inventory_status: 'in_stock',
-      rfid_tag_id: null,
+      rfid_tid: null,
       fg_delete: false,
       created_at: now,
       on_shelf_at: now,

@@ -18,7 +18,7 @@ function toBookItemEntity(item) {
     setIndex: item.set_index,
     editionType: item.edition_type,
     inventoryStatus: item.inventory_status,
-    rfidTagId: item.rfid_tag_id || null,
+    rfidTagId: item.rfid_tid || null,
     fgDelete: item.fg_delete || false,
     createdAt: item.created_at,
     onShelfAt: item.on_shelf_at || null,

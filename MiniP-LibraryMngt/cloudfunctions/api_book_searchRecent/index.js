@@ -93,7 +93,7 @@ exports.main = async (event, context) => {
         setTotalCount: meta ? meta.set_total_count : 0,
         setIndex: item.set_index,
         inventoryStatus: item.inventory_status,
-        rfid: item.rfid_tag_id,
+        rfid: item.rfid_tid,
         onShelfAt: item.on_shelf_at, //上架日（当前在架状态起始时刻）
         inStockStatus: item.inventory_status //上架状态 in_stock, off_stock
       }
