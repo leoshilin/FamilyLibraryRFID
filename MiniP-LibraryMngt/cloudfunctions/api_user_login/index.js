@@ -16,7 +16,7 @@ function toUserEntity(user) {
     _id: user._id,
     openid: user.openid,
     nickName: user.nickName,
-    currentFamilyId: user.currentFamilyId,
+    currentFamilyId: user.current_family_id,
     role: user.role,
     status: user.status,
     createdAt: user.created_at,

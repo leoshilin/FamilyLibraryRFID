@@ -50,7 +50,7 @@ function toBookshelfEntity(shelf) {
   if (!shelf) return null
   return {
     _id: shelf._id,
-    familyId: shelf.familyId,
+    familyId: shelf.family_id,
     name: shelf.name,
     sortOrder: shelf.sort_order,
     status: shelf.status

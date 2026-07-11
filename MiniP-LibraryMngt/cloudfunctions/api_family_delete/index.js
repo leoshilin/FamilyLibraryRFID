@@ -51,7 +51,7 @@ exports.main = async (event) => {
     // 3. 检查是否存在 ACTIVE 书架
     const activeBookshelves = await db.collection('bookshelf')
       .where({
-        familyId: familyId,
+        family_id: familyId,
         status: 'ACTIVE'
       })
       .count()
@@ -61,11 +61,11 @@ exports.main = async (event) => {
     }
 
     // 3b. 删除家庭守卫：检查是否仍有其他成员以该家庭为当前家庭
-    // 豁免删除者本人（其 currentFamilyId 会在事务 4b 中清除）
+    // 豁免删除者本人（其 current_family_id 会在事务 4b 中清除）
     const _ = db.command
     const otherMemberRes = await db.collection('user')
       .where({
-        currentFamilyId: familyId,
+        current_family_id: familyId,
         _id: _.neq(perm.user._id)
       })
       .limit(1)
@@ -77,7 +77,7 @@ exports.main = async (event) => {
 
     const now = new Date()
 
-    // 4. 使用事务：删除家庭 + 清理用户 currentFamilyId
+    // 4. 使用事务：删除家庭 + 清理用户 current_family_id
     const transaction = await db.startTransaction()
 
     try {
@@ -91,13 +91,13 @@ exports.main = async (event) => {
         }
       })
 
-      // 4b. 如果当前用户的 currentFamilyId 等于被删除的家庭，清除该字段
-      if (perm.user.currentFamilyId === familyId) {
+      // 4b. 如果当前用户的 current_family_id 等于被删除的家庭，清除该字段
+      if (perm.user.current_family_id === familyId) {
         // 使用 remove 命令删除字段（遵循可选字段不存 null 的设计原则）
         const _ = db.command
         await transaction.collection('user').doc(perm.user._id).update({
           data: {
-            currentFamilyId: _.remove()
+            current_family_id: _.remove()
           }
         })
       }

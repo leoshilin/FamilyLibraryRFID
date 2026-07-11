@@ -30,7 +30,7 @@ exports.main = async (event) => {
     if (!user) {
       return { success: false, message: '用户未注册' }
     }
-    const familyId = user.currentFamilyId
+    const familyId = user.current_family_id
     if (!familyId) {
       return { success: false, message: '未选择当前家庭' }
     }
@@ -61,7 +61,7 @@ exports.main = async (event) => {
     // 3. 统计当前 ACTIVE 书架数量，检查上限
     const countRes = await db.collection('bookshelf')
       .where({
-        familyId: familyId,
+        family_id: familyId,
         status: 'ACTIVE'
       })
       .count()
@@ -73,7 +73,7 @@ exports.main = async (event) => {
     // 4. 计算 sort_order：当前最大 sort_order + 1
     const maxSortRes = await db.collection('bookshelf')
       .where({
-        familyId: familyId,
+        family_id: familyId,
         status: 'ACTIVE'
       })
       .orderBy('sort_order', 'desc')
@@ -90,7 +90,7 @@ exports.main = async (event) => {
     const bookshelfRes = await db.collection('bookshelf').add({
       data: {
         name: safeName,
-        familyId: familyId,
+        family_id: familyId,
         sort_order: sortOrder,
         status: 'ACTIVE',
         created_by: perm.user._id,
@@ -103,7 +103,7 @@ exports.main = async (event) => {
       bookshelfId: bookshelfRes._id,
       bookshelf: {
         _id: bookshelfRes._id,
-        familyId: familyId,
+        family_id: familyId,
         name: safeName,
         sortOrder: sortOrder,
         status: 'ACTIVE'

@@ -39,8 +39,8 @@ exports.main = async (event) => {
     // 2. 检查用户是否属于该家庭
     const ufRes = await db.collection('user_family')
       .where({
-        userId: user._id,
-        familyId: familyId
+        user_id: user._id,
+        family_id: familyId
       })
       .limit(1)
       .get()
@@ -58,10 +58,10 @@ exports.main = async (event) => {
       return { success: false, message: '家庭不存在或已失效' }
     }
 
-    // 4. 更新 currentFamilyId
+    // 4. 更新 current_family_id
     await db.collection('user').doc(user._id).update({
       data: {
-        currentFamilyId: familyId
+        current_family_id: familyId
       }
     })
 

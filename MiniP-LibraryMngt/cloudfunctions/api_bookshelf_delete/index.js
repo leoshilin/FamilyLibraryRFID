@@ -67,7 +67,7 @@ exports.main = async (event) => {
     }
 
     const now = new Date()
-    const familyId = bookshelf.familyId
+    const familyId = bookshelf.family_id
 
     // 4. 使用事务：删除书架 + 重排 sort_order
     const transaction = await db.startTransaction()
@@ -86,7 +86,7 @@ exports.main = async (event) => {
       // 4b. 查询同家庭下剩余 ACTIVE 书架，按 sort_order 升序
       const remainingRes = await transaction.collection('bookshelf')
         .where({
-          familyId: familyId,
+          family_id: familyId,
           status: 'ACTIVE'
         })
         .orderBy('sort_order', 'asc')

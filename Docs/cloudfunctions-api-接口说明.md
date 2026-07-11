@@ -41,15 +41,20 @@ user.currentFamilyId
 - **前端实体（miniprogram）已对齐**：发送与读取均不再使用 snake_case；历史混用项（`item_id` ↔ `itemId`、`family_id` ↔ `familyId` 等）已消除。
 - **映射器边界**：snake_case 的 DB 与 camelCase 的 API 之间由映射器转换 —— `toUserEntity` / `toBookItemEntity` / `toBookMetaEntity` / `toBookshelfEntity`（DB→API）与 `normalizeInput`（API→DB）。
 
-### 仍待处理
-数据库设计层面仍有 4 个 camelCase 字段属于 **DB 内部命名**，需作为独立迁移专项处理（改动 DB 设计文档 + 代码 DB 写入 + 迁移脚本，影响面大，故与 API/app 层解耦）：
+### DB 字段重命名（已完成）
+数据库设计层面原有的 4 个 camelCase 字段（违反 DB 内部 snake_case 约定）已完成重命名与历史数据迁移：
 
-| 表 | 当前字段（DB 内部 camelCase） | 应为（snake_case） |
+- 改动点：DB 设计文档字段名 + 各云函数 DB 读写（`user_family` 查询/写入、`bookshelf`/`user` 写入）+ 映射器（`toUserEntity` / `toBookshelfEntity` 等由 snake_case 读取、仍输出 camelCase）+ 迁移脚本。
+- 迁移工具：`script_data_migration`（一次性，部署新代码前由管理员云端测试执行一次，幂等）。
+
+| 表 | 旧字段（DB 内部 camelCase） | 新字段（snake_case） |
 |----|------------------------------|-------------------|
 | `user` | `currentFamilyId` | `current_family_id` |
 | `user_family` | `userId` | `user_id` |
 | `user_family` | `familyId` | `family_id` |
 | `bookshelf` | `familyId` | `family_id` |
+
+> 注：API 入参 / 返回（前端实体）仍统一为 camelCase（`currentFamilyId` / `familyId` / `userId` 等），仅 DB 内部存储改为 snake_case；映射器负责两者转换。
 
 
 ## 0.3 文档与代码一致性

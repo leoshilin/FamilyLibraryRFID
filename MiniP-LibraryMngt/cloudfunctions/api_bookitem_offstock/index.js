@@ -27,7 +27,7 @@ exports.main = async (event) => {
   }
 
   // 反查当前家庭：不再由客户端传入 familyId，统一从登录态解析（结论 B+C）
-  const familyId = user.currentFamilyId
+  const familyId = user.current_family_id
   if (!familyId) {
     return { success: false, message: '未选择当前家庭' }
   }

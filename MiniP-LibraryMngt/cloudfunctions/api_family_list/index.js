@@ -32,7 +32,7 @@ exports.main = async (event) => {
     // 2. 查询 user_family 中该用户的所有记录
     const ufRes = await db.collection('user_family')
       .where({
-        userId: user._id
+        user_id: user._id
       })
       .get()
 
@@ -44,7 +44,7 @@ exports.main = async (event) => {
     }
 
     // 3. 获取所有关联家庭的详情
-    const familyIds = ufRes.data.map(uf => uf.familyId)
+    const familyIds = ufRes.data.map(uf => uf.family_id)
     const familyRes = await db.collection('family')
       .where({
         _id: db.command.in(familyIds)
@@ -59,13 +59,13 @@ exports.main = async (event) => {
 
     // 5. 构建返回列表
     const list = ufRes.data.map(uf => {
-      const family = familyMap[uf.familyId]
+      const family = familyMap[uf.family_id]
       return {
-        familyId: uf.familyId,
+        familyId: uf.family_id,
         name: family ? family.name : '(已删除)',
         role: uf.role,
         status: family ? family.status : 'DISABLED',
-        isCurrent: uf.familyId === user.currentFamilyId
+        isCurrent: uf.family_id === user.current_family_id
       }
     })
 

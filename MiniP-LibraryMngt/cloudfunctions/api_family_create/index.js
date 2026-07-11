@@ -37,7 +37,7 @@ exports.main = async (event) => {
     // 2. 检查用户是否已创建过家庭（一个用户只能创建一个家庭）
     const existingOwner = await db.collection('user_family')
       .where({
-        userId: user._id,
+        user_id: user._id,
         role: 'OWNER'
       })
       .limit(1)
@@ -70,7 +70,7 @@ exports.main = async (event) => {
       const bookshelfRes = await transaction.collection('bookshelf').add({
         data: {
           name: '我的书架',
-          familyId: familyId,
+          family_id: familyId,
           sort_order: 1,
           status: 'ACTIVE',
           created_by: user._id,
@@ -81,8 +81,8 @@ exports.main = async (event) => {
       // 3c. 在 user_family 中建立 OWNER 关系
       await transaction.collection('user_family').add({
         data: {
-          userId: user._id,
-          familyId: familyId,
+          user_id: user._id,
+          family_id: familyId,
           role: 'OWNER',
           joined_at: now
         }
@@ -91,7 +91,7 @@ exports.main = async (event) => {
       // 3d. 更新用户的当前家庭
       await transaction.collection('user').doc(user._id).update({
         data: {
-          currentFamilyId: familyId
+          current_family_id: familyId
         }
       })
 

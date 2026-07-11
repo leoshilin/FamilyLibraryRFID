@@ -143,7 +143,7 @@ const resolveFamilyId = async ({
       .doc(resourceId)
       .get()
 
-    return bookshelfRes.data?.familyId || ''
+    return bookshelfRes.data?.family_id || ''
 
   }
 
@@ -171,8 +171,8 @@ const getFamilyRole = async (db, userId, familyId) => {
   const userFamilyRes = await db
     .collection('user_family')
     .where({
-      userId,
-      familyId
+      user_id: userId,
+      family_id: familyId
     })
     .limit(1)
     .get()
@@ -233,12 +233,12 @@ const buildFamilyPermissions = async (db, user) => {
   permissions.canCreateFamily = true
 
   // 如果用户有当前家庭，查询家庭角色并构建该家庭下的权限
-  if (user.currentFamilyId) {
+  if (user.current_family_id) {
 
     const familyRole = await getFamilyRole(
       db,
       user._id,
-      user.currentFamilyId
+      user.current_family_id
     )
 
     if (familyRole) {

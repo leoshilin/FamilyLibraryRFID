@@ -46,7 +46,7 @@ exports.main = async (event) => {
   if (!user) {
     return { success: false, message: '用户未注册' }
   }
-  const familyId = user.currentFamilyId
+  const familyId = user.current_family_id
   if (!familyId) {
     return { success: false, message: '未选择当前家庭' }
   }
@@ -78,7 +78,7 @@ exports.main = async (event) => {
       return { success: false, message: '目标书架不存在或已失效' }
     }
 
-    if (bookshelf.familyId !== familyId) {
+    if (bookshelf.family_id !== familyId) {
       return { success: false, message: '目标书架不属于当前家庭' }
     }
 

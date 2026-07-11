@@ -24,7 +24,7 @@ exports.main = async (event) => {
   if (!user) {
     return { success: false, message: '用户未注册' }
   }
-  const familyId = user.currentFamilyId
+  const familyId = user.current_family_id
   if (!familyId) {
     return { success: false, message: '未选择当前家庭' }
   }

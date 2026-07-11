@@ -73,7 +73,7 @@ exports.main = async (event) => {
       success: true,
       bookshelf: {
         _id: bookshelf._id,
-        familyId: bookshelf.familyId,
+        familyId: bookshelf.family_id,
         name: safeName,
         sortOrder: bookshelf.sort_order,
         status: bookshelf.status,

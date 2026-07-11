@@ -30,7 +30,7 @@ exports.main = async (event) => {
     }
 
     // 2. 无当前家庭
-    if (!user.currentFamilyId) {
+    if (!user.current_family_id) {
       return {
         success: true,
         family: null,
@@ -41,7 +41,7 @@ exports.main = async (event) => {
 
     // 3. 查询家庭信息
     const familyRes = await db.collection('family')
-      .doc(user.currentFamilyId)
+      .doc(user.current_family_id)
       .get()
 
     const family = familyRes.data
@@ -56,12 +56,12 @@ exports.main = async (event) => {
     }
 
     // 4. 获取用户在该家庭中的角色
-    const role = await getFamilyRole(db, user._id, user.currentFamilyId)
+    const role = await getFamilyRole(db, user._id, user.current_family_id)
 
     // 5. 统计 ACTIVE 书架数量
     const bookshelfCountRes = await db.collection('bookshelf')
       .where({
-        familyId: user.currentFamilyId,
+        family_id: user.current_family_id,
         status: 'ACTIVE'
       })
       .count()

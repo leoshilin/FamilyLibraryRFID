@@ -24,7 +24,7 @@ exports.main = async (event) => {
     if (!user) {
       return { success: false, message: '用户未注册' }
     }
-    const familyId = user.currentFamilyId
+    const familyId = user.current_family_id
     if (!familyId) {
       return { success: false, message: '未选择当前家庭' }
     }
@@ -44,7 +44,7 @@ exports.main = async (event) => {
     // 2. 查询该家庭下所有 ACTIVE 书架，按 sort_order 升序
     const bookshelfRes = await db.collection('bookshelf')
       .where({
-        familyId: familyId,
+        family_id: familyId,
         status: 'ACTIVE'
       })
       .orderBy('sort_order', 'asc')
@@ -67,7 +67,7 @@ exports.main = async (event) => {
 
       list.push({
         _id: shelf._id,
-        familyId: shelf.familyId,
+        familyId: shelf.family_id,
         name: shelf.name,
         sortOrder: shelf.sort_order,
         status: shelf.status,
