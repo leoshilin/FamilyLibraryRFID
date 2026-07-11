@@ -32,7 +32,7 @@ user.currentFamilyId
 
 ##  0.2 a类: 代码文档均待更新
 ### 1. 命名不统一
-当前版本中 item_id、itemId、bookItemId，familyId 与 family_id，tid 与 rfidTid 等存在大量不统一的命名。
+当前版本中 `item_id` / `itemId` / `bookItemId`，`familyId` 与 `family_id` 等存在不统一的命名（RFID 字段已在 修复1 统一为 `rfidTid`，见"6. 一次性数据迁移工具"）。
 在功能稳定后下一阶段再统一修改。
 未来的原则：
  - API 入参 / 返回（前端实体）全部 camelCase
@@ -994,7 +994,7 @@ api_user_login
     "setIndex": null,
     "editionType": "original",
     "inventoryStatus": "in_stock",
-    "rfidTagId": null,
+    "rfidTid": null,
     "fgDelete": false,
     "createdAt": "datetime",
     "onShelfAt": "datetime",
@@ -1162,7 +1162,7 @@ api_user_login
     "setIndex": null,
     "editionType": "original",
     "inventoryStatus": "in_stock",
-    "rfidTagId": null,
+    "rfidTid": null,
     "fgDelete": false,
     "createdAt": "datetime",
     "onShelfAt": "datetime",
@@ -1305,7 +1305,7 @@ api_user_login
       "bookshelf_name": "我的书架",
       "status": "in_stock",
       "onShelfAt": "datetime",
-      "rfid_tag_id": null,
+      "rfidTid": null,
       "title": "三体",
       "authors": "...",
       "cover_url": "",
@@ -1374,7 +1374,7 @@ api_user_login
       "setTotalCount": 0,
       "setIndex": null,
       "inventoryStatus": "in_stock",
-      "rfid": null,
+      "rfidTid": null,
       "onShelfAt": "datetime",
       "inStockStatus": "in_stock"
     }
@@ -1702,7 +1702,7 @@ running
 
 1. **实现状态 / 脚手架**：架构表所列 33 个接口中，25 个已有真实实现（含 F2 `api_book_searchRecent`），另有 9 个云函数文件仅为**桩函数**（仅回显 `event` 与微信上下文，未实现业务逻辑）：A3 `api_user_get`、C5 `api_bookshelf_reorder`、G1/G2（任务创建）、H1 `api_task_unbindRfid`、J1–J4（PDA 任务执行/RFID 绑定）。文档已在架构表与各章节标注 ✅/🚧，避免读者误判为已上线。
 
-2. **入参命名不统一**：`itemId`（camel，如 api_bookitem_get / updateBookshelf）与 `item_id`（snake，如 offstock / restock / delete）跨接口混用；`familyId`/`family_id`、`tid`/`rfidTid` 同理。建议下一阶段统一为 camelCase。
+2. **入参命名不统一**：`itemId`（camel，如 api_bookitem_get / updateBookshelf）与 `item_id`（snake，如 offstock / restock / delete）跨接口混用；`familyId`/`family_id` 同理。RFID 字段已在 修复1 统一为 `rfidTid`（API 返回与数据库字段名一致）。建议下一阶段将 `itemId`/`item_id`、`familyId`/`family_id` 也统一为 camelCase。
 
 3. **通用失败返回 / 错误枚举未系统化（已起草）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 4 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
 

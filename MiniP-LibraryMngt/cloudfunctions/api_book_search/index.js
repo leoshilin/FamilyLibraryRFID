@@ -220,7 +220,7 @@ exports.main = async (event) => {
       bookshelf_name: item.bookshelf?.name || '',
       inventoryStatus: item.inventory_status,
       onShelfAt: item.on_shelf_at || null,
-      rfid_tag_id: item.rfid_tid || null,
+      rfidTid: item.rfid_tid || null,
 
       // ===== meta 字段 =====
       title: item.meta?.title || '',

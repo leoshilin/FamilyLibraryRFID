@@ -119,7 +119,7 @@
         <view wx:if="{{mode === 'view'}}" class="field">
           <text class="label">RFID</text>
           <text class="value">
-            {{ book.rfid ? book.rfid : '未绑定' }}
+            {{ book.rfidTid ? book.rfidTid : '未绑定' }}
           </text>
         </view>
 
@@ -178,7 +178,7 @@
             下架
           </button>        
           <button class="secondary-btn" bindtap="onBindRFID">
-            {{ book.rfid ? '重新绑定RFID' : '绑定RFID' }}
+            {{ book.rfidTid ? '重新绑定RFID' : '绑定RFID' }}
           </button>
         </block>
       </block>

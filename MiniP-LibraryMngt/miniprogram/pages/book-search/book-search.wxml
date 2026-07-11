@@ -272,7 +272,7 @@
             </view>
 
             <view class="btn rfid" catchtap="handleRFID" data-index="{{index}}">
-              {{item.rfid_tag_id ? '重新绑定RFID' : '绑定RFID'}}
+              {{item.rfidTid ? '重新绑定RFID' : '绑定RFID'}}
             </view>
 
           </block>

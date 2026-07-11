@@ -288,7 +288,7 @@ Page({
         setTotalCount: bookMeta?.setTotalCount || 0,
         // —— 来自 bookItem ——
         setIndex: bookItem?.setIndex,
-        rfid: bookItem?.rfidTagId,
+        rfidTid: bookItem?.rfidTid,
         inStockDate: bookItem?.onShelfAt,
         status: bookItem?.inventoryStatus,
         // —— 来自 bookshelf（详情页展示用）——
