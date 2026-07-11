@@ -14,7 +14,7 @@ const { getCurrentUser } = require('./common/permission')
 
 exports.main = async (event, context) => {
   try {
-    console.log('api_recentbook_search: start')
+    console.log('api_book_searchRecent: start')
 
     // 反查操作人 & 当前家庭：不再由客户端传入 operator/familyId，统一从登录态解析（结论 B+C）
     const wxContext = cloud.getWXContext()
@@ -40,7 +40,7 @@ exports.main = async (event, context) => {
 
     const items = itemRes.data
 
-    console.log(`api_recentbook_search: read ${items.length} books from book_item`)
+    console.log(`api_book_searchRecent: read ${items.length} books from book_item`)
     if (!items.length) {
       return {
         success: true,
@@ -60,7 +60,7 @@ exports.main = async (event, context) => {
 
     const metaList = metaRes.data
 
-    console.log(`api_recentbook_search: read ${metaList.length} meta data from book_meta`)
+    console.log(`api_book_searchRecent: read ${metaList.length} meta data from book_meta`)
 
     // 4️⃣ 合并数据（关键：按实体书顺序映射）
     const finalList = items.map(item => {

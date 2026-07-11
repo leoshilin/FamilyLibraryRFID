@@ -76,14 +76,14 @@ a类已知待改善事项。
 |E6| api_bookitem_get           | BookItem | 手机端操作：实体书本上下架 |
 |E7| api_bookitem_updateBookshelf           | BookItem | 手机端操作：实体书本上下架 |
 |F1| api_book_search            | Search   | 手机端操作：书本检索 |
-|F2| api_recentbook_search            | Search   | 手机端操作：书本检索 |
+|F2| api_book_searchRecent            | Search   | 手机端操作：书本检索 |
 |G1| api_task_createBindRfid | task | 手机端操作：任务创建 |
 |G2| api_task_createFindBook | task | 手机端操作：任务创建 |
-|H1| api_rfid_unbind | task | 手机端操作：任务执行 |
+|H1| api_task_unbindRfid | task | 手机端操作：任务执行 |
 |J1| api_task_accept | task | PDA操作：任务执行 |
 |J2| api_task_complete | task | PDA操作：任务执行 |
-|J3| api_rfid_getBindingInfo | task | PDA操作：任务执行 |
-|J4| api_rfid_bind | task | PDA操作：任务执行 |
+|J3| api_task_getRfidBindingInfo | task | PDA操作：任务执行 |
+|J4| api_task_bindRfid | task | PDA操作：任务执行 |
 
 ---
 
@@ -1067,8 +1067,7 @@ book_meta
 
 ---
 
-## F2. api_recentbook_search
-（原 getRecentBooks）
+## F2. api_book_searchRecent
 
 ### 功能
 首页最近上架书籍。
@@ -1178,7 +1177,7 @@ PDA 后续执行
 
 # H. 手机端操作：任务执行
 
-## H1. api_rfid_unbind
+## H1. api_task_unbindRfid
 ### 功能
 主动解绑 RFID。
 
@@ -1207,7 +1206,6 @@ PDA 后续执行
 # J. PDA操作：任务执行
 
 ## J1. api_task_accept
-（原 api_task_claim）
 
 ### 功能
 PDA 领取待执行任务。
@@ -1289,7 +1287,7 @@ running
 
 ---
 
-## J3. api_rfid_getBindingInfo
+## J3. api_task_getRfidBindingInfo
 ### 功能
 这是绑定流程真正执行业务逻辑的部分。根据 RFID TID 查询当前绑定状态，用于 PDA 扫描标签后确认。
 
@@ -1337,7 +1335,7 @@ running
 
 ---
 
-## J4. api_rfid_bind
+## J4. api_task_bindRfid
 ### 功能
 执行 RFID 绑定（核心接口）。
 
@@ -1371,77 +1369,3 @@ running
 > action：`bind` / `rebind`
 
 ---
-
-# 3. 从架构层面的调整建议
-
-你现在实际上已经出现一个现象：
-
-prepareInStock
-commitInStock
-
-两个函数共同完成一次上架
-
-而：
-
-offBookItem
-onBookItem
-deleteBookItem
-
-又是三个独立函数
-
-从DDD（领域设计）角度看其实不完全对称。
-
-我会建议最终形成：
-
-api.bookitem.create
-api.bookitem.updateStatus
-api_bookitem_delete
-api_bookitem_get
-
-api_book_search
-api.book.recent
-
-api_bookmeta_getByIsbn
-api_bookmeta_fetchExternal
-
-其中：
-
-updateStatus
-
-统一处理：
-
-{
-  "action":"off_stock"
-}
-{
-  "action":"restock"
-}
-
-以后：
-
-{
-  "action":"bind_rfid"
-}
-{
-  "action":"lost"
-}
-
-都能扩展。
-
-不过这是第二阶段优化。
-
-对于你现在的开发进度，我建议：
-
-先不要合并。
-
-保持：
-
-offBookItem
-onBookItem
-deleteBookItem
-
-三条独立API。
-
-这样逻辑最清晰，也最容易调试和排查问题。
-
-等 RFID、Task、Inventory 全部完成后，再考虑 API 收敛与统一。这样风险最低。

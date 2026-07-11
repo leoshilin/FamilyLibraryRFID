@@ -98,7 +98,7 @@ Page({
 
         // 家庭变更或需要刷新时重新加载最近书籍
         if (familyChanged || forceRefresh) {
-          this.api_recentbook_search()
+          this.api_book_searchRecent()
         }
       } else {
         // 无当前家庭，清空数据
@@ -112,7 +112,7 @@ Page({
     }
   },
 
-  async api_recentbook_search() {
+  async api_book_searchRecent() {
     const {    
       familyId      
     } = this.data  
@@ -121,7 +121,7 @@ Page({
 
     try {
       const res = await wx.cloud.callFunction({
-        name: 'api_recentbook_search',
+        name: 'api_book_searchRecent',
         data: {}
       })
 
@@ -154,7 +154,7 @@ Page({
           recentBooks: list
         })
       }
-      console.log('Page api_recentbook_search: recentBooks=', this.data.recentBooks)
+      console.log('Page api_book_searchRecent: recentBooks=', this.data.recentBooks)
 
     } catch (err) {
       console.error('获取最近书籍失败', err)
