@@ -76,7 +76,7 @@ exports.main = async (event) => {
       .update({
         data: {
           inventory_status: 'in_stock',
-          created_at: now,
+          on_shelf_at: now,
           updated_at: now,
           operator: user._id
         }

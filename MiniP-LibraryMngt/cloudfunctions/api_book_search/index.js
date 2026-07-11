@@ -69,7 +69,7 @@ exports.main = async (event) => {
       itemMatch.bookshelf_id = bookshelfId
     }
 
-    // ---- 上架时间筛选 ----
+    // ---- 上架时间筛选（基于 on_shelf_at，而非记录创建时间 created_at）----
     if (startDate || endDate) {
       const dateCond = []
 
@@ -81,7 +81,7 @@ exports.main = async (event) => {
         dateCond.push(_.lte(new Date(endDate + ' 23:59:59')))
       }
 
-      itemMatch.created_at = dateCond.length === 1 ?
+      itemMatch.on_shelf_at = dateCond.length === 1 ?
         dateCond[0] :
         _.and(dateCond)
     }
@@ -159,8 +159,8 @@ exports.main = async (event) => {
       agg = agg.match(metaMatch)
     }
 
-    // 排序 + 分页
-    agg = agg.sort({ created_at: -1 })
+    // 排序 + 分页（按上架时间 on_shelf_at 倒序）
+    agg = agg.sort({ on_shelf_at: -1 })
     agg = agg.skip(skip)
     agg = agg.limit(pageSize)
 
@@ -219,7 +219,7 @@ exports.main = async (event) => {
       bookshelf_id: item.bookshelf_id || '',
       bookshelf_name: item.bookshelf?.name || '',
       inventoryStatus: item.inventory_status,
-      created_at: item.created_at,
+      onShelfAt: item.on_shelf_at || null,
       rfid_tag_id: item.rfid_tag_id || null,
 
       // ===== meta 字段 =====

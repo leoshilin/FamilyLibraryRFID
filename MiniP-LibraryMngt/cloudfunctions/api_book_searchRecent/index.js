@@ -45,7 +45,7 @@ exports.main = async (event, context) => {
         family_id: familyId,        
         fg_delete: false //非删除数据
       })
-      .orderBy('created_at', 'desc')
+      .orderBy('on_shelf_at', 'desc')
       .limit(5)
       .get()
 
@@ -94,7 +94,7 @@ exports.main = async (event, context) => {
         setIndex: item.set_index,
         inventoryStatus: item.inventory_status,
         rfid: item.rfid_tag_id,
-        inStockDate: item.created_at, //上架日
+        onShelfAt: item.on_shelf_at, //上架日（当前在架状态起始时刻）
         inStockStatus: item.inventory_status //上架状态 in_stock, off_stock
       }
     })

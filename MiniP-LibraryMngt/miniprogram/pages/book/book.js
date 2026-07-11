@@ -289,7 +289,7 @@ Page({
         // —— 来自 bookItem ——
         setIndex: bookItem?.setIndex,
         rfid: bookItem?.rfidTagId,
-        inStockDate: bookItem?.createdAt,
+        inStockDate: bookItem?.onShelfAt,
         status: bookItem?.inventoryStatus,
         // —— 来自 bookshelf（详情页展示用）——
         bookshelfId: bookItem?.bookshelfId || bookshelf?._id || '',
