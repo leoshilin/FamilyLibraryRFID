@@ -40,6 +40,24 @@ RFID_Handheld/
 Android RFID PDA
 ```
 
+## Generated Files
+
+The following directories are generated files:
+
+- cloudfunctions/**/common/
+
+Source files are located in:
+
+- cloudfunctions/_shared/
+
+AI agents MUST NOT:
+- modify generated common files directly
+- analyze each generated common copy individually
+
+When common behavior needs modification:
+1. modify _shared
+2. run npm run sync-common
+
 ---
 
 # 3. Source of Truth（最高优先级）

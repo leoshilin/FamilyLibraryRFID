@@ -1,9 +1,11 @@
+# Cloudfunctions API 接口说明文档
+
 # 0. 当前待处理问题
 本章记载内容根据进度更新可能有两类：
- - a. 已知的，当前存在的待修复或待改善事项。（代码侧，文档侧均未修正）
- - b. 已修复的问题。但还未反映到下面文档的事项。（代码侧已修正，文档侧未修正）
+ - a. 已知的待修复或待改善事项。（代码侧 + 文档侧均未修正）
+ - b. 代码侧已修复的问题。但文档侧还未做更新的事项。（代码侧已修正，文档侧未修正）
 
-由于功能开发为优先，因此a类事项当前暂时不修改，仅做记录。在功能开发稳定后再考虑统一修改。
+由于功能开发为优先，上述已知问题考虑在功能开发稳定后再统一修改。
 因此，文档中相关设计和本章节记载的内容可能会有冲突。
 
 ---
@@ -26,14 +28,12 @@ user.currentFamilyId
    - `created_at` / `createdAt`：**实体书数据记录**创建时刻。仅初次上架（`api_bookitem_create`）写入一次，**重新上架不刷新**。
    - `on_shelf_at` / `onShelfAt`：**上架时间**，即当前"在架状态"的起始时刻。初次上架写入；重新上架（`api_bookitem_restock`）刷新；下架 / 更换书架 / 彻底删除 / 绑定解绑RFID 不刷新。用于"最近上架"排序（`api_book_searchRecent`）与"上架期间"筛选（`api_book_search`）及详情页"上架日"展示。
    - `updated_at` / `updatedAt`：记录**末次更新**时刻。任意写操作（下架、重新上架、更换书架、彻底删除、绑定/解绑RFID）均刷新。
-   > 历史上"重新上架会刷新 `created_at`"导致"最近上架"列表重排的问题（见"三、遗留问题"第 5 条），已通过本语义拆分解决：重新上架只刷新 `on_shelf_at` 与 `updated_at`，不动 `created_at`。
-
+7. 所有云函数目录下的common目录是通用模块，但不应该单独维护。该模块下的文件来源是_shared 目录，通过npm run sync-common来同步到所有云函数下。因此，Git Hub可能仅保存_shared 目录一个拷贝。部署时需要执行同步脚本。
 ---
 
 ## 0.2 命名统一专项（API / 前端实体层，已完成）
 
 > 范围：API 入参 / 返回（前端实体）全链路 camelCase；数据库内部字段保持 snake_case。
-> 状态：**已完成**（代码侧 + 本文档全部请求/返回示例已统一；前端实体已对齐）。
 
 ### 已完成内容
 - **API 入参统一为 camelCase**：`itemId`（offstock / restock / delete / get / updateBookshelf 跨接口一致，不再混用 `item_id`）、`familyId`、`bookshelfId`、`coverUrl`、`bookMetaId` 等。
@@ -41,7 +41,7 @@ user.currentFamilyId
 - **前端实体（miniprogram）已对齐**：发送与读取均不再使用 snake_case；历史混用项（`item_id` ↔ `itemId`、`family_id` ↔ `familyId` 等）已消除。
 - **映射器边界**：snake_case 的 DB 与 camelCase 的 API 之间由映射器转换 —— `toUserEntity` / `toBookItemEntity` / `toBookMetaEntity` / `toBookshelfEntity`（DB→API）与 `normalizeInput`（API→DB）。
 
-### 仍待处理（独立迁移专项，不在本次范围）
+### 仍待处理
 数据库设计层面仍有 4 个 camelCase 字段属于 **DB 内部命名**，需作为独立迁移专项处理（改动 DB 设计文档 + 代码 DB 写入 + 迁移脚本，影响面大，故与 API/app 层解耦）：
 
 | 表 | 当前字段（DB 内部 camelCase） | 应为（snake_case） |
@@ -51,10 +51,9 @@ user.currentFamilyId
 | `user_family` | `familyId` | `family_id` |
 | `bookshelf` | `familyId` | `family_id` |
 
-> 因 API/app 层已通过映射器在 snake_case 的 DB 与 camelCase 的 API 之间做边界转换，上述 DB 字段重命名可独立排期，不阻塞 API/app 一致性。详见"三、遗留问题"第 2 条。
 
 ## 0.3 文档与代码一致性
-本文档请求/返回示例已与代码实现保持一致（camelCase 实体 + snake_case DB 内部字段）。如后续发现代码与文档不一致，记录于"三、遗留问题"。
+本文档请求/返回示例已与代码实现保持一致（camelCase 实体 + snake_case DB 内部字段）。如后续发现代码与文档不一致，记录于"3. 遗留问题"。
 
 
 # 1. API整体清单
@@ -1716,9 +1715,10 @@ running
 
 1. **实现状态 / 脚手架**：架构表所列 33 个接口中，25 个已有真实实现（含 F2 `api_book_searchRecent`），另有 9 个云函数文件仅为**桩函数**（仅回显 `event` 与微信上下文，未实现业务逻辑）：A3 `api_user_get`、C5 `api_bookshelf_reorder`、G1/G2（任务创建）、H1 `api_task_unbindRfid`、J1–J4（PDA 任务执行/RFID 绑定）。文档已在架构表与各章节标注 ✅/🚧，避免读者误判为已上线。
 
-2. **入参命名不统一（已解决）**：原 `itemId`（camel，如 api_bookitem_get / updateBookshelf）与 `item_id`（snake，如 offstock / restock / delete）跨接口混用；`familyId`/`family_id` 同理。RFID 字段已在 修复1 统一为 `rfidTid`。**本次已通过映射器（`toUserEntity` / `toBookItemEntity` / `toBookMetaEntity` / `toBookshelfEntity` / `normalizeInput`）将 API 入参 / 返回（前端实体）全链路统一为 camelCase**：`itemId`/`familyId`/`bookshelfId`/`bookMetaId`/`coverUrl`/`sortOrder`/`createdAt`/`updatedAt`/`createdBy` 等，DB 内部字段保持 snake_case。剩余 4 个 DB 内部 camelCase 字段（`user.currentFamilyId`、`user_family.userId`/`familyId`、`bookshelf.familyId`）作为独立迁移专项处理，见 0.2。
+2. **入参命名不统一（已解决）**：原 `itemId`（camel，如 api_bookitem_get / updateBookshelf）与 `item_id`（snake，如 offstock / restock / delete）跨接口混用；`familyId`/`family_id` 同理。RFID 字段已统一为 `rfidTid`。
+已通过映射器（`toUserEntity` / `toBookItemEntity` / `toBookMetaEntity` / `toBookshelfEntity` / `normalizeInput`）将 API 入参 / 返回（前端实体）全链路统一为 camelCase：`itemId`/`familyId`/`bookshelfId`/`bookMetaId`/`coverUrl`/`sortOrder`/`createdAt`/`updatedAt`/`createdBy` 等，DB 内部字段保持 snake_case。剩余 4 个 DB 内部 camelCase 字段（`user.currentFamilyId`、`user_family.userId`/`familyId`、`bookshelf.familyId`）作为独立迁移专项处理。
 
-3. **通用失败返回 / 错误枚举未系统化（已起草）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 4 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
+3. **通用失败返回 / 错误枚举未系统化（已起草到文档）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 4 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
 
 4. **权限体系未逐接口标注（已修复）**：原仅 family / bookshelf 的增改删与 `api_bookitem_updateBookshelf` 在代码中显式 `checkPermission`；bookitem 的上架/下架/重新上架/删除及检索类接口此前仅做 `getCurrentUser`（登录态）校验。本次已**逐接口补齐并标注**：
    - **文档侧**：每个接口（含桩函数 G1/G2/H1）新增 `#### 权限` 子节，标注「所需权限 / 允许角色 / 校验方式」，角色口径严格对齐需求文档 RBAC——GUEST 仅拥有 `BOOKSHELF_LIST` / `BOOKITEM_SEARCH` / `RECENTBOOK_SEARCH` 三项。
@@ -1726,7 +1726,7 @@ running
    - **调用侧**：修复 `pages/book/book.js`、`pages/book-search/book-search.js` 中失败分支原误用 `throw result.result.error`（该字段不存在）的缺陷，改为 `throw new Error(result.result.message || '操作失败')`，使「无权限操作」等错误信息可正确透出；并给 `api_book_search` 调用补 `success` 判断，避免权限失败时静默空列表。
    - 说明：受前端 `FRONTEND_PERMISSION_KEYS` 角色门控影响，GUEST 在界面上本就看不到增改删/上下架按钮，服务端 `checkPermission` 为纵深防御；二者口径一致。
 
-5. **api_bookitem_restock 刷新 created_at（隐藏业务影响）—— 已实施（待部署 + 一次性数据回填）**：原代码在重新上架时把 `created_at` 刷新为当前时间，导致"最近上架"列表重排。根因是 `created_at` 被错用于"上架时间"语义。已在 `book_item` 新增独立字段 **`on_shelf_at`（上架时间）**（`created_at` 回归"记录创建时间"语义，仅初次上架写入一次）；重新上架改为**刷新 `on_shelf_at` + `updated_at`，不再动 `created_at`**；`api_book_search` 的"上架期间"筛选、`api_book_searchRecent` 的"最近上架"排序及详情页"上架日"展示均改用 `on_shelf_at`。数据库设计文档（3.6）与本文档 0.4、E2/E3/E4/E5/E6/E7/F1/F2 已同步更新；代码改动与一次性数据回填云函数 `api_bookitem_backfill_onshelf` 已落地（见"五、代码更新确认"）。部署新代码**前**须先运行一次回填云函数。
+5. **api_bookitem_restock 刷新 created_at（隐藏业务影响）—— 已实施并部署**：原代码在重新上架时把 `created_at` 刷新为当前时间，导致"最近上架"列表重排。根因是 `created_at` 被错用于"上架时间"语义。已在 `book_item` 新增独立字段 **`on_shelf_at`（上架时间）**（`created_at` 回归"记录创建时间"语义，仅初次上架写入一次）；重新上架改为**刷新 `on_shelf_at` + `updated_at`，不再动 `created_at`**；`api_book_search` 的"上架期间"筛选、`api_book_searchRecent` 的"最近上架"排序及详情页"上架日"展示均改用 `on_shelf_at`。数据库设计文档（3.6）与本文档 0.4、E2/E3/E4/E5/E6/E7/F1/F2 已同步更新；代码改动与一次性数据回填云函数 `api_bookitem_backfill_onshelf` 已落地（见"五、代码更新确认"）。部署新代码**前**须先运行一次回填云函数。
 
 6. **D1 getByIsbn 与 D2 fetchExternal 成功标志不一致（已修复）**：原 D1 返回 `{ "exists": ... }`（无 `success`）、D2 返回 `{ "success": ... }`，前端需分别处理。已在本次修改中统一：D1 改为统一以 `success` 为顶层标志（`exists` 仅作"系统是否存在该 ISBN"的成功分支标记，随 `success: true` 返回），D2 保持 `success`；云函数代码与小程序调用处（`pages/book/book.js`）已同步修改。
 
