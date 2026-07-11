@@ -4,6 +4,9 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
 const db = cloud.database()
 
+// 引入权限公共模块
+const { PERMISSIONS, RESOURCE_TYPES, checkPermission } = require('./common/permission')
+
 // 将 book_item 文档转换为前端实体（camelCase，对齐文档 A6）
 function toBookItemEntity(item) {
   if (!item) return null
@@ -63,6 +66,20 @@ exports.main = async (event, context) => {
       success: false,
       message: '缺少 itemId'
     }
+  }
+
+  // 权限检查：查询实体书需 BOOKITEM_SEARCH 权限（OWNER/MEMBER/GUEST 均具备）
+  // 通过 resourceType + resourceId 由书籍自身解析所属家庭并校验家庭归属与权限
+  const wxContext = cloud.getWXContext()
+  const perm = await checkPermission({
+    db,
+    openid: wxContext.OPENID,
+    permission: PERMISSIONS.BOOKITEM_SEARCH,
+    resourceType: RESOURCE_TYPES.BOOK_ITEM,
+    resourceId: itemId
+  })
+  if (!perm.allowed) {
+    return { success: false, message: perm.message }
   }
 
   try {

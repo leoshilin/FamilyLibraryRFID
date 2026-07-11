@@ -5,7 +5,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
 const db = cloud.database()
 const _ = db.command
 
-const { getCurrentUser } = require('./common/permission')
+const { PERMISSIONS, RESOURCE_TYPES, checkPermission, getCurrentUser } = require('./common/permission')
 
 // 云函数入口函数
 exports.main = async (event) => {
@@ -34,6 +34,18 @@ exports.main = async (event) => {
     if (!familyId) {
       return { success: false, message: '未选择当前家庭' }
     }
+
+    // 权限检查：检索图书需 BOOKITEM_SEARCH 权限（OWNER/MEMBER/GUEST 均具备）
+    const perm = await checkPermission({
+      db,
+      openid: wxContext.OPENID,
+      permission: PERMISSIONS.BOOKITEM_SEARCH,
+      familyId
+    })
+    if (!perm.allowed) {
+      return { success: false, message: perm.message }
+    }
+
     const skip = (page - 1) * pageSize
 
     // ===============================

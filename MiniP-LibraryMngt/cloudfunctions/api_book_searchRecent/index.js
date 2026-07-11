@@ -8,7 +8,7 @@ cloud.init({
 const db = cloud.database()
 const _ = db.command
 
-const { getCurrentUser } = require('./common/permission')
+const { PERMISSIONS, RESOURCE_TYPES, checkPermission, getCurrentUser } = require('./common/permission')
 
 // 云函数入口函数
 
@@ -25,6 +25,17 @@ exports.main = async (event, context) => {
     const familyId = user.currentFamilyId
     if (!familyId) {
       return { success: false, message: '未选择当前家庭' }
+    }
+
+    // 权限检查：查看最近上架需 RECENTBOOK_SEARCH 权限（OWNER/MEMBER/GUEST 均具备）
+    const perm = await checkPermission({
+      db,
+      openid: wxContext.OPENID,
+      permission: PERMISSIONS.RECENTBOOK_SEARCH,
+      familyId
+    })
+    if (!perm.allowed) {
+      return { success: false, message: perm.message }
     }
 
     // 1️⃣ 获取最近5个上架的实体书，但仅限上架中（不包含已下架的）

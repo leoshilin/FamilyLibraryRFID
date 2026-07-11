@@ -441,13 +441,22 @@ Page({
         }
   
         const res = await wx.cloud.callFunction({
-  
+
           name: 'api_book_search',
-  
+
           data
-  
+
         })
-  
+
+        if (!res.result || !res.result.success) {
+          wx.showToast({
+            title: res.result?.message || '查询失败',
+            icon: 'none'
+          })
+          this.setData({ loadingMore: false })
+          return
+        }
+
         const list = res.result.data || []
   
         console.log(
@@ -650,7 +659,7 @@ Page({
 
               } else {
 
-                throw result.result.error
+                throw new Error(result.result.message || '操作失败')
 
               }
 
@@ -769,7 +778,7 @@ Page({
 
       } else {
 
-        throw result.result.error
+        throw new Error(result.result.message || '操作失败')
 
       }
 
@@ -864,7 +873,7 @@ Page({
         //立即刷新本页数据
         this.fetchBooks(true)
       } else {
-        throw result.result.error
+        throw new Error(result.result.message || '操作失败')
       }
     } catch (err) {
       wx.hideLoading()

@@ -10,7 +10,7 @@ const cloud = require('wx-server-sdk')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
 
-const { getCurrentUser } = require('./common/permission')
+const { PERMISSIONS, RESOURCE_TYPES, checkPermission, getCurrentUser } = require('./common/permission')
 
 // 云函数入口函数
 exports.main = async (event) => {
@@ -27,6 +27,17 @@ exports.main = async (event) => {
   const familyId = user.currentFamilyId
   if (!familyId) {
     return { success: false, message: '未选择当前家庭' }
+  }
+
+  // 权限检查：上架图书前需 BOOKITEM_CREATE 权限（OWNER/MEMBER，GUEST 无此权限）
+  const perm = await checkPermission({
+    db,
+    openid: wxContext.OPENID,
+    permission: PERMISSIONS.BOOKITEM_CREATE,
+    familyId
+  })
+  if (!perm.allowed) {
+    return { success: false, message: perm.message }
   }
 
   // 1️⃣ 查 meta

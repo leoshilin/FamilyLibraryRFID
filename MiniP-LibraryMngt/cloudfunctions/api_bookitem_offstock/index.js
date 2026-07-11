@@ -8,7 +8,7 @@ cloud.init({
 const db = cloud.database()
 const _ = db.command
 
-const { getCurrentUser } = require('./common/permission')
+const { PERMISSIONS, RESOURCE_TYPES, checkPermission, getCurrentUser } = require('./common/permission')
 
 // 云函数入口函数
 exports.main = async (event) => {
@@ -30,6 +30,17 @@ exports.main = async (event) => {
   const familyId = user.currentFamilyId
   if (!familyId) {
     return { success: false, message: '未选择当前家庭' }
+  }
+
+  // 权限检查：下架图书需 BOOKITEM_OFFSTOCK 权限（OWNER/MEMBER，GUEST 无此权限）
+  const perm = await checkPermission({
+    db,
+    openid: wxContext.OPENID,
+    permission: PERMISSIONS.BOOKITEM_OFFSTOCK,
+    familyId
+  })
+  if (!perm.allowed) {
+    return { success: false, message: perm.message }
   }
 
   console.log(`api_bookitem_offstock start, item_id=${item_id}, family_id=${familyId}, reason=${reason}`)
