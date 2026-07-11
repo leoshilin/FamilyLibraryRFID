@@ -22,6 +22,11 @@ user.currentFamilyId
 3. **登录态**：通过 `cloud.getWXContext().OPENID` → `getCurrentUser(db, openid)` 取得当前用户；未注册或 `status != ACTIVE` 的接口将返回失败。
 4. **库存状态字段**：book_item 使用 `inventory_status`（`in_stock` / `off_stock`）。
 5. **返回结构**：成功统一含 `success: true`；失败统一含 `success: false` 与 `message`（部分接口含 `reason` 枚举，见各接口"返回"）。
+6. **库存时间字段（book_item 三时间语义）**：数据库内部 snake_case（`created_at` / `on_shelf_at` / `updated_at`），API 返回统一 camelCase（`createdAt` / `onShelfAt` / `updatedAt`）。
+   - `created_at` / `createdAt`：**实体书数据记录**创建时刻。仅初次上架（`api_bookitem_create`）写入一次，**重新上架不刷新**。
+   - `on_shelf_at` / `onShelfAt`：**上架时间**，即当前"在架状态"的起始时刻。初次上架写入；重新上架（`api_bookitem_restock`）刷新；下架 / 更换书架 / 彻底删除 / 绑定解绑RFID 不刷新。用于"最近上架"排序（`api_book_searchRecent`）与"上架期间"筛选（`api_book_search`）及详情页"上架日"展示。
+   - `updated_at` / `updatedAt`：记录**末次更新**时刻。任意写操作（下架、重新上架、更换书架、彻底删除、绑定/解绑RFID）均刷新。
+   > 历史上"重新上架会刷新 `created_at`"导致"最近上架"列表重排的问题（见"三、遗留问题"第 5 条），已通过本语义拆分解决：重新上架只刷新 `on_shelf_at` 与 `updated_at`，不动 `created_at`。
 
 ---
 
@@ -992,11 +997,13 @@ api_user_login
     "rfidTagId": null,
     "fgDelete": false,
     "createdAt": "datetime",
+    "onShelfAt": "datetime",
     "updatedAt": "datetime"
   }
 }
 ```
 > 返回完整 bookItem 实体对象（camelCase），而非仅仅 bookItemId。
+> 三时间字段语义见 0.4 通用约定「库存时间字段」。本接口写入：`createdAt`（记录创建，仅此一次）、`onShelfAt`（上架时间，本次写入）、`updatedAt`（本次写入）。
 
 ---
 
@@ -1024,6 +1031,7 @@ api_user_login
 #### 处理规则
 - 当前用户须已注册且 `status = ACTIVE`
 - `item.inventory_status !== 'in_stock'` 时抛错拒绝
+- 仅刷新 `updated_at`；**不改动** `on_shelf_at`（下架不改变"上架时间"语义）
 
 
 #### 权限
@@ -1061,6 +1069,8 @@ api_user_login
 #### 处理规则
 - 当前用户须已注册且 `status = ACTIVE`
 - `item.inventory_status !== 'off_stock'` 时抛错拒绝
+- 恢复 `inventory_status = in_stock`，并**刷新 `on_shelf_at`（上架时间）与 `updated_at`**；**不改动 `created_at`**（记录创建时间保持初次上架时的值）
+  > 由此修复"重新上架导致'最近上架'列表重排"的历史问题（见"三、遗留问题"第 5 条）：重新上架现在只更新"上架时间 `on_shelf_at`"，`created_at` 不被刷新。
 
 
 #### 权限
@@ -1073,7 +1083,7 @@ api_user_login
 { "success": true }
 ```
 
-> 隐藏行为：代码在重新上架时会刷新 `created_at` 为当前时间，因此"最近上架"列表会把重新上架的书排到最前。如业务不期望此行为，需改代码仅更新 `updated_at`（见"三、遗留问题"）。
+> 历史行为（已废弃）：旧代码在重新上架时会刷新 `created_at` 为当前时间，导致"最近上架"列表把重新上架的书排到最前。现按"库存时间字段"语义拆分为刷新 `on_shelf_at` + `updated_at`，`created_at` 保持首次上架值。
 
 ---
 
@@ -1098,6 +1108,7 @@ api_user_login
 #### 处理规则
 - 当前用户须已注册且 `status = ACTIVE`
 - 校验 `item.inventory_status === 'off_stock'`，否则拒绝
+- 仅刷新 `updated_at`；**不改动** `on_shelf_at`
 
 
 #### 权限
@@ -1154,6 +1165,7 @@ api_user_login
     "rfidTagId": null,
     "fgDelete": false,
     "createdAt": "datetime",
+    "onShelfAt": "datetime",
     "updatedAt": "datetime"
   },
   "bookMeta": {
@@ -1198,6 +1210,7 @@ api_user_login
 
 #### 处理规则
 - familyId 取自 `user.currentFamilyId`
+- 仅刷新 `updated_at`（书架变更不改变"上架时间"，故 `on_shelf_at` 不改动）
 
 
 #### 权限
@@ -1271,7 +1284,7 @@ api_user_login
 > `isbn`、`bookshelfId` 为原文档遗漏的参数，已补录。
 
 #### 处理规则
-- 默认 `status = in_stock`、默认 `pageSize = 10`、按 `created_at` 倒序
+- 默认 `status = in_stock`、默认 `pageSize = 10`、按 `on_shelf_at` 倒序（上架时间，非记录创建时间）
 - `isbn` 与 `keyword` 取交集（`_.and`）
 
 
@@ -1291,7 +1304,7 @@ api_user_login
       "bookshelf_id": "bs001",
       "bookshelf_name": "我的书架",
       "status": "in_stock",
-      "created_at": "datetime",
+      "onShelfAt": "datetime",
       "rfid_tag_id": null,
       "title": "三体",
       "authors": "...",
@@ -1320,7 +1333,7 @@ api_user_login
 规则：
 - `inventory_status = in_stock`
 - `fg_delete = false`
-- 按 `created_at` 倒序
+- 按 `on_shelf_at` 倒序（上架时间，非记录创建时间）
 - 最多 5 条
 
 #### 入参
@@ -1362,7 +1375,7 @@ api_user_login
       "setIndex": null,
       "inventoryStatus": "in_stock",
       "rfid": null,
-      "inStockDate": "datetime",
+      "onShelfAt": "datetime",
       "inStockStatus": "in_stock"
     }
   ]
@@ -1699,7 +1712,7 @@ running
    - **调用侧**：修复 `pages/book/book.js`、`pages/book-search/book-search.js` 中失败分支原误用 `throw result.result.error`（该字段不存在）的缺陷，改为 `throw new Error(result.result.message || '操作失败')`，使「无权限操作」等错误信息可正确透出；并给 `api_book_search` 调用补 `success` 判断，避免权限失败时静默空列表。
    - 说明：受前端 `FRONTEND_PERMISSION_KEYS` 角色门控影响，GUEST 在界面上本就看不到增改删/上下架按钮，服务端 `checkPermission` 为纵深防御；二者口径一致。
 
-5. **api_bookitem_restock 刷新 created_at（隐藏业务影响）**：重新上架会把 `created_at` 刷新为当前时间，导致"最近上架"列表重排。若不符合预期，应改为仅更新 `updated_at`。
+5. **api_bookitem_restock 刷新 created_at（隐藏业务影响）—— 已实施（待部署 + 一次性数据回填）**：原代码在重新上架时把 `created_at` 刷新为当前时间，导致"最近上架"列表重排。根因是 `created_at` 被错用于"上架时间"语义。已在 `book_item` 新增独立字段 **`on_shelf_at`（上架时间）**（`created_at` 回归"记录创建时间"语义，仅初次上架写入一次）；重新上架改为**刷新 `on_shelf_at` + `updated_at`，不再动 `created_at`**；`api_book_search` 的"上架期间"筛选、`api_book_searchRecent` 的"最近上架"排序及详情页"上架日"展示均改用 `on_shelf_at`。数据库设计文档（3.6）与本文档 0.4、E2/E3/E4/E5/E6/E7/F1/F2 已同步更新；代码改动与一次性数据回填云函数 `api_bookitem_backfill_onshelf` 已落地（见"五、代码更新确认"）。部署新代码**前**须先运行一次回填云函数。
 
 6. **D1 getByIsbn 与 D2 fetchExternal 成功标志不一致（已修复）**：原 D1 返回 `{ "exists": ... }`（无 `success`）、D2 返回 `{ "success": ... }`，前端需分别处理。已在本次修改中统一：D1 改为统一以 `success` 为顶层标志（`exists` 仅作"系统是否存在该 ISBN"的成功分支标记，随 `success: true` 返回），D2 保持 `success`；云函数代码与小程序调用处（`pages/book/book.js`）已同步修改。
 
@@ -1773,3 +1786,69 @@ running
 ```
 
 > **推进建议**：在 `checkPermission` 的调用封装处（或新增 `fail(reason)` 辅助函数）统一把 `reason` + `message` 包成 `{ success: false, message, reason }`，避免各接口散落 `return { success: false, message }`，从而把遗留问题 3 的"错误枚举"真正落到接口契约层。
+
+---
+
+# 5. 代码更新确认（遗留问题 5 实施方案）
+
+> 阶段一（设计）已完成：字段语义、数据库设计（表 3.6）、接口契约（0.4、E2/E3/E4/E5/E6/E7/F1/F2）均按"新增 `on_shelf_at`"方案更新。本章为阶段二（实现）的逐文件改动清单，**已全部落地**（云函数 + 前端 + 一次性回填云函数），待 push、云端部署及运行一次回填。
+
+## 5.1 数据库字段改动
+- `book_item` 新增 `on_shelf_at`（datetime，必须）：初次上架与重新上架写入/刷新；下架、更换书架、彻底删除、绑定/解绑 RFID 不改动。
+- 既有 `created_at` 语义收敛为"记录创建时间"，仅初次上架写入一次。
+
+## 5.2 云函数改动清单
+
+| 云函数 | 文件 | 改动点 |
+| ------ | ---- | ------ |
+| E2 `api_bookitem_create` | `index.js` | 创建 `book_item` 时增加 `on_shelf_at: now`；返回实体 `bookItem` 增加 `onShelfAt: now` |
+| E4 `api_bookitem_restock` | `index.js` | **核心修复**：把 `created_at: now` 改为 `on_shelf_at: now`（保留 `updated_at: now`）。不再刷新 `created_at` |
+| E3 `api_bookitem_offstock` | `index.js` | 无需改动（本就只写 `updated_at`，不动 `on_shelf_at`） |
+| E7 `api_bookitem_updateBookshelf` | `index.js` | 无需改动（本就只写 `updated_at`，不动 `on_shelf_at`） |
+| E5 `api_bookitem_delete` | `index.js` | 无需改动（本就只写 `updated_at`，不动 `on_shelf_at`） |
+| E6 `api_bookitem_get` | `index.js` | `toBookItemEntity` 增加 `onShelfAt: item.on_shelf_at` |
+| F1 `api_book_search` | `index.js` | 排序 `sort({ created_at: -1 })` → `sort({ on_shelf_at: -1 })`；"上架期间"筛选 `itemMatch.created_at` → `itemMatch.on_shelf_at`；返回增加 `onShelfAt: item.on_shelf_at` |
+| F2 `api_book_searchRecent` | `index.js` | `orderBy('created_at','desc')` → `orderBy('on_shelf_at','desc')`；返回 `inStockDate: item.created_at` → `onShelfAt: item.on_shelf_at` |
+| G1/G2/H1/J3/J4（RFID 绑定/解绑，桩函数，待实现） | `index.js` | 实现时仅刷新 `updated_at`，**不**改动 `on_shelf_at` |
+| 一次性回填 `api_bookitem_backfill_onshelf`（新增云函数） | `index.js` | 上线前跑一次：`on_shelf_at` 缺失时置为 `created_at`；返回 `migrated` / `remainWithoutOnShelfAt` |
+
+## 5.3 前端（小程序）改动
+- `pages/book/book.js`（约第 292 行）：详情页"上架日"映射 `inStockDate: bookItem?.createdAt` → `inStockDate: bookItem?.onShelfAt`（改读新字段）。
+- 消费 `api_book_searchRecent` 的搜索/首页页：将 `inStockDate` 字段名切换为 `onShelfAt`（与 F2 返回一致）。
+
+## 5.4 一次性数据回填（上线前必做）
+历史 `book_item` 记录只有 `created_at`，无 `on_shelf_at`。由于旧代码在重新上架时已将 `created_at` 刷成"上架时间"，故回填语义为：`on_shelf_at` 为空（或不存在）时，置为 `created_at`。
+
+```js
+// 一次性回填云函数（仅跑一次，部署新代码前执行）
+const cloud = require('wx-server-sdk')
+cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
+const db = cloud.database()
+const _ = db.command
+
+exports.main = async () => {
+  // 1. 取出所有缺少 on_shelf_at 的 book_item
+  const res = await db.collection('book_item')
+    .where({ on_shelf_at: _.exists(false) })
+    .limit(1000)
+    .get()
+
+  let count = 0
+  for (const item of res.data) {
+    // 2. 历史数据中 created_at 实际就是"上架时间"（含曾被重新上架刷新过的值），直接回填
+    await db.collection('book_item').doc(item._id).update({
+      data: { on_shelf_at: item.created_at }
+    })
+    count++
+  }
+  return { success: true, migrated: count }
+}
+```
+
+> 说明：微信云开发不支持"把 A 字段值原子复制给 B 字段"的更新，故采用逐条 `doc(id).update` 的循环方式（超 1000 条需分页/分批）。若数据量大，建议在低峰期执行并做分页。部署新代码**前**先完成回填，避免新排序/筛选落到空值。
+
+## 5.5 验证要点
+- 重新上架后：`created_at` 不变、`on_shelf_at` 刷新为当前时间；`api_book_searchRecent` 把该书按新上架时间正确排序（不再因"记录创建时间"被刷新而异常置顶）。
+- 下架 / 更换书架 / 彻底删除：`on_shelf_at` 保持不变。
+- `api_book_search` 按"上架期间"筛选、`api_book_searchRecent` 排序均基于 `on_shelf_at`。
+

@@ -21,6 +21,7 @@ function toBookItemEntity(item) {
     rfidTagId: item.rfid_tag_id || null,
     fgDelete: item.fg_delete || false,
     createdAt: item.created_at,
+    onShelfAt: item.on_shelf_at || null,
     updatedAt: item.updated_at
   }
 }

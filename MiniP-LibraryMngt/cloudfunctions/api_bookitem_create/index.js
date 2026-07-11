@@ -123,6 +123,7 @@ exports.main = async (event) => {
       rfid_tag_id: null,
       fg_delete: false,
       created_at: now,
+      on_shelf_at: now,
       updated_at: now
     }
   })
@@ -141,6 +142,7 @@ exports.main = async (event) => {
     rfidTagId: null,
     fgDelete: false,
     createdAt: now,
+    onShelfAt: now,
     updatedAt: now
   }
 
