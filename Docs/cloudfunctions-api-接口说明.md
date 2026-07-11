@@ -1,9 +1,13 @@
 # 0. 当前待处理问题
-本章记载的是已知的，当前存在的问题或待改善事项。
-由于功能开发为优先，因此以下事项当前暂时不修改，仅做记录。在功能开发稳定后再考虑统一修改。
+本章记载内容有两类：
+ - a. 已知的，当前存在的待修复或待改善事项。
+ - b. 已修复的问题。但还未反映到下面文档的事项。
+
+由于功能开发为优先，因此a类事项当前暂时不修改，仅做记录。在功能开发稳定后再考虑统一修改。
 因此，文档中相关设计和本章节记载的内容可能会有冲突。
 
 ## 0.1 API全部直接传familyId
+b类已修复，未更新文档事项。
 目前API几乎都是：familyId作为入参。
 今后在用户登录和家庭功能上线之后，登录用户信息中可获取当前操作家庭
 
@@ -29,78 +33,787 @@ currentFamilyId
 ---
 
 ## 0.2 operator 不应该由客户端传
+b类已修复，未更新文档事项。
 当前版本是在用户登录功能设计之前完成的，因此operator 大量用了hard coding 传递了"admin-user"。包括部分函数的created_by入参。
 在功能稳定后下一阶段再统一修改。
 
 ## 0.3 命名不统一
+a类已知待改善事项。
 当前版本中item_id、itemId、bookItemId，familyId 与 family_id，tid与rfidTid等存在大量不统一的命名。
 在功能稳定后下一阶段再统一修改。
 未来的原则：
  - API 全部 camelCase
  - 数据库内部 snake_case
 
-
+---
 
 # 1. 整体架构
 
-| 编号 | API名称                      | 领域       |
-|------ | -------------------------- | -------- |
-|A2| api_bookitem_create        | BookItem |
-|A1| api_bookitem_prepareCreate | BookItem |
-|A3| api_bookitem_offstock      | BookItem |
-|A4| api_bookitem_restock       | BookItem |
-|A5| api_bookitem_delete        | BookItem |
-|A6| api_bookitem_get           | BookItem |
-|A21| api_bookitem_updateBookshelf           | BookItem |
-|A7| api_book_search            | Search   |
-|A8| api_recentbook_search            | Search   |
-|A9| api_bookmeta_getByIsbn     | BookMeta |
-|A10| api_bookmeta_fetchExternal | BookMeta |
-|A11| api_family_getCurrent | family |
-|A12| api_family_create | family |
-|A13| api_family_update | family |
-|A14| api_family_delete | family |
-|A22| api_family_list | family |
-|A15| api_bookshelf_create | bookshelf |
-|A16| api_bookshelf_update | bookshelf |
-|A17| api_bookshelf_delete | bookshelf |
-|A18| api_bookshelf_list | bookshelf |
-|A19| api_bookshelf_reorder | bookshelf |
-|A20| api_family_switchCurrent | family |
-|B1| api_task_createBindRfid | task |
-|B2| api_task_createFindBook | task |
-|C1| api_task_claim | task |
-|C2| api_task_complete | task |
-|C3| api_rfid_getBindingInfo | task |
-|C4| api_rfid_bind | task |
-|C5| api_rfid_unbind | task |
-|C6| api_bookitem_verifyIsbn | task |
-|C7| api_bookitem_getRfid | task |
-|D1| api_user_login | user |
-|D2| api_user_register | user |
-|D3| api_user_get | user |
-|D4| api_user_update | user |
-
-
-
-
-| 未来函数                |
-| ------------------- |
-| api_rfid_bind       |
-| api_rfid_find       |
-| api_rfid_getBinding |
-| api_rfid_unbind     |
-
-| 未来函数              |
-| ----------------- |
-| api_task_poll     |
-| api_task_accept   |
-| api_task_complete |
-| api_task_fail     |
+| 编号 | API名称                      | 领域       | 类别 |
+|------ | -------------------------- | -------- |-------- |
+|A1| api_user_login | user | 手机端操作：用户登录与管理 |
+|A2| api_user_register | user | 手机端操作：用户登录与管理 |
+|A3| api_user_get | user | 手机端操作：用户登录与管理 |
+|A4| api_user_update | user | 手机端操作：用户登录与管理 |
+|B1| api_family_getCurrent | family | 手机端操作：家庭主数据 |
+|B2| api_family_create | family | 手机端操作：家庭主数据 |
+|B3| api_family_update | family | 手机端操作：家庭主数据 |
+|B4| api_family_delete | family | 手机端操作：家庭主数据 |
+|B5| api_family_list | family | 手机端操作：家庭主数据 |
+|B6| api_family_switchCurrent | family | 手机端操作：家庭主数据 |
+|C1| api_bookshelf_create | bookshelf | 手机端操作：书架主数据 |
+|C2| api_bookshelf_update | bookshelf | 手机端操作：书架主数据 |
+|C3| api_bookshelf_delete | bookshelf | 手机端操作：书架主数据 |
+|C4| api_bookshelf_list | bookshelf | 手机端操作：书架主数据 |
+|C5| api_bookshelf_reorder | bookshelf | 手机端操作：书架主数据 |
+|D1| api_bookmeta_getByIsbn     | BookMeta | 手机端操作：书本主数据 |
+|D2| api_bookmeta_fetchExternal | BookMeta | 手机端操作：书本主数据 |
+|E1| api_bookitem_prepareCreate | BookItem | 手机端操作：实体书本上下架 |
+|E2| api_bookitem_create        | BookItem | 手机端操作：实体书本上下架 |
+|E3| api_bookitem_offstock      | BookItem | 手机端操作：实体书本上下架 |
+|E4| api_bookitem_restock       | BookItem | 手机端操作：实体书本上下架 |
+|E5| api_bookitem_delete        | BookItem | 手机端操作：实体书本上下架 |
+|E6| api_bookitem_get           | BookItem | 手机端操作：实体书本上下架 |
+|E7| api_bookitem_updateBookshelf           | BookItem | 手机端操作：实体书本上下架 |
+|F1| api_book_search            | Search   | 手机端操作：书本检索 |
+|F2| api_recentbook_search            | Search   | 手机端操作：书本检索 |
+|G1| api_task_createBindRfid | task | 手机端操作：任务创建 |
+|G2| api_task_createFindBook | task | 手机端操作：任务创建 |
+|H1| api_rfid_unbind | task | 手机端操作：任务执行 |
+|J1| api_task_accept | task | PDA操作：任务执行 |
+|J2| api_task_complete | task | PDA操作：任务执行 |
+|J3| api_rfid_getBindingInfo | task | PDA操作：任务执行 |
+|J4| api_rfid_bind | task | PDA操作：任务执行 |
 
 ---
 
-# A. 手机端书本管理
+# A. 手机端操作：用户登录与管理
+
+
+整体流程
+```
+进入小程序
+      ↓
+api_user_login
+      ↓
+registered=false
+      ↓
+显示 未注册用户
+      ↓
+点击注册
+      ↓
+api_user_register
+      ↓
+注册成功
+      ↓
+api_user_login
+      ↓
+显示用户信息
+```
+
+## D1. api_user_login
+### 功能
+
+根据当前微信账号查询系统用户。
+只查询。绝不创建。
+
+### 入参
+{}
+
+### 处理
+```
+获取openid
+
+查询user
+```
+### 返回1：已注册
+```
+{
+  "success": true,
+  "registered": true,
+
+  "user": {
+    "_id": "u001",
+    "nickName": "方大大",
+    "currentFamilyId": "f001"
+  }
+}
+```
+### 返回2：未注册
+```
+{
+  "success": true,
+  "registered": false
+}
+```
+
+## D2. api_user_register
+### 功能
+```
+注册系统用户
+```
+
+调用入口
+```
+我的
+↓
+未注册用户
+↓
+注册
+```
+
+
+### 入参
+```
+{
+  "nickName": "方大大"
+}
+```
+openid
+
+从：
+
+cloud.getWXContext()
+
+获取。
+
+### 处理
+```
+获取openid
+
+检查user是否存在
+
+存在
+    返回失败
+
+不存在
+    创建user
+```
+
+### 返回
+```
+{
+  "success": true,
+  "userId": "u001"
+}
+```
+
+## D3. api_user_get
+### 功能
+```
+获取用户信息。
+```
+
+### 入参
+```
+{
+  "userId": "u001"
+}
+```
+或
+```
+{}
+```
+根据openid获取。
+
+
+### 处理
+```
+```
+
+### 返回
+```
+{
+  "success": true,
+
+  "user": {
+    "_id": "u001",
+    "nickName": "方大大",
+    "currentFamilyId": "f001",
+    "status": "ACTIVE"
+  }
+}
+```
+
+---
+
+## D4. api_user_update
+### 功能
+```
+更新当前登录用户的昵称。
+```
+
+### 入参
+`{ 
+nickName 
+}`
+
+### 处理
+- **前置**：用户须已注册且 `status=ACTIVE`，
+否则返回 
+`{ 
+success:false, 
+message:'用户不存在'/'用户状态不可用' 
+}`
+
+
+### 返回
+* 成功返回：
+`{ 
+  success: true, 
+  user: { ...更新后user, nickName, updated_at } 
+}`
+
+* 失败返回：
+`{ 
+  success:false, 
+  message:'用户名不能为空' 
+  }` 
+  
+* 或异常 
+  `{ 
+    success:false, 
+    error 
+  }`
+
+
+---
+# B. 手机端操作：家庭主数据
+
+## A11. api_family_getCurrent
+
+
+### 功能
+获取当前登录用户访问中的家庭（不一定是用户创建的家庭，也可能是用户加入的家庭）
+
+### 入参
+{}
+
+### 处理规则
+
+### 返回
+- 成功返回：
+{
+  "success": true,
+  "family": {
+    "_id": "familyId",
+    "name": "我的家庭",
+    "status": "ACTIVE",
+    "created_by": "userId",
+    "created_at": "datetime"
+  },
+  "role": "OWNER",
+  "bookshelfCount": 1
+}
+
+- 无家庭返回:
+{
+  "success": true,
+  "family": null,
+  "role": null,
+  "bookshelfCount": 0
+}
+
+---
+
+## A12. api_family_create
+### 功能
+登录用户创建家庭
+
+### 入参
+{
+  "name": "我的家庭"
+}
+
+说明：
+name 可选。为空时默认“我的家庭”。
+
+### 处理规则
+- 创建家庭是特殊权限，只要注册用户即可创建，不依赖 user_family。
+- 校验用户是否已作为 `OWNER` 创建过家庭（一个用户只可创建一个家庭的限制，失败返回"当前用户已创建家庭"）
+- 创建默认书架"我的书架" 
+- 在 `user_family` 建立 `OWNER` 关系 
+- 更新 `user.currentFamilyId`。
+
+### 返回
+- 成功返回：
+{
+  "success": true,
+  "familyId": "familyId",
+  "bookshelfId": "bookshelfId",
+  "family": {
+    "_id": "familyId",
+    "name": "我的家庭",
+    "status": "ACTIVE"
+  }
+}
+
+- 失败返回示例：
+  {
+    "success": false,
+    "message": "用户未注册"
+  }
+
+  {
+    "success": false,
+    "message": "当前用户已创建家庭"
+  }
+
+---
+
+## A13. api_family_update
+### 功能
+更新指定家庭的名称信息
+
+### 入参
+{
+  "familyId": "familyId",
+  "name": "新的家庭名称"
+}
+
+### 处理规则
+
+### 返回
+- 成功返回：
+{
+  "success": true,
+  "family": {
+    "_id": "familyId",
+    "name": "新的家庭名称",
+    "status": "ACTIVE",
+    "updated_at": "datetime"
+  }
+}
+
+- 失败返回示例：
+  {
+    "success": false,
+    "message": "家庭名称不能为空"
+  }
+
+  {
+    "success": false,
+    "message": "无权限修改家庭"
+  }
+
+---
+
+## A14. api_family_delete
+
+### 功能
+删除指定家庭，逻辑删除，不做物理删除。
+
+### 入参
+{
+  "familyId": "familyId"
+}
+
+### 处理规则
+获取当前登录用户：openid -> user
+校验用户已注册且 status = ACTIVE
+校验 familyId 必填
+查询目标 family
+若家庭不存在或已 DISABLED，返回失败
+权限：role-permission 校验
+
+删除前检查该家庭下是否存在 status = ACTIVE 的书架
+若存在 ACTIVE 书架，拒绝删除
+若允许删除：更新 family.status = DISABLED
+写入 updated_by
+写入 updated_at
+
+如果当前用户的 currentFamilyId === familyId：删除 user.currentFamilyId 字段，不能写 null
+
+### 返回
+- 成功返回：
+  {
+    "success": true
+  }
+
+- 失败返回示例：
+  {
+    "success": false,
+    "message": "familyId不能为空"
+  }
+
+  {
+    "success": false,
+    "message": "家庭不存在"
+  }
+
+  {
+    "success": false,
+    "message": "无权限删除家庭"
+  }
+
+  {
+    "success": false,
+    "message": "当前家庭下存在有效书架，请先删除书架"
+  }
+
+---
+
+## A22. api_family_list
+### 功能
+ * 获取当前用户所属的全部家庭（自建 + 受邀加入）。
+
+### 入参
+ 无（openid 后端解析）
+
+### 返回
+{ 
+  success: true, 
+  list: [ { familyId, name, role, status, isCurrent } ] 
+}
+
+无家庭返回 
+{ 
+  success:true, 
+  list:[] 
+}
+
+### 处理规则
+* 该接口**不做 RBAC 校验**（仅 `getCurrentUser`）
+
+---
+## A20. api_family_switchCurrent
+### 功能
+切换当前登录用户的默认访问家庭（user.currentFamilyId）。
+
+说明：
+- 仅校验"登录用户是否属于目标家庭"（user_family 存在对应记录），不做 OWNER / MEMBER 角色级权限校验；任何已激活家庭成员均可切换。
+- 切换后影响后续依赖 currentFamilyId 默认值的接口。
+
+### 入参
+{
+  "familyId": "familyId"
+}
+
+### 处理规则
+获取当前登录用户：openid → user（getCurrentUser）
+校验 familyId 必填
+校验用户已注册且 status = ACTIVE
+查询 user_family 校验用户属于该家庭（userId + familyId 存在记录）
+查询目标 family，必须存在且 status = ACTIVE
+更新 user.currentFamilyId = familyId
+（不写 updated_at / updated_by；不做角色权限校验）
+
+### 返回
+- 成功返回：
+{
+  "success": true
+}
+
+- 失败返回示例：
+  {
+    "success": false,
+    "message": "familyId不能为空"
+  }
+
+  {
+    "success": false,
+    "message": "用户未注册"
+  }
+
+  {
+    "success": false,
+    "message": "用户状态不可用"
+  }
+
+  {
+    "success": false,
+    "message": "用户不属于该家庭"
+  }
+
+  {
+    "success": false,
+    "message": "家庭不存在或已失效"
+  }
+
+- 异常：
+  {
+    "success": false,
+    "message": "<err.message>"
+  }
+
+
+- 失败返回示例：
+  {
+    "success": false,
+    "message": "familyId不能为空"
+  }
+
+  {
+    "success": false,
+    "message": "用户未注册"
+  }
+
+  {
+    "success": false,
+    "message": "用户状态不可用"
+  }
+
+  {
+    "success": false,
+    "message": "用户不属于该家庭"
+  }
+
+  {
+    "success": false,
+    "message": "家庭不存在或已失效"
+  }
+
+- 异常：
+  {
+    "success": false,
+    "message": "<err.message>"
+  }
+---
+
+
+# C. 手机端操作：书架主数据
+
+## A15. api_bookshelf_create
+### 功能
+在指定家庭下创建书架
+
+### 入参
+{
+  "familyId": "familyId",
+  "name": "书架名称"
+}
+
+### 处理规则
+familyId 必填
+name 必填，trim 后不能为空
+当前用户必须已注册且 status = ACTIVE
+目标家庭必须存在且 status = ACTIVE
+权限：role-permission 校验
+
+同一家庭下 ACTIVE 书架数量不能超过 99
+sort_order 由后端计算：当前 ACTIVE 书架最大 sort_order + 1
+创建时写入：familyId
+name
+sort_order
+status = ACTIVE
+created_by
+created_at
+
+### 返回
+- 成功返回：
+{
+  "success": true,
+  "bookshelfId": "bookshelfId",
+  "bookshelf": {
+    "_id": "bookshelfId",
+    "familyId": "familyId",
+    "name": "书架名称",
+    "sort_order": 2,
+    "status": "ACTIVE"
+  }
+}
+
+---
+
+## A16. api_bookshelf_update
+
+### 功能
+修改指定书架名称
+
+### 入参
+{
+  "bookshelfId": "bookshelfId",
+  "name": "新的书架名称"
+}
+
+### 处理规则
+bookshelfId 必填
+name 必填
+查询书架，取得 familyId
+书架必须存在且 status = ACTIVE
+权限：role-permission 校验
+
+只修改名称，不修改 familyId、sort_order
+写入 updated_by、updated_at
+
+### 返回
+- 成功返回：
+  {
+    "success": true,
+    "bookshelf": {
+      "_id": "bookshelfId",
+      "familyId": "familyId",
+      "name": "新的书架名称",
+      "sort_order",
+      "status": "ACTIVE",
+      "updated_at": "datetime"
+    }
+  }
+
+---
+
+## A17. api_bookshelf_delete
+### 功能
+逻辑删除指定书架。
+
+### 入参
+{
+  "bookshelfId": "bookshelfId"
+}
+
+### 处理规则
+bookshelfId 必填
+查询书架，取得 familyId
+书架必须存在且 status = ACTIVE
+权限：role-permission 校验
+
+删除前检查该书架下是否存在有效在架图书：book_item.bookshelf_id = bookshelfId
+inventory_status = in_stock
+fg_delete 不为 true
+
+若存在，拒绝删除
+若允许删除：更新 bookshelf.status = DISABLED
+写入 updated_by
+写入 updated_at
+
+删除后重排同家庭下剩余 ACTIVE 书架的 sort_order
+
+### 返回
+- 成功返回：
+{
+  "success": true
+}
+
+- 失败返回示例：
+{
+  "success": false,
+  "message": "该书架下存在在架图书，无法删除"
+}
+
+---
+
+## A18. api_bookshelf_list
+### 功能
+查询指定家庭下 ACTIVE 书架列表
+
+### 入参
+{
+  "familyId": "familyId"
+}
+
+### 处理规则
+familyId 必填
+当前用户必须属于该家庭，或为 ADMIN
+按 sort_order 升序返回
+默认只返回 status = ACTIVE
+
+### 返回
+{
+  "success": true,
+  "list": [
+    {
+      "_id": "bookshelfId",
+      "familyId": "familyId",
+      "name": "我的书架",
+      "sort_order": 1,
+      "status": "ACTIVE"
+      "bookCount": 100 //在架图书数
+    }
+  ]
+}
+
+
+---
+
+## A19. api_bookshelf_reorder
+### 功能
+指定家庭下 书架的重新排序（sort_order）
+
+### 入参
+{
+  
+}
+* 需进一步明确参数定义
+
+### 处理规则
+
+### 返回
+
+
+---
+# D. 手机端操作：书本主数据
+## A9. api_bookmeta_getByIsbn
+
+（原 getBookMeta）
+
+### 功能
+
+按 ISBN 查询系统级主数据。
+
+用于：
+
+扫码
+↓
+先查本系统
+↓
+存在直接使用
+
+### 入参
+{
+  "isbn":"9787111122334"
+}
+
+### 处理规则
+
+###  返回
+{
+  "exists":true,
+  "book":{
+      ...
+  }
+}
+
+---
+
+## A10. api_bookmeta_fetchExternal
+
+（原 getBookFromDouban_v2）
+
+### 功能
+
+从外部数据源抓取书籍信息。
+
+当前：
+
+豆瓣HTML解析
+
+未来：
+
+豆瓣
+OpenLibrary
+Google Books
+国家图书馆
+
+都可以统一挂到这里。
+
+### 入参
+{
+  "isbn":"9787111122334"
+}
+
+### 处理规则
+
+### 返回
+{
+  "success":true,
+  "book":{
+      ...
+  }
+}
+
+---
+
+# E. 手机端操作：实体书本上下架
 ## A1. api_bookitem_prepareCreate
 （原 prepareInStock）
 
@@ -359,6 +1072,7 @@ status=off_stock
 
 ---
 
+# F. 手机端操作：书本检索
 ## A7. api_book_search
 
 （原 searchBooks）
@@ -431,537 +1145,14 @@ status=off_stock
 
 ---
 
-## A9. api_bookmeta_getByIsbn
 
-（原 getBookMeta）
 
-### 功能
 
-按 ISBN 查询系统级主数据。
 
-用于：
 
-扫码
-↓
-先查本系统
-↓
-存在直接使用
 
-### 入参
-{
-  "isbn":"9787111122334"
-}
 
-### 处理规则
-
-###  返回
-{
-  "exists":true,
-  "book":{
-      ...
-  }
-}
-
----
-
-## A10. api_bookmeta_fetchExternal
-
-（原 getBookFromDouban_v2）
-
-### 功能
-
-从外部数据源抓取书籍信息。
-
-当前：
-
-豆瓣HTML解析
-
-未来：
-
-豆瓣
-OpenLibrary
-Google Books
-国家图书馆
-
-都可以统一挂到这里。
-
-### 入参
-{
-  "isbn":"9787111122334"
-}
-
-### 处理规则
-
-### 返回
-{
-  "success":true,
-  "book":{
-      ...
-  }
-}
----
-
-## A11. api_family_getCurrent
-
-
-### 功能
-获取当前登录用户访问中的家庭（不一定是用户创建的家庭，也可能是用户加入的家庭）
-
-### 入参
-{}
-
-### 处理规则
-
-### 返回
-- 成功返回：
-{
-  "success": true,
-  "family": {
-    "_id": "familyId",
-    "name": "我的家庭",
-    "status": "ACTIVE",
-    "created_by": "userId",
-    "created_at": "datetime"
-  },
-  "role": "OWNER",
-  "bookshelfCount": 1
-}
-
-- 无家庭返回:
-{
-  "success": true,
-  "family": null,
-  "role": null,
-  "bookshelfCount": 0
-}
-
----
-
-## A12. api_family_create
-### 功能
-登录用户创建家庭
-
-### 入参
-{
-  "name": "我的家庭"
-}
-
-说明：
-name 可选。为空时默认“我的家庭”。
-
-### 处理规则
-- 创建家庭是特殊权限，只要注册用户即可创建，不依赖 user_family。
-- 校验用户是否已作为 `OWNER` 创建过家庭（一个用户只可创建一个家庭的限制，失败返回"当前用户已创建家庭"）
-- 创建默认书架"我的书架" 
-- 在 `user_family` 建立 `OWNER` 关系 
-- 更新 `user.currentFamilyId`。
-
-### 返回
-- 成功返回：
-{
-  "success": true,
-  "familyId": "familyId",
-  "bookshelfId": "bookshelfId",
-  "family": {
-    "_id": "familyId",
-    "name": "我的家庭",
-    "status": "ACTIVE"
-  }
-}
-
-- 失败返回示例：
-  {
-    "success": false,
-    "message": "用户未注册"
-  }
-
-  {
-    "success": false,
-    "message": "当前用户已创建家庭"
-  }
-
----
-
-## A13. api_family_update
-### 功能
-更新指定家庭的名称信息
-
-### 入参
-{
-  "familyId": "familyId",
-  "name": "新的家庭名称"
-}
-
-### 处理规则
-
-### 返回
-- 成功返回：
-{
-  "success": true,
-  "family": {
-    "_id": "familyId",
-    "name": "新的家庭名称",
-    "status": "ACTIVE",
-    "updated_at": "datetime"
-  }
-}
-
-- 失败返回示例：
-  {
-    "success": false,
-    "message": "家庭名称不能为空"
-  }
-
-  {
-    "success": false,
-    "message": "无权限修改家庭"
-  }
-
----
-
-## A14. api_family_delete
-
-### 功能
-删除指定家庭，逻辑删除，不做物理删除。
-
-### 入参
-{
-  "familyId": "familyId"
-}
-
-### 处理规则
-获取当前登录用户：openid -> user
-校验用户已注册且 status = ACTIVE
-校验 familyId 必填
-查询目标 family
-若家庭不存在或已 DISABLED，返回失败
-权限：role-permission 校验
-
-删除前检查该家庭下是否存在 status = ACTIVE 的书架
-若存在 ACTIVE 书架，拒绝删除
-若允许删除：更新 family.status = DISABLED
-写入 updated_by
-写入 updated_at
-
-如果当前用户的 currentFamilyId === familyId：删除 user.currentFamilyId 字段，不能写 null
-
-### 返回
-- 成功返回：
-  {
-    "success": true
-  }
-
-- 失败返回示例：
-  {
-    "success": false,
-    "message": "familyId不能为空"
-  }
-
-  {
-    "success": false,
-    "message": "家庭不存在"
-  }
-
-  {
-    "success": false,
-    "message": "无权限删除家庭"
-  }
-
-  {
-    "success": false,
-    "message": "当前家庭下存在有效书架，请先删除书架"
-  }
-
----
-
-## A22. api_family_list
-### 功能
- * 获取当前用户所属的全部家庭（自建 + 受邀加入）。
-
-### 入参
- 无（openid 后端解析）
-
-### 返回
-{ 
-  success: true, 
-  list: [ { familyId, name, role, status, isCurrent } ] 
-}
-
-无家庭返回 
-{ 
-  success:true, 
-  list:[] 
-}
-
-### 处理规则
-* 该接口**不做 RBAC 校验**（仅 `getCurrentUser`）
-
----
-
-## A15. api_bookshelf_create
-### 功能
-在指定家庭下创建书架
-
-### 入参
-{
-  "familyId": "familyId",
-  "name": "书架名称"
-}
-
-### 处理规则
-familyId 必填
-name 必填，trim 后不能为空
-当前用户必须已注册且 status = ACTIVE
-目标家庭必须存在且 status = ACTIVE
-权限：role-permission 校验
-
-同一家庭下 ACTIVE 书架数量不能超过 99
-sort_order 由后端计算：当前 ACTIVE 书架最大 sort_order + 1
-创建时写入：familyId
-name
-sort_order
-status = ACTIVE
-created_by
-created_at
-
-### 返回
-- 成功返回：
-{
-  "success": true,
-  "bookshelfId": "bookshelfId",
-  "bookshelf": {
-    "_id": "bookshelfId",
-    "familyId": "familyId",
-    "name": "书架名称",
-    "sort_order": 2,
-    "status": "ACTIVE"
-  }
-}
-
----
-
-## A16. api_bookshelf_update
-
-### 功能
-修改指定书架名称
-
-### 入参
-{
-  "bookshelfId": "bookshelfId",
-  "name": "新的书架名称"
-}
-
-### 处理规则
-bookshelfId 必填
-name 必填
-查询书架，取得 familyId
-书架必须存在且 status = ACTIVE
-权限：role-permission 校验
-
-只修改名称，不修改 familyId、sort_order
-写入 updated_by、updated_at
-
-### 返回
-- 成功返回：
-  {
-    "success": true,
-    "bookshelf": {
-      "_id": "bookshelfId",
-      "familyId": "familyId",
-      "name": "新的书架名称",
-      "sort_order",
-      "status": "ACTIVE",
-      "updated_at": "datetime"
-    }
-  }
-
----
-
-## A17. api_bookshelf_delete
-### 功能
-逻辑删除指定书架。
-
-### 入参
-{
-  "bookshelfId": "bookshelfId"
-}
-
-### 处理规则
-bookshelfId 必填
-查询书架，取得 familyId
-书架必须存在且 status = ACTIVE
-权限：role-permission 校验
-
-删除前检查该书架下是否存在有效在架图书：book_item.bookshelf_id = bookshelfId
-inventory_status = in_stock
-fg_delete 不为 true
-
-若存在，拒绝删除
-若允许删除：更新 bookshelf.status = DISABLED
-写入 updated_by
-写入 updated_at
-
-删除后重排同家庭下剩余 ACTIVE 书架的 sort_order
-
-### 返回
-- 成功返回：
-{
-  "success": true
-}
-
-- 失败返回示例：
-{
-  "success": false,
-  "message": "该书架下存在在架图书，无法删除"
-}
-
----
-
-## A18. api_bookshelf_list
-### 功能
-查询指定家庭下 ACTIVE 书架列表
-
-### 入参
-{
-  "familyId": "familyId"
-}
-
-### 处理规则
-familyId 必填
-当前用户必须属于该家庭，或为 ADMIN
-按 sort_order 升序返回
-默认只返回 status = ACTIVE
-
-### 返回
-{
-  "success": true,
-  "list": [
-    {
-      "_id": "bookshelfId",
-      "familyId": "familyId",
-      "name": "我的书架",
-      "sort_order": 1,
-      "status": "ACTIVE"
-      "bookCount": 100 //在架图书数
-    }
-  ]
-}
-
-
----
-
-## A19. api_bookshelf_reorder
-### 功能
-指定家庭下 书架的重新排序（sort_order）
-
-### 入参
-{
-  
-}
-* 需进一步明确参数定义
-
-### 处理规则
-
-### 返回
-
-
----
-
-## A20. api_family_switchCurrent
-### 功能
-切换当前登录用户的默认访问家庭（user.currentFamilyId）。
-
-说明：
-- 仅校验"登录用户是否属于目标家庭"（user_family 存在对应记录），不做 OWNER / MEMBER 角色级权限校验；任何已激活家庭成员均可切换。
-- 切换后影响后续依赖 currentFamilyId 默认值的接口。
-
-### 入参
-{
-  "familyId": "familyId"
-}
-
-### 处理规则
-获取当前登录用户：openid → user（getCurrentUser）
-校验 familyId 必填
-校验用户已注册且 status = ACTIVE
-查询 user_family 校验用户属于该家庭（userId + familyId 存在记录）
-查询目标 family，必须存在且 status = ACTIVE
-更新 user.currentFamilyId = familyId
-（不写 updated_at / updated_by；不做角色权限校验）
-
-### 返回
-- 成功返回：
-{
-  "success": true
-}
-
-- 失败返回示例：
-  {
-    "success": false,
-    "message": "familyId不能为空"
-  }
-
-  {
-    "success": false,
-    "message": "用户未注册"
-  }
-
-  {
-    "success": false,
-    "message": "用户状态不可用"
-  }
-
-  {
-    "success": false,
-    "message": "用户不属于该家庭"
-  }
-
-  {
-    "success": false,
-    "message": "家庭不存在或已失效"
-  }
-
-- 异常：
-  {
-    "success": false,
-    "message": "<err.message>"
-  }
-
-
-- 失败返回示例：
-  {
-    "success": false,
-    "message": "familyId不能为空"
-  }
-
-  {
-    "success": false,
-    "message": "用户未注册"
-  }
-
-  {
-    "success": false,
-    "message": "用户状态不可用"
-  }
-
-  {
-    "success": false,
-    "message": "用户不属于该家庭"
-  }
-
-  {
-    "success": false,
-    "message": "家庭不存在或已失效"
-  }
-
-- 异常：
-  {
-    "success": false,
-    "message": "<err.message>"
-  }
----
-
-# B. 手机端创建任务
+# G. 手机端操作：任务创建
 ## B1. api_task_createBindRfid
 ### 功能
 
@@ -996,6 +1187,8 @@ PDA 后续轮询获取
 
   * 返回task对象，而非仅仅taskId。
 
+---
+
 ## B2. api_task_createFindBook
 ### 功能
 
@@ -1025,7 +1218,43 @@ PDA 后续执行
   "taskId":"task00002"
 }
 
-# C. PDA端操作
+---
+
+# H. 手机端操作：任务执行
+
+## H1. api_rfid_unbind
+### 功能
+
+主动解绑 RFID。
+
+当前版本虽然业务中未出现入口。
+
+但未来：
+
+图书详情
+↓
+解绑RFID
+
+大概率会需要。
+
+建议现在预留。
+
+### 入参
+{
+  "bookItemId",
+  "operator""
+}
+
+### 处理规则
+
+### 返回
+{
+  "success":true
+}
+
+---
+
+# J. PDA操作：任务执行
 ## C1. api_task_claim
 ### 功能
 
@@ -1139,6 +1368,10 @@ find_book
   }
 }
 
+---
+
+
+
 ## C4. api_rfid_bind
 ### 功能
 
@@ -1187,300 +1420,13 @@ action：
 bind
 rebind
 
-## C5. api_rfid_unbind
-### 功能
-
-主动解绑 RFID。
-
-当前版本虽然业务中未出现入口。
-
-但未来：
-
-图书详情
-↓
-解绑RFID
-
-大概率会需要。
-
-建议现在预留。
-
-### 入参
-{
-  "bookItemId":"bi00001",
-  "operator":"admin-user"
-}
-
-### 处理规则
-
-### 返回
-{
-  "success":true
-}
-
-
-## C6. api_bookitem_verifyIsbn
-### 功能
-
-PDA执行绑定时的图书校验
-
-设计文档中有一个关键步骤：
-
-PDA领取任务
-↓
-显示书名
-↓
-用户扫描ISBN
-↓
-校验是否正确
-
-建议增加专门接口。
-
-校验当前任务对应图书。
-
-避免用户拿错书。
-
-### 入参
-{
-  "bookItemId":"bi00001",
-  "isbn":"9787536692930"
-}
-
-### 处理规则
-
-### 返回
-{
-  "success":true,
-  "matched":true
-}
-
-或
-
-{
-  "success":true,
-  "matched":false
-}
-
-
-## C7. api_bookitem_getRfid
-### 功能
-
-实际上寻书几乎不需要新增业务接口
-因为 PDA 拿到任务后只需要获得：
-
-bookItemId
-↓
-查询rfid_tid
-↓
-启动扫描
-
-因此增加一个详情接口即可。
-（PDA获取任务中应该包含Rfid的信息，不需要查询）
-
-获取图书绑定 RFID 信息。
-
-### 入参
-{
-  "bookItemId":"bi00001"
-}
-
-### 处理规则
-
-### 返回
-{
-  "success":true,
-  "rfidTid":"E280699500000001"
-}
-
-
-# D. 手机端登录初始化相关API
-整体流程
-```
-进入小程序
-      ↓
-api_user_login
-      ↓
-registered=false
-      ↓
-显示 未注册用户
-      ↓
-点击注册
-      ↓
-api_user_register
-      ↓
-注册成功
-      ↓
-api_user_login
-      ↓
-显示用户信息
-```
-
-## D1. api_user_login
-### 功能
-
-根据当前微信账号查询系统用户。
-只查询。绝不创建。
-
-### 入参
-{}
-
-### 处理
-```
-获取openid
-
-查询user
-```
-### 返回1：已注册
-```
-{
-  "success": true,
-  "registered": true,
-
-  "user": {
-    "_id": "u001",
-    "nickName": "方大大",
-    "currentFamilyId": "f001"
-  }
-}
-```
-### 返回2：未注册
-```
-{
-  "success": true,
-  "registered": false
-}
-```
-
-## D2. api_user_register
-### 功能
-```
-注册系统用户
-```
-
-调用入口
-```
-我的
-↓
-未注册用户
-↓
-注册
-```
-
-
-### 入参
-```
-{
-  "nickName": "方大大"
-}
-```
-openid
-
-从：
-
-cloud.getWXContext()
-
-获取。
-
-### 处理
-```
-获取openid
-
-检查user是否存在
-
-存在
-    返回失败
-
-不存在
-    创建user
-```
-
-### 返回
-```
-{
-  "success": true,
-  "userId": "u001"
-}
-```
-
-## D3. api_user_get
-### 功能
-```
-获取用户信息。
-```
-
-### 入参
-```
-{
-  "userId": "u001"
-}
-```
-或
-```
-{}
-```
-根据openid获取。
-
-
-### 处理
-```
-```
-
-### 返回
-```
-{
-  "success": true,
-
-  "user": {
-    "_id": "u001",
-    "nickName": "方大大",
-    "currentFamilyId": "f001",
-    "status": "ACTIVE"
-  }
-}
-```
-
 ---
 
-## D4. api_user_update
-### 功能
-```
-更新当前登录用户的昵称。
-```
-
-### 入参
-`{ 
-nickName 
-}`
-
-### 处理
-- **前置**：用户须已注册且 `status=ACTIVE`，
-否则返回 
-`{ 
-success:false, 
-message:'用户不存在'/'用户状态不可用' 
-}`
 
 
-### 返回
-* 成功返回：
-`{ 
-  success: true, 
-  user: { ...更新后user, nickName, updated_at } 
-}`
-
-* 失败返回：
-`{ 
-  success:false, 
-  message:'用户名不能为空' 
-  }` 
-  
-* 或异常 
-  `{ 
-    success:false, 
-    error 
-  }`
 
 
----
+
 
 # 3. 从架构层面的调整建议
 
