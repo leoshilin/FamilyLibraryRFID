@@ -1,20 +1,15 @@
 # 0. 当前待处理问题
-本章记载内容有两类：
- - a. 已知的，当前存在的待修复或待改善事项。
- - b. 已修复的问题。但还未反映到下面文档的事项。
+本章记载内容根据进度更新可能有两类：
+ - a. 已知的，当前存在的待修复或待改善事项。（代码侧，文档侧均未修正）
+ - b. 已修复的问题。但还未反映到下面文档的事项。（代码侧已修正，文档侧未修正）
 
 由于功能开发为优先，因此a类事项当前暂时不修改，仅做记录。在功能开发稳定后再考虑统一修改。
 因此，文档中相关设计和本章节记载的内容可能会有冲突。
 
-> 说明：0.1、0.2 已于代码侧完成改善，并经本次文档核对（2025 复核）将说明同步至下方各接口章节。0.3 仍为待改善项（见下）。
+---
 
-## 0.1 familyId 由服务端从登录态解析（原"API全部直接传familyId"） —— 已解决
-b类已修复，且文档已同步更新。
-
-**原问题**：早期版本中 familyId 由各前端/客户端直接传入。
-
-**当前实现（代码已落地）**：除"针对某一个具体家庭"的接口（family_update / family_delete / family_switchCurrent）外，其余以"当前家庭"为作用域的接口，**不再接收客户端传入的 familyId**，统一在后台通过登录态解析：
-
+## 0.1 通用约定
+1. **familyId**：仅"目标家庭"类接口（B3/B4/B6）由客户端传入；其余从 `user.currentFamilyId` 解析。
 ```
 openid
 ↓
@@ -23,49 +18,25 @@ user（getCurrentUser）
 user.currentFamilyId
 ```
 
-因此下列接口文档的"入参"中已删除 familyId（它由服务端从登录态取得）：
-- api_bookitem_prepareCreate / create / offstock / restock / delete / updateBookshelf
-- api_book_search / api_book_searchRecent
-- api_bookshelf_create / api_bookshelf_list
+2. **operator / created_by**：一律由服务端从登录态（`user._id`）解析，客户端不得传入。
+3. **登录态**：通过 `cloud.getWXContext().OPENID` → `getCurrentUser(db, openid)` 取得当前用户；未注册或 `status != ACTIVE` 的接口将返回失败。
+4. **库存状态字段**：book_item 使用 `inventory_status`（`in_stock` / `off_stock`）。
+5. **返回结构**：成功统一含 `success: true`；失败统一含 `success: false` 与 `message`（部分接口含 `reason` 枚举，见各接口"返回"）。
 
-而 family_update / family_delete / family_switchCurrent 操作的"目标家庭"由客户端以 familyId 指定（语义正确，予以保留）。
+---
 
-## 0.2 operator 由服务端从登录态解析（原"operator 不应该由客户端传"） —— 已解决
-b类已修复，且文档已同步更新。
-
-**原问题**：当前版本是在用户登录功能设计之前完成的，因此 operator 大量使用了 hard coding 传递了 "admin-user"，包括部分函数的 created_by 入参。
-
-**当前实现（代码已落地）**：所有写操作（库存日志、RFID 绑定日志等）的 operator / created_by **不再由客户端传入**，统一从登录态解析当前用户：
-
-```
-openid
-↓
-user（getCurrentUser）
-↓
-user._id  →  operator / created_by
-```
-
-因此下方各接口"入参"中已删除 operator（含 created_by 由服务端填写的接口），不再要求客户端传参。
-
-## 0.3 命名不统一 —— 待改善（a类）
+## 0.2 命名不统一 —— 待改善（a类）
 当前版本中 item_id、itemId、bookItemId，familyId 与 family_id，tid 与 rfidTid 等存在大量不统一的命名。
 在功能稳定后下一阶段再统一修改。
 未来的原则：
  - API 入参 / 返回（前端实体）全部 camelCase
  - 数据库内部 snake_case
 
-> 注：经本次核对，代码内部已做到"入参/返回用 camelCase 实体、数据库用 snake_case"；但跨接口入参仍存在 `itemId`（camel）与 `item_id`（snake）混用（如 api_bookitem_get 用 itemId，api_bookitem_offstock/delete/restock 用 item_id）。属 0.3 范围内的待统一项，见"三、遗留问题"第 3 条。
+> 注：经本次核对，代码内部已做到"入参/返回用 camelCase 实体、数据库用 snake_case"；但跨接口入参仍存在 `itemId`（camel）与 `item_id`（snake）混用（如 api_bookitem_get 用 itemId，api_bookitem_offstock/delete/restock 用 item_id）。见"3.遗留问题"第 2 条。
 
-## 0.4 通用约定（已落地，供各接口引用）
-1. **familyId**：仅"目标家庭"类接口（B3/B4/B6）由客户端传入；其余从 `user.currentFamilyId` 解析。
-2. **operator / created_by**：一律由服务端从登录态（`user._id`）解析，客户端不得传入。
-3. **登录态**：通过 `cloud.getWXContext().OPENID` → `getCurrentUser(db, openid)` 取得当前用户；未注册或 `status != ACTIVE` 的接口将返回失败。
-4. **库存状态字段**：book_item 使用 `inventory_status`（`in_stock` / `off_stock`），与数据库设计文档一致（历史 `status` 字段冲突已修复）。
-5. **返回结构**：成功统一含 `success: true`；失败统一含 `success: false` 与 `message`（部分接口含 `reason` 枚举，见各接口"返回"）。
 
----
 
-# 1. 整体架构
+# 1. API整体清单
 
 | 编号 | API名称                      | 领域       | 类别 | 实现状态 |
 |------ | -------------------------- | -------- |-------- |-------- |
@@ -110,7 +81,8 @@ user._id  →  operator / created_by
 
 ---
 
-# A. 手机端操作：用户登录与管理
+# 2. API接口详细定义
+## A. 手机端操作：用户登录与管理
 
 整体流程
 ```
@@ -133,21 +105,21 @@ api_user_login
 显示用户信息
 ```
 
-## A1. api_user_login
-### 功能
+### A1. api_user_login
+#### 功能
 根据当前微信账号查询系统用户。只查询，绝不创建。
 
-### 入参
+#### 入参
 ```json
 {}
 ```
 
-### 处理规则
+#### 处理规则
 - 获取 openid（`cloud.getWXContext()`）
 - 查询 user
 - 已注册用户：构建当前家庭下的权限集 `permissions`（`buildFamilyPermissions`）
 
-### 返回
+#### 返回
 **已注册：**
 ```json
 {
@@ -1533,98 +1505,17 @@ running
 
 ---
 
-# 3. 从架构层面的调整建议
 
-你现在实际上已经出现一个现象：
-
-prepareInStock
-commitInStock
-
-两个函数共同完成一次上架
-
-而：
-
-offBookItem
-onBookItem
-deleteBookItem
-
-又是三个独立函数
-
-从DDD（领域设计）角度看其实不完全对称。
-
-我会建议最终形成：
-
-api.bookitem.create
-api.bookitem.updateStatus
-api_bookitem_delete
-api_bookitem_get
-
-api_book_search
-api.book.recent
-
-api_bookmeta_getByIsbn
-api_bookmeta_fetchExternal
-
-其中：
-
-updateStatus
-
-统一处理：
-
-{
-  "action":"off_stock"
-}
-{
-  "action":"restock"
-}
-
-以后：
-
-{
-  "action":"bind_rfid"
-}
-{
-  "action":"lost"
-}
-
-都能扩展。
-
-不过这是第二阶段优化。
-
-对于你现在的开发进度，我建议：
-
-先不要合并。
-
-保持：
-
-offBookItem
-onBookItem
-deleteBookItem
-
-三条独立API。
-
-这样逻辑最清晰，也最容易调试和排查问题。
-
-等 RFID、Task、Inventory 全部完成后，再考虑 API 收敛与统一。这样风险最低。
-
----
-
-# 三、遗留问题（本次核对新增，待后续处理）
-
-> 以下为 2025 年核对 `Docs/cloudfunctions-api-接口说明.md` 与代码 `MiniP-LibraryMngt/cloudfunctions/` 后发现的"文档 vs 代码"问题汇总。0.1、0.2 已解决；其余为建议改进项。
+# 3. 遗留问题
 
 1. **实现状态 / 脚手架**：架构表所列 33 个接口中，25 个已有真实实现（含 F2 `api_book_searchRecent`），另有 9 个云函数文件仅为**桩函数**（仅回显 `event` 与微信上下文，未实现业务逻辑）：A3 `api_user_get`、C5 `api_bookshelf_reorder`、G1/G2（任务创建）、H1 `api_task_unbindRfid`、J1–J4（PDA 任务执行/RFID 绑定）。文档已在架构表与各章节标注 ✅/🚧，避免读者误判为已上线。
 
-2. **架构表命名已对齐代码**：原架构表与章节正文的命名（`api_recentbook_search`、`api_rfid_unbind`、`api_rfid_getBindingInfo`、`api_rfid_bind`）与代码实际云函数名不一致；现已统一为代码名（`api_book_searchRecent`、`api_task_unbindRfid`、`api_task_getRfidBindingInfo`、`api_task_bindRfid`）。
+2. **入参命名不统一（0.3 范围内）**：`itemId`（camel，如 api_bookitem_get / updateBookshelf）与 `item_id`（snake，如 offstock / restock / delete）跨接口混用；`familyId`/`family_id`、`tid`/`rfidTid` 同理。建议下一阶段统一为 camelCase。
 
-3. **A1 返回遗漏 `permissions`**：代码在已注册时一并返回当前家庭权限集，文档已补。
+3. **通用失败返回 / 错误枚举未系统化**：代码通过 `checkPermission` 统一返回 `{ success:false, message, reason }`，`reason` 枚举含 `USER_NOT_FOUND` / `USER_DISABLED` / `MISSING_FAMILY_ID` / `NOT_FAMILY_MEMBER` / `PERMISSION_DENIED` / `MISSING_DB` / `MISSING_PERMISSION`。建议新增"通用错误返回"章节集中说明。
 
-4. **入参命名不统一（0.3 范围内）**：`itemId`（camel，如 api_bookitem_get / updateBookshelf）与 `item_id`（snake，如 offstock / restock / delete）跨接口混用；`familyId`/`family_id`、`tid`/`rfidTid` 同理。建议下一阶段统一为 camelCase。
+4. **权限体系未逐接口标注**：仅 family / bookshelf 的增改删与 `api_bookitem_updateBookshelf` 在代码中显式 `checkPermission`；bookitem 的上架/下架/重新上架/删除及检索类接口当前仅做 `getCurrentUser`（登录态）校验，未做细粒度权限检查。建议对照需求文档 RBAC 补齐，并在文档逐接口标注所需 `PERMISSION` 与允许角色（特别注意 GUEST 仅有 BOOKSHELF_LIST / BOOKITEM_SEARCH / RECENTBOOK_SEARCH 三项权限）。
 
-5. **通用失败返回 / 错误枚举未系统化**：代码通过 `checkPermission` 统一返回 `{ success:false, message, reason }`，`reason` 枚举含 `USER_NOT_FOUND` / `USER_DISABLED` / `MISSING_FAMILY_ID` / `NOT_FAMILY_MEMBER` / `PERMISSION_DENIED` / `MISSING_DB` / `MISSING_PERMISSION`。建议新增"通用错误返回"章节集中说明。
+5. **api_bookitem_restock 刷新 created_at（隐藏业务影响）**：重新上架会把 `created_at` 刷新为当前时间，导致"最近上架"列表重排。若不符合预期，应改为仅更新 `updated_at`。
 
-6. **权限体系未逐接口标注**：仅 family / bookshelf 的增改删与 `api_bookitem_updateBookshelf` 在代码中显式 `checkPermission`；bookitem 的上架/下架/重新上架/删除及检索类接口当前仅做 `getCurrentUser`（登录态）校验，未做细粒度权限检查。建议对照需求文档 RBAC 补齐，并在文档逐接口标注所需 `PERMISSION` 与允许角色（特别注意 GUEST 仅有 BOOKSHELF_LIST / BOOKITEM_SEARCH / RECENTBOOK_SEARCH 三项权限）。
-
-7. **api_bookitem_restock 刷新 created_at（隐藏业务影响）**：重新上架会把 `created_at` 刷新为当前时间，导致"最近上架"列表重排。若不符合预期，应改为仅更新 `updated_at`。
-
-8. **D1 getByIsbn 与 D2 fetchExternal 成功标志不一致**：D1 用 `exists`、D2 用 `success`，前端需分别处理。
+6. **D1 getByIsbn 与 D2 fetchExternal 成功标志不一致**：D1 用 `exists`、D2 用 `success`，前端需分别处理。
