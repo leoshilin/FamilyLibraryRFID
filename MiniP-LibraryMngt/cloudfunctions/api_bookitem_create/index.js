@@ -10,22 +10,22 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
 
 const { PERMISSIONS, RESOURCE_TYPES, checkPermission, getCurrentUser } = require('./common/permission')
 
-// 写入时做格式清洗
+// 写入时做格式清洗：入参为 camelCase（对齐 API 入参规范），输出转为 DB 内部 snake_case
 function normalizeInput(input) {
   return {
     isbn: input.isbn,
     title: input.title ?? '',
     authors: input.authors ?? '',
     publisher: input.publisher ?? '',
-    publish_year: input.publish_year ?? '',
+    publish_year: input.publishYear ?? '',
     price: input.price ?? '',
     binding: input.binding ?? '',
-    cover_url: input.cover_url ?? '',
+    cover_url: input.coverUrl ?? '',
 
-    is_set: input.is_set ?? false,
-    set_total_count: input.set_total_count ?? null,
+    is_set: input.isSet ?? false,
+    set_total_count: input.setTotalCount ?? null,
     source: input.source ?? '',
-    created_at: input.created_at
+    created_at: input.createdAt
   }
 }
 // 云函数入口函数
@@ -85,19 +85,20 @@ exports.main = async (event) => {
     //book_meta中不存在，则使用前端页面输入的数据创建主数据（首先做格式清洗）
     
     // 格式清洗
-    const cleanMeta = normalizeInput({      
+    // 入参统一为 camelCase（对齐 API 入参规范），经 normalizeInput 转换为 DB snake_case
+    const cleanMeta = normalizeInput({
         isbn: isbn,
         title: book.title,
         authors: book.authors,
         publisher: book.publisher,
-        publish_year: book.publishYear,
+        publishYear: book.publishYear,
         price: book.price,
         source: book.source,
-        is_set: book.isSet,        
-        set_total_count: book.setTotalCount,
+        isSet: book.isSet,
+        setTotalCount: book.setTotalCount,
         binding: book.binding,
-        cover_url: book.cover_url,    
-        created_at: now      
+        coverUrl: book.coverUrl,
+        createdAt: now
     })
 
     // 写入

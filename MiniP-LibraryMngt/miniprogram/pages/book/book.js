@@ -59,7 +59,7 @@ Page({
         this.setData({
           book,
           isbn: book.isbn,
-          familyId: book.family_id,
+          familyId: book.familyId,
           loading: false,
           metaExists: true,
           submitting: false,
@@ -68,8 +68,8 @@ Page({
         console.log(`book on page, title=${book.title}, status=${book.status}`)
 
         // 查看模式下也加载书架列表，供用户修改书架
-        if (book.family_id) {
-          this.loadBookshelves(book.bookshelf_id)
+        if (book.familyId) {
+          this.loadBookshelves(book.bookshelfId)
         }
       })
     }
@@ -140,7 +140,7 @@ Page({
       const res = await wx.cloud.callFunction({
         name: 'api_bookitem_updateBookshelf',
         data: {
-          itemId: book.item_id,
+          itemId: book.itemId,
           bookshelfId: newBookshelfId
         }
       })
@@ -151,14 +151,14 @@ Page({
         this.setData({
           bookshelfIndex: index,
           bookshelfId: newBookshelfId,
-          'book.bookshelf_id': newBookshelfId,
-          'book.bookshelf_name': res.result.bookshelf_name || this.data.bookshelves[index].name
+          'book.bookshelfId': newBookshelfId,
+          'book.bookshelfName': res.result.bookshelfName || this.data.bookshelves[index].name
         })
         wx.showToast({ title: '已更新书架', icon: 'success' })
 
         // 通知其他页面书架已变更
         eventBus.emit(EVENTS.BOOK_META_UPDATED, {
-          familyId: familyId || book.family_id
+          familyId: familyId || book.familyId
         })
       } else {
         wx.showToast({ title: res.result.message || '更新失败', icon: 'none' })
@@ -198,7 +198,7 @@ Page({
           canEditMeta: false,
           loading: false
         })        
-        console.log('book.loadFromISBN: book.cover_url from meta =', result.book.cover_url)
+        console.log('book.loadFromISBN: book.coverUrl from meta =', result.book.coverUrl)
         return null
       }
 
@@ -278,7 +278,7 @@ Page({
         // —— 来自 bookMeta ——
         title: bookMeta?.title || '',
         authors: bookMeta?.authors || '',
-        cover_url: bookMeta?.cover_url || '',
+        coverUrl: bookMeta?.coverUrl || '',
         publisher: bookMeta?.publisher || '',
         publishYear: bookMeta?.publishYear || '',
         price: bookMeta?.price || '',
@@ -297,12 +297,12 @@ Page({
       }
 
       // 避免访问失效：如果有封面，每次扫ISBN过来后重新获取封面图的临时访问地址
-      if (book.cover_url) {
+      if (book.coverUrl) {
         const tempRes = await wx.cloud.getTempFileURL({
-          fileList: [book.cover_url]
+          fileList: [book.coverUrl]
         })
 
-        book.cover_url = tempRes.fileList[0].tempFileURL
+        book.coverUrl = tempRes.fileList[0].tempFileURL
       }
 
       this.setData({
@@ -407,7 +407,7 @@ Page({
   
          // 这里只更新前端状态
         this.setData({
-          'book.cover_url': fileID
+          'book.coverUrl': fileID
         })
 
         wx.showToast({
@@ -474,7 +474,7 @@ Page({
 
         //eventBus中注册共有事件，供其他页面响应更新
         eventBus.emit(EVENTS.BOOK_ITEM_LISTED, {
-          itemId: book.item_id,
+          itemId: book.itemId,
           familyId: familyId
         })        
         //返回前页
@@ -505,7 +505,7 @@ Page({
 
             //eventBus中注册共有事件，供其他页面响应更新
             eventBus.emit(EVENTS.BOOK_ITEM_LISTED, {
-              itemId: book.item_id,
+              itemId: book.itemId,
               familyId: familyId
             })
             //返回前页
@@ -684,7 +684,7 @@ Page({
       const result = await wx.cloud.callFunction({
         name: 'api_bookitem_restock',
         data: {
-          item_id: book.item_id
+          itemId: book.itemId
         }
       })
 
@@ -697,8 +697,8 @@ Page({
 
         //eventBus中注册共有事件，供其他页面响应更新
         eventBus.emit(EVENTS.BOOK_ITEM_LISTED, {
-          itemId: book.item_id,
-          familyId: book.family_id
+          itemId: book.itemId,
+          familyId: book.familyId
         })
         //返回前页
         wx.navigateBack({
@@ -749,7 +749,7 @@ Page({
               const result = await wx.cloud.callFunction({
                 name: 'api_bookitem_offstock',
                 data: {
-                  item_id: book.item_id,
+                  itemId: book.itemId,
                   reason: reason
                 }
               })
@@ -762,8 +762,8 @@ Page({
                 })
                 //eventBus中注册共有事件，供其他页面响应更新
                 eventBus.emit(EVENTS.BOOK_ITEM_UNLISTED, {
-                  itemId: book.item_id,
-                  familyId: book.family_id
+                  itemId: book.itemId,
+                  familyId: book.familyId
                 })
                 //返回前页
                 wx.navigateBack({
@@ -795,7 +795,7 @@ Page({
 
     const book = this.data.book
 
-    if (!book || !book.item_id) {
+    if (!book || !book.itemId) {
       wx.showToast({ title: '书籍数据异常', icon: 'none' })
       return
     }
@@ -814,7 +814,7 @@ Page({
       const result = await wx.cloud.callFunction({
         name: 'api_bookitem_delete',
         data: {
-          item_id: book.item_id
+          itemId: book.itemId
         }
       })
 
@@ -825,8 +825,8 @@ Page({
 
         //eventBus中注册共有事件，供其他页面响应更新
         eventBus.emit(EVENTS.BOOK_ITEM_DELETED, {
-          itemId: book.item_id,
-          familyId: book.family_id
+          itemId: book.itemId,
+          familyId: book.familyId
         })
         //返回前页
         wx.navigateBack({ delta: 1 })

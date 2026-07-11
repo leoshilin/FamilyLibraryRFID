@@ -116,7 +116,7 @@ exports.main = async (event) => {
 
     return {
       success: true,
-      bookshelf_name: bookshelf.name
+      bookshelfName: bookshelf.name
     }
 
   } catch (err) {

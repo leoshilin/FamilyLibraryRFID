@@ -226,14 +226,14 @@
 
   <view class="book-list">
 
-    <block wx:for="{{books}}" wx:key="item_id">
+    <block wx:for="{{books}}" wx:key="itemId">
 
       <view class="swipe-item">
 
         <!-- 图书信息 -->
         <view class="book-item {{item.inventoryStatus === 'off_stock' ? 'off-book' : ''}}" bindtap="onBookTap" data-index="{{index}}">
 
-          <image class="cover" src="{{item.cover_url}}" mode="aspectFill" />
+          <image class="cover" src="{{item.coverUrl}}" mode="aspectFill" />
 
           <view class="info">
 
@@ -258,7 +258,7 @@
         </view>
 
         <!-- 展开按钮 -->
-        <view class="actions" wx:if="{{currentExpandedId === item.item_id}}">
+        <view class="actions" wx:if="{{currentExpandedId === item.itemId}}">
 
           <!-- 上架图书 -->
           <block wx:if="{{item.inventoryStatus === 'in_stock'}}">

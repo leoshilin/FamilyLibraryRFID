@@ -78,12 +78,12 @@ exports.main = async (event, context) => {
       const meta = metaList.find(m => m._id === item.book_meta_id)
 
       return {
-        item_id: item._id,
-        family_id: item.family_id,
-        book_meta_id: item.book_meta_id,
+        itemId: item._id,
+        familyId: item.family_id,
+        bookMetaId: item.book_meta_id,
         title: meta ? meta.title : 'Unkonwn book',
         authors: meta ? meta.authors : '',
-        cover_url: meta ? meta.cover_url : '',
+        coverUrl: meta ? meta.cover_url : '',
         publisher: meta ? meta.publisher : '',
         publishYear: meta ? meta.publish_year : '',
         price: meta ? meta.price : '',

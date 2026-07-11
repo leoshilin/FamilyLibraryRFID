@@ -105,7 +105,7 @@ exports.main = async (event) => {
         _id: bookshelfRes._id,
         familyId: familyId,
         name: safeName,
-        sort_order: sortOrder,
+        sortOrder: sortOrder,
         status: 'ACTIVE'
       }
     }

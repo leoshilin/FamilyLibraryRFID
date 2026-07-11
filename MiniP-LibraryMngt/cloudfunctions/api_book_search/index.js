@@ -213,26 +213,26 @@ exports.main = async (event) => {
     // ===============================
 
     const result = list.map(item => ({
-      // ===== item 字段 =====
-      item_id: item._id,
-      family_id: item.family_id,
-      bookshelf_id: item.bookshelf_id || '',
-      bookshelf_name: item.bookshelf?.name || '',
+      // ===== item 字段（统一 camelCase，对齐规范） =====
+      itemId: item._id,
+      familyId: item.family_id,
+      bookshelfId: item.bookshelf_id || '',
+      bookshelfName: item.bookshelf?.name || '',
       inventoryStatus: item.inventory_status,
       onShelfAt: item.on_shelf_at || null,
       rfidTid: item.rfid_tid || null,
 
-      // ===== meta 字段 =====
+      // ===== meta 字段（统一 camelCase，对齐规范） =====
       title: item.meta?.title || '',
       authors: item.meta?.authors || '',
-      cover_url: item.meta?.cover_url || '',
+      coverUrl: item.meta?.cover_url || '',
       isbn: item.meta?.isbn || '',
       price: item.meta?.price || '',
       publisher: item.meta?.publisher || '',
-      publish_year: item.meta?.publish_year || '',
+      publishYear: item.meta?.publish_year || '',
       binding: item.meta?.binding || '',
-      is_set: item.meta?.is_set || false,
-      set_total_count: item.meta?.set_total_count || 0
+      isSet: item.meta?.is_set || false,
+      setTotalCount: item.meta?.set_total_count || 0
     }))
 
     return {

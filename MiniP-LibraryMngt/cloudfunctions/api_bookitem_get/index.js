@@ -38,7 +38,7 @@ function toBookMetaEntity(meta) {
     publishYear: meta.publish_year ?? '',
     price: meta.price ?? '',
     binding: meta.binding ?? '',
-    cover_url: meta.cover_url ?? '',
+    coverUrl: meta.cover_url ?? '',
     isSet: meta.is_set ?? false,
     setTotalCount: meta.set_total_count ?? 0,
     source: meta.source ?? ''

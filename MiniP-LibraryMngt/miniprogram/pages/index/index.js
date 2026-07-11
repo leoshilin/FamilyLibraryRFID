@@ -128,8 +128,8 @@ Page({
       if (res.result.success) {
         const list = res.result.list || []
         const fileList = list
-          .filter(item => item.cover_url)
-          .map(item => item.cover_url)
+          .filter(item => item.coverUrl)
+          .map(item => item.coverUrl)
 
           if (fileList.length > 0) {
 
@@ -144,8 +144,8 @@ Page({
             })
           
             list.forEach(item => {
-              if (urlMap[item.cover_url]) {
-                item.cover_url = urlMap[item.cover_url]
+              if (urlMap[item.coverUrl]) {
+                item.coverUrl = urlMap[item.coverUrl]
               }
             })
           

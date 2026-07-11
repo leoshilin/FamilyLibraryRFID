@@ -34,7 +34,7 @@ function parseInfo(html,isbn) {
   const title = $('#wrapper h1 span').text().trim() || ''
   
   // 封面缩略图： douban版权保护，无法获取
-  const cover_url = ''
+  const coverUrl = ''
 
   // info 区域
   const infoText = $('#info').text()
@@ -60,7 +60,7 @@ function parseInfo(html,isbn) {
     publishYear,
     price,
     binding,
-    cover_url,
+    coverUrl,
     isSet: null,
     setTotalCount: null,
     setIndex: null,

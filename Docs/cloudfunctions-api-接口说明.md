@@ -30,17 +30,31 @@ user.currentFamilyId
 
 ---
 
-##  0.2 a类: 代码文档均待更新
-### 1. 命名不统一
-当前版本中 `item_id` / `itemId` / `bookItemId`，`familyId` 与 `family_id` 等存在不统一的命名（RFID 字段已在 修复1 统一为 `rfidTid`，见"6. 一次性数据迁移工具"）。
-在功能稳定后下一阶段再统一修改。
-未来的原则：
- - API 入参 / 返回（前端实体）全部 camelCase
- - 数据库内部 snake_case
+## 0.2 命名统一专项（API / 前端实体层，已完成）
 
-> 注：经本次核对，代码内部已做到"入参/返回用 camelCase 实体、数据库用 snake_case"；但跨接口入参仍存在 `itemId`（camel）与 `item_id`（snake）混用（如 api_bookitem_get 用 itemId，api_bookitem_offstock/delete/restock 用 item_id）。见"3.遗留问题"第 2 条。
+> 范围：API 入参 / 返回（前端实体）全链路 camelCase；数据库内部字段保持 snake_case。
+> 状态：**已完成**（代码侧 + 本文档全部请求/返回示例已统一；前端实体已对齐）。
 
-##  0.3 b类: 代码已修复，文档待更新（无）
+### 已完成内容
+- **API 入参统一为 camelCase**：`itemId`（offstock / restock / delete / get / updateBookshelf 跨接口一致，不再混用 `item_id`）、`familyId`、`bookshelfId`、`coverUrl`、`bookMetaId` 等。
+- **API 返回统一为 camelCase**：`createdAt` / `updatedAt` / `createdBy`、`sortOrder`、`coverUrl`、`bookshelfName`、`itemId` / `familyId` / `bookshelfId` / `bookMetaId`、`publishYear` / `isSet` / `setTotalCount` 等（见各接口"返回"示例）。
+- **前端实体（miniprogram）已对齐**：发送与读取均不再使用 snake_case；历史混用项（`item_id` ↔ `itemId`、`family_id` ↔ `familyId` 等）已消除。
+- **映射器边界**：snake_case 的 DB 与 camelCase 的 API 之间由映射器转换 —— `toUserEntity` / `toBookItemEntity` / `toBookMetaEntity` / `toBookshelfEntity`（DB→API）与 `normalizeInput`（API→DB）。
+
+### 仍待处理（独立迁移专项，不在本次范围）
+数据库设计层面仍有 4 个 camelCase 字段属于 **DB 内部命名**，需作为独立迁移专项处理（改动 DB 设计文档 + 代码 DB 写入 + 迁移脚本，影响面大，故与 API/app 层解耦）：
+
+| 表 | 当前字段（DB 内部 camelCase） | 应为（snake_case） |
+|----|------------------------------|-------------------|
+| `user` | `currentFamilyId` | `current_family_id` |
+| `user_family` | `userId` | `user_id` |
+| `user_family` | `familyId` | `family_id` |
+| `bookshelf` | `familyId` | `family_id` |
+
+> 因 API/app 层已通过映射器在 snake_case 的 DB 与 camelCase 的 API 之间做边界转换，上述 DB 字段重命名可独立排期，不阻塞 API/app 一致性。详见"三、遗留问题"第 2 条。
+
+## 0.3 文档与代码一致性
+本文档请求/返回示例已与代码实现保持一致（camelCase 实体 + snake_case DB 内部字段）。如后续发现代码与文档不一致，记录于"三、遗留问题"。
 
 
 # 1. API整体清单
@@ -273,7 +287,7 @@ api_user_login
 ```json
 {
   "success": true,
-  "user": { "nickName": "方大大", "updated_at": "datetime" }
+  "user": { "nickName": "方大大", "updatedAt": "datetime" }
 }
 ```
 
@@ -317,8 +331,8 @@ api_user_login
     "_id": "familyId",
     "name": "我的家庭",
     "status": "ACTIVE",
-    "created_by": "userId",
-    "created_at": "datetime"
+    "createdBy": "userId",
+    "createdAt": "datetime"
   },
   "role": "OWNER",
   "bookshelfCount": 1
@@ -416,7 +430,7 @@ api_user_login
     "_id": "familyId",
     "name": "新的家庭名称",
     "status": "ACTIVE",
-    "updated_at": "datetime"
+    "updatedAt": "datetime"
   }
 }
 ```
@@ -608,7 +622,7 @@ api_user_login
     "_id": "bookshelfId",
     "familyId": "familyId",
     "name": "书架名称",
-    "sort_order": 2,
+    "sortOrder": 2,
     "status": "ACTIVE"
   }
 }
@@ -651,9 +665,9 @@ api_user_login
     "_id": "bookshelfId",
     "familyId": "familyId",
     "name": "新的书架名称",
-    "sort_order": 1,
+    "sortOrder": 1,
     "status": "ACTIVE",
-    "updated_at": "datetime"
+    "updatedAt": "datetime"
   }
 }
 ```
@@ -729,7 +743,7 @@ api_user_login
       "_id": "bookshelfId",
       "familyId": "familyId",
       "name": "我的书架",
-      "sort_order": 1,
+      "sortOrder": 1,
       "status": "ACTIVE",
       "bookCount": 100
     }
@@ -815,7 +829,7 @@ api_user_login
     "binding": "...",
     "isSet": false,
     "setTotalCount": null,
-    "cover_url": "",
+    "coverUrl": "",
     "source": "douban"
   }
 }
@@ -877,12 +891,12 @@ api_user_login
     "binding": "...",
     "isSet": false,
     "setTotalCount": null,
-    "cover_url": "",
+    "coverUrl": "",
     "source": "douban"
   }
 }
 ```
-> 失败返回：`{ "success": false, "error": "..." }` 或 `{ "success": false, "message": "ISBN missing" }`。封面 `cover_url` 因豆瓣版权保护通常为空，需用户拍摄上传补全。
+> 失败返回：`{ "success": false, "error": "..." }` 或 `{ "success": false, "message": "ISBN missing" }`。封面 `coverUrl` 因豆瓣版权保护通常为空，需用户拍摄上传补全。
 
 ---
 
@@ -963,7 +977,7 @@ api_user_login
     "publishYear": "...",
     "price": "...",
     "binding": "...",
-    "cover_url": "",
+    "coverUrl": "",
     "isSet": false,
     "setTotalCount": null,
     "source": ""
@@ -1021,12 +1035,12 @@ api_user_login
 #### 入参
 ```json
 {
-  "item_id": "xxx",
+  "itemId": "xxx",
   "reason": "捐赠"
 }
 ```
 > familyId 与 operator 由服务端从登录态解析（见 0.4），**不接收客户端传入**。原文档入参中的 `family_id`、`operator` 已移除。
-> 注：本接口入参字段为 snake_case `item_id`（见 0.3 待统一项）。
+> 注：本接口入参字段已统一为 camelCase `itemId`（与 api_bookitem_get / updateBookshelf 一致，见 0.2 命名统一专项）。
 
 #### 处理规则
 - 当前用户须已注册且 `status = ACTIVE`
@@ -1060,11 +1074,11 @@ api_user_login
 #### 入参
 ```json
 {
-  "item_id": "xxx"
+  "itemId": "xxx"
 }
 ```
 > familyId 与 operator 由服务端从登录态解析（见 0.4），**不接收客户端传入**。原文档入参中的 `family_id`、`operator` 已移除。
-> 注：本接口入参字段为 snake_case `item_id`。
+> 注：本接口入参字段已统一为 camelCase `itemId`（与 api_bookitem_get / updateBookshelf 一致，见 0.2 命名统一专项）。
 
 #### 处理规则
 - 当前用户须已注册且 `status = ACTIVE`
@@ -1099,11 +1113,11 @@ api_user_login
 #### 入参
 ```json
 {
-  "item_id": "xxx"
+  "itemId": "xxx"
 }
 ```
 > familyId 与 operator 由服务端从登录态解析（见 0.4），**不接收客户端传入**。原文档入参中的 `family_id`、`operator` 已移除。
-> 注：本接口入参字段为 snake_case `item_id`。
+> 注：本接口入参字段已统一为 camelCase `itemId`（与 api_bookitem_get / updateBookshelf 一致，见 0.2 命名统一专项）。
 
 #### 处理规则
 - 当前用户须已注册且 `status = ACTIVE`
@@ -1129,7 +1143,7 @@ api_user_login
 > 需研究：该函数被 `async loadFromId(itemId)` 调用，但 `loadFromId` 没有被任何地方调用。接口已实现但当前无调用方，待确认是否保留或接入页面。
 
 #### 功能
-根据 book_item_id 获取实体书详情。
+根据实体书 ID（`itemId`）获取实体书详情。
 
 自动关联 book_item + book_meta + bookshelf，返回完整展示对象（三层结构）。
 
@@ -1139,7 +1153,7 @@ api_user_login
   "itemId": "xxx"
 }
 ```
-> 注：本接口入参字段为 camelCase `itemId`（与 E3/E4/E5 的 `item_id` 混用，见 0.3）。
+> 注：本接口入参字段为 camelCase `itemId`，与 E3/E4/E5 已统一（见 0.2 命名统一专项）。
 
 #### 处理规则
 （暂无）
@@ -1177,7 +1191,7 @@ api_user_login
     "publishYear": "...",
     "price": "...",
     "binding": "...",
-    "cover_url": "",
+    "coverUrl": "",
     "isSet": false,
     "setTotalCount": 0,
     "source": "douban"
@@ -1223,7 +1237,7 @@ api_user_login
 ```json
 {
   "success": true,
-  "bookshelf_name": "..."
+  "bookshelfName": "..."
 }
 ```
 
@@ -1299,23 +1313,23 @@ api_user_login
   "success": true,
   "data": [
     {
-      "item_id": "bi00001",
-      "family_id": "familyId",
-      "bookshelf_id": "bs001",
-      "bookshelf_name": "我的书架",
+      "itemId": "bi00001",
+      "familyId": "familyId",
+      "bookshelfId": "bs001",
+      "bookshelfName": "我的书架",
       "status": "in_stock",
       "onShelfAt": "datetime",
       "rfidTid": null,
       "title": "三体",
       "authors": "...",
-      "cover_url": "",
+      "coverUrl": "",
       "isbn": "9787111122334",
       "price": "...",
       "publisher": "...",
-      "publish_year": "...",
+      "publishYear": "...",
       "binding": "...",
-      "is_set": false,
-      "set_total_count": 0
+      "isSet": false,
+      "setTotalCount": 0
     }
   ],
   "total": 56
@@ -1359,12 +1373,12 @@ api_user_login
   "success": true,
   "list": [
     {
-      "item_id": "bi00001",
-      "family_id": "familyId",
-      "book_meta_id": "bm00001",
+      "itemId": "bi00001",
+      "familyId": "familyId",
+      "bookMetaId": "bm00001",
       "title": "三体",
       "authors": "...",
-      "cover_url": "",
+      "coverUrl": "",
       "publisher": "...",
       "publishYear": "...",
       "price": "...",
@@ -1702,7 +1716,7 @@ running
 
 1. **实现状态 / 脚手架**：架构表所列 33 个接口中，25 个已有真实实现（含 F2 `api_book_searchRecent`），另有 9 个云函数文件仅为**桩函数**（仅回显 `event` 与微信上下文，未实现业务逻辑）：A3 `api_user_get`、C5 `api_bookshelf_reorder`、G1/G2（任务创建）、H1 `api_task_unbindRfid`、J1–J4（PDA 任务执行/RFID 绑定）。文档已在架构表与各章节标注 ✅/🚧，避免读者误判为已上线。
 
-2. **入参命名不统一**：`itemId`（camel，如 api_bookitem_get / updateBookshelf）与 `item_id`（snake，如 offstock / restock / delete）跨接口混用；`familyId`/`family_id` 同理。RFID 字段已在 修复1 统一为 `rfidTid`（API 返回与数据库字段名一致）。建议下一阶段将 `itemId`/`item_id`、`familyId`/`family_id` 也统一为 camelCase。
+2. **入参命名不统一（已解决）**：原 `itemId`（camel，如 api_bookitem_get / updateBookshelf）与 `item_id`（snake，如 offstock / restock / delete）跨接口混用；`familyId`/`family_id` 同理。RFID 字段已在 修复1 统一为 `rfidTid`。**本次已通过映射器（`toUserEntity` / `toBookItemEntity` / `toBookMetaEntity` / `toBookshelfEntity` / `normalizeInput`）将 API 入参 / 返回（前端实体）全链路统一为 camelCase**：`itemId`/`familyId`/`bookshelfId`/`bookMetaId`/`coverUrl`/`sortOrder`/`createdAt`/`updatedAt`/`createdBy` 等，DB 内部字段保持 snake_case。剩余 4 个 DB 内部 camelCase 字段（`user.currentFamilyId`、`user_family.userId`/`familyId`、`bookshelf.familyId`）作为独立迁移专项处理，见 0.2。
 
 3. **通用失败返回 / 错误枚举未系统化（已起草）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 4 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
 

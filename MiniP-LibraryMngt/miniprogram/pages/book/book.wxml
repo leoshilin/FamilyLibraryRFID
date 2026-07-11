@@ -29,7 +29,7 @@
         <view class="cover-section">
           <!-- 左侧封面 -->
           <view class="cover-box" bindtap="onTakeCoverPhoto">
-            <image wx:if="{{book.cover_url}}" class="cover" src="{{book.cover_url}}" mode="aspectFill" />
+            <image wx:if="{{book.coverUrl}}" class="cover" src="{{book.coverUrl}}" mode="aspectFill" />
             <view wx:else class="cover-placeholder">
               {{ metaExists ? '暂无封面' : '点击拍摄封面' }}
             </view>
@@ -128,11 +128,11 @@
           <text class="label">书架</text>
           <picker wx:if="{{bookshelves.length > 0}}" range="{{bookshelves}}" range-key="name" value="{{bookshelfIndex}}" bindchange="onViewBookshelfChange">
             <view class="value bookshelf-picker">
-              {{bookshelves[bookshelfIndex].name || book.bookshelf_name || '未知'}}
+              {{bookshelves[bookshelfIndex].name || book.bookshelfName || '未知'}}
               <text class="picker-arrow">›</text>
             </view>
           </picker>
-          <text wx:else class="value">{{book.bookshelf_name || '未知'}}</text>
+          <text wx:else class="value">{{book.bookshelfName || '未知'}}</text>
         </view>
 
       </view>

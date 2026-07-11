@@ -12,7 +12,7 @@ const { PERMISSIONS, RESOURCE_TYPES, checkPermission, getCurrentUser } = require
 // 云函数入口函数
 exports.main = async (event) => {
   const {
-    item_id
+    itemId: item_id
   } = event
   const now = new Date()
 

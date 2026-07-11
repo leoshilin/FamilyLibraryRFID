@@ -9,6 +9,21 @@ cloud.init({
 
 const db = cloud.database()
 
+// 将 user 文档转换为前端实体（camelCase，对齐规范：API 返回全部 camelCase）
+function toUserEntity(user) {
+  if (!user) return null
+  return {
+    _id: user._id,
+    openid: user.openid,
+    nickName: user.nickName,
+    currentFamilyId: user.currentFamilyId,
+    role: user.role,
+    status: user.status,
+    createdAt: user.created_at,
+    updatedAt: user.updated_at
+  }
+}
+
 // 引入权限公共模块
 const {
   buildFamilyPermissions
@@ -47,7 +62,7 @@ exports.main = async (event, context) => {
     return {
       success: true,
       registered: true,
-      user,
+      user: toUserEntity(user),
       permissions
     }
 

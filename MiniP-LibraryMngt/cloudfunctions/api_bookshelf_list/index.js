@@ -69,7 +69,7 @@ exports.main = async (event) => {
         _id: shelf._id,
         familyId: shelf.familyId,
         name: shelf.name,
-        sort_order: shelf.sort_order,
+        sortOrder: shelf.sort_order,
         status: shelf.status,
         bookCount: countRes.total
       })

@@ -14,7 +14,7 @@ const { PERMISSIONS, RESOURCE_TYPES, checkPermission, getCurrentUser } = require
 exports.main = async (event) => {
 
   const {
-    item_id,
+    itemId: item_id,
     reason
   } = event
   const now = new Date()

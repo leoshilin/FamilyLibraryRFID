@@ -471,9 +471,9 @@ Page({
   
         const fileList = list
   
-          .filter(item => item.cover_url)
+          .filter(item => item.coverUrl)
   
-          .map(item => item.cover_url)
+          .map(item => item.coverUrl)
   
         if (fileList.length > 0) {
   
@@ -495,15 +495,15 @@ Page({
   
             if (
   
-              item.cover_url &&
+              item.coverUrl &&
   
-              urlMap[item.cover_url]
+              urlMap[item.coverUrl]
   
             ) {
   
-              item.cover_url =
+              item.coverUrl =
   
-                urlMap[item.cover_url]
+                urlMap[item.coverUrl]
   
             }
   
@@ -564,7 +564,7 @@ Page({
     const index = e.currentTarget.dataset.index
     const books = this.data.books
 
-    const itemId = books[index].item_id
+    const itemId = books[index].itemId
     const currentId = this.data.currentExpandedId
 
     this.setData({
@@ -631,7 +631,7 @@ Page({
 
                 data: {
 
-                  item_id: book.item_id,
+                  itemId: book.itemId,
 
                   reason
 
@@ -649,9 +649,9 @@ Page({
 
                 eventBus.emit(EVENTS.BOOK_ITEM_UNLISTED, {
 
-                  itemId: book.item_id,
+                  itemId: book.itemId,
 
-                  familyId: book.family_id
+                  familyId: book.familyId
 
                 })
 
@@ -750,7 +750,7 @@ Page({
 
         data: {
 
-          item_id: book.item_id
+          itemId: book.itemId
 
         }
 
@@ -768,9 +768,9 @@ Page({
 
         eventBus.emit(EVENTS.BOOK_ITEM_DELETED, {
 
-          itemId: book.item_id,
+          itemId: book.itemId,
 
-          familyId: book.family_id
+          familyId: book.familyId
 
         })
 
@@ -854,7 +854,7 @@ Page({
       const result = await wx.cloud.callFunction({
         name: 'api_bookitem_restock',
         data: {
-          item_id: book.item_id
+          itemId: book.itemId
         }
       })
 
@@ -867,8 +867,8 @@ Page({
 
         //eventBus中注册共有事件，供其他页面响应更新
         eventBus.emit(EVENTS.BOOK_ITEM_LISTED, {
-          itemId: book.item_id,
-          familyId: book.family_id
+          itemId: book.itemId,
+          familyId: book.familyId
         })
         //立即刷新本页数据
         this.fetchBooks(true)

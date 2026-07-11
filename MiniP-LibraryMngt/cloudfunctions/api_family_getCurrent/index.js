@@ -72,8 +72,8 @@ exports.main = async (event) => {
         _id: family._id,
         name: family.name,
         status: family.status,
-        created_by: family.created_by,
-        created_at: family.created_at
+        createdBy: family.created_by,
+        createdAt: family.created_at
       },
       role,
       bookshelfCount: bookshelfCountRes.total

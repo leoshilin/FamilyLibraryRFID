@@ -32,9 +32,9 @@
       <text class="empty">暂无书籍</text>
     </view>
 
-    <block wx:for="{{recentBooks}}" wx:key="item_id">
+    <block wx:for="{{recentBooks}}" wx:key="itemId">
       <view class="book-item" bindtap="onBookTap" data-book="{{item}}">
-        <image class="cover" src="{{item.cover_url}}" mode="aspectFill" />
+        <image class="cover" src="{{item.coverUrl}}" mode="aspectFill" />
 
         <view class="book-info">
           <text class="book-title">{{item.title}}</text>

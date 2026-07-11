@@ -70,7 +70,7 @@ exports.main = async (event) => {
         _id: family._id,
         name: safeName,
         status: family.status,
-        updated_at: now
+        updatedAt: now
       }
     }
 
