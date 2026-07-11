@@ -8,7 +8,7 @@
 
 ---
 
-## 0.4 通用约定
+## 0.1 通用约定
 1. **familyId**：仅"目标家庭"类接口（B3/B4/B6）由客户端传入；其余从 `user.currentFamilyId` 解析。
 ```
 openid
@@ -25,7 +25,8 @@ user.currentFamilyId
 
 ---
 
-## 0.3 命名不统一 —— 待改善（a类）
+##  0.2 a类: 代码文档均待更新
+### 1. 命名不统一
 当前版本中 item_id、itemId、bookItemId，familyId 与 family_id，tid 与 rfidTid 等存在大量不统一的命名。
 在功能稳定后下一阶段再统一修改。
 未来的原则：
@@ -34,6 +35,7 @@ user.currentFamilyId
 
 > 注：经本次核对，代码内部已做到"入参/返回用 camelCase 实体、数据库用 snake_case"；但跨接口入参仍存在 `itemId`（camel）与 `item_id`（snake）混用（如 api_bookitem_get 用 itemId，api_bookitem_offstock/delete/restock 用 item_id）。见"3.遗留问题"第 2 条。
 
+##  0.3 b类: 代码已修复，文档待更新（无）
 
 
 # 1. API整体清单
@@ -1528,7 +1530,7 @@ running
 
 1. **实现状态 / 脚手架**：架构表所列 33 个接口中，25 个已有真实实现（含 F2 `api_book_searchRecent`），另有 9 个云函数文件仅为**桩函数**（仅回显 `event` 与微信上下文，未实现业务逻辑）：A3 `api_user_get`、C5 `api_bookshelf_reorder`、G1/G2（任务创建）、H1 `api_task_unbindRfid`、J1–J4（PDA 任务执行/RFID 绑定）。文档已在架构表与各章节标注 ✅/🚧，避免读者误判为已上线。
 
-2. **入参命名不统一（0.3 范围内）**：`itemId`（camel，如 api_bookitem_get / updateBookshelf）与 `item_id`（snake，如 offstock / restock / delete）跨接口混用；`familyId`/`family_id`、`tid`/`rfidTid` 同理。建议下一阶段统一为 camelCase。
+2. **入参命名不统一**：`itemId`（camel，如 api_bookitem_get / updateBookshelf）与 `item_id`（snake，如 offstock / restock / delete）跨接口混用；`familyId`/`family_id`、`tid`/`rfidTid` 同理。建议下一阶段统一为 camelCase。
 
 3. **通用失败返回 / 错误枚举未系统化（已起草）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 4 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
 
@@ -1537,6 +1539,9 @@ running
 5. **api_bookitem_restock 刷新 created_at（隐藏业务影响）**：重新上架会把 `created_at` 刷新为当前时间，导致"最近上架"列表重排。若不符合预期，应改为仅更新 `updated_at`。
 
 6. **D1 getByIsbn 与 D2 fetchExternal 成功标志不一致（已修复）**：原 D1 返回 `{ "exists": ... }`（无 `success`）、D2 返回 `{ "success": ... }`，前端需分别处理。已在本次修改中统一：D1 改为统一以 `success` 为顶层标志（`exists` 仅作"系统是否存在该 ISBN"的成功分支标记，随 `success: true` 返回），D2 保持 `success`；云函数代码与小程序调用处（`pages/book/book.js`）已同步修改。
+
+---
+
 # 4. 通用错误返回规范（错误枚举）
 
 ## 4.1 统一返回结构
