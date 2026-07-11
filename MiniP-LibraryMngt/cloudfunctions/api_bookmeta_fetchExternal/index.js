@@ -73,7 +73,7 @@ exports.main = async (event) => {
   console.log(`getBookFromDouban params: isbn=${isbn}`)
 
   if (!isbn) {
-    return { success: false, msg: 'ISBN missing' }
+    return { success: false, message: 'ISBN missing' }
   }
 
   const url = `https://book.douban.com/isbn/${isbn}/`

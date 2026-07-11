@@ -28,7 +28,7 @@ exports.main = async (event, context) => {
   const { isbn } = event
 
   if (!isbn) {
-    return { exists: false }    
+    return { success: false, message: 'ISBN缺失' }
   }
 
   try {
@@ -42,6 +42,7 @@ exports.main = async (event, context) => {
     // 2️⃣ 如果不存在，返回“空结构”，由前端或 douban 云函数继续处理
     if (!metaRes.data || metaRes.data.length === 0) {
       return {
+        success: true,
         exists: false
       }
     }
@@ -51,12 +52,13 @@ exports.main = async (event, context) => {
     const cleanOutputMeta = normalizeOutput(meta)
 
     return {
+      success: true,
       exists: true,
       book: cleanOutputMeta
     }
   } catch (err) {
     // 4️⃣ 处理“表不存在”等系统错误
     console.error('[api_bookmeta_getByIsbn] error:', err)
-    throw err
+    return { success: false, message: err.message || '查询失败' }
   }
 }

@@ -182,21 +182,27 @@ Page({
       data: { isbn }
     })
     .then(res => {
-      if (res.result && res.result.exists) {
+      const result = res.result
+      // 统一以 success 判断云函数调用是否成功（与 fetchExternal 一致）
+      if (!result || !result.success) {
+        throw new Error('book.loadFromISBN: 调用云函数api_bookmeta_getByIsbn返回异常')
+      }
+
+      if (result.exists) {
         // 来自 book_meta
         console.log('book.loadFromISBN: book existing in meta')
 
         this.setData({
-          book: res.result.book,
+          book: result.book,
           metaExists: true,          
           canEditMeta: false,
           loading: false
         })        
-        console.log('book.loadFromISBN: book.cover_url from meta =', res.result.book.cover_url)
+        console.log('book.loadFromISBN: book.cover_url from meta =', result.book.cover_url)
         return null
       }
 
-      // meta 不存在，继续查 douban
+      // meta 不存在（exists=false 属正常分支），继续查 douban
       // 此处理论上存在douban也无法获取信息的可能，今后可以增加获取的方式（api），应维护为相应的source。
       // api也无法获取到的情况，最终只能后台管理员维护（前台不开放给用户手动登录新书），并注意保持source ='manual'
       console.log('book.loadFromISBN: book not exist in meta, call function api_bookmeta_fetchExternal to get book info')

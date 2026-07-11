@@ -8,7 +8,7 @@
 
 ---
 
-## 0.1 通用约定
+## 0.4 通用约定
 1. **familyId**：仅"目标家庭"类接口（B3/B4/B6）由客户端传入；其余从 `user.currentFamilyId` 解析。
 ```
 openid
@@ -25,7 +25,7 @@ user.currentFamilyId
 
 ---
 
-## 0.2 命名不统一 —— 待改善（a类）
+## 0.3 命名不统一 —— 待改善（a类）
 当前版本中 item_id、itemId、bookItemId，familyId 与 family_id，tid 与 rfidTid 等存在大量不统一的命名。
 在功能稳定后下一阶段再统一修改。
 未来的原则：
@@ -152,11 +152,11 @@ api_user_login
 
 ---
 
-## A2. api_user_register
-### 功能
+### A2. api_user_register
+#### 功能
 注册系统用户。
 
-### 调用入口
+#### 调用入口
 ```
 我的
 ↓
@@ -165,7 +165,7 @@ api_user_login
 注册
 ```
 
-### 入参
+#### 入参
 ```json
 {
   "nickName": "方大大"
@@ -173,13 +173,13 @@ api_user_login
 ```
 > openid 从 `cloud.getWXContext()` 获取，不接收客户端传入。
 
-### 处理规则
+#### 处理规则
 - 获取 openid
 - 检查 user 是否存在
   - 存在：返回失败
   - 不存在：创建 user
 
-### 返回
+#### 返回
 ```json
 {
   "success": true,
@@ -189,13 +189,13 @@ api_user_login
 
 ---
 
-## A3. api_user_get —— 🚧 脚手架（桩函数）
-### 功能
+### A3. api_user_get —— 🚧 脚手架（桩函数）
+#### 功能
 获取用户信息（按 userId 或当前登录用户）。
 
 > **实现状态说明**：仓库中 `api_user_get` 当前仅为桩函数（回显 event 与微信上下文），未实现真实查询逻辑。下方为设计约定。
 
-### 入参（规划）
+#### 入参（规划）
 ```json
 {
   "userId": "u001"
@@ -207,10 +207,10 @@ api_user_login
 ```
 > 不传 userId 时根据 openid 获取当前登录用户。
 
-### 处理规则（规划）
+#### 处理规则（规划）
 （暂无）
 
-### 返回（规划）
+#### 返回（规划）
 ```json
 {
   "success": true,
@@ -225,18 +225,18 @@ api_user_login
 
 ---
 
-## A4. api_user_update
-### 功能
+### A4. api_user_update
+#### 功能
 更新当前登录用户的昵称。
 
-### 入参
+#### 入参
 ```json
 {
   "nickName": "方大大"
 }
 ```
 
-### 处理规则
+#### 处理规则
 - 前置：用户须已注册且 `status = ACTIVE`，否则返回：
   ```json
   { "success": false, "message": "用户不存在" }
@@ -246,10 +246,10 @@ api_user_login
   { "success": false, "message": "用户状态不可用" }
   ```
 
-### 权限
+#### 权限
 需登录（registered + ACTIVE）。
 
-### 返回
+#### 返回
 **成功：**
 ```json
 {
@@ -270,22 +270,22 @@ api_user_login
 
 ---
 
-# B. 手机端操作：家庭主数据
+## B. 手机端操作：家庭主数据
 
-## B1. api_family_getCurrent
-### 功能
+### B1. api_family_getCurrent
+#### 功能
 获取当前登录用户访问中的家庭（不一定是用户创建的家庭，也可能是用户加入的家庭）。
 
-### 入参
+#### 入参
 ```json
 {}
 ```
 > familyId 由服务端从 `user.currentFamilyId` 解析（见 0.4），不接收客户端传入。
 
-### 处理规则
+#### 处理规则
 （暂无）
 
-### 返回
+#### 返回
 **成功（有家庭）：**
 ```json
 {
@@ -314,11 +314,11 @@ api_user_login
 
 ---
 
-## B2. api_family_create
-### 功能
+### B2. api_family_create
+#### 功能
 登录用户创建家庭。
 
-### 入参
+#### 入参
 ```json
 {
   "name": "我的家庭"
@@ -326,14 +326,14 @@ api_user_login
 ```
 > name 可选，为空时默认"我的家庭"。familyId 由服务端创建，不接收客户端传入。
 
-### 处理规则
+#### 处理规则
 - 权限：`FAMILY_CREATE`（注册用户均可，任意用户仅可创建一个家庭）
 - 校验用户是否已作为 `OWNER` 创建过家庭（一个用户只可创建一个家庭），失败返回"当前用户已创建家庭"
 - 创建默认书架"我的书架"
 - 在 `user_family` 建立 `OWNER` 关系
 - 更新 `user.currentFamilyId`
 
-### 返回
+#### 返回
 **成功：**
 ```json
 {
@@ -358,11 +358,11 @@ api_user_login
 
 ---
 
-## B3. api_family_update
-### 功能
+### B3. api_family_update
+#### 功能
 更新指定家庭的名称信息。
 
-### 入参
+#### 入参
 ```json
 {
   "familyId": "familyId",
@@ -371,10 +371,10 @@ api_user_login
 ```
 > 此处 familyId 为**目标家庭**，由客户端指定（语义正确，予以保留）。
 
-### 处理规则
+#### 处理规则
 - 权限：`FAMILY_UPDATE`
 
-### 返回
+#### 返回
 **成功：**
 ```json
 {
@@ -398,11 +398,11 @@ api_user_login
 
 ---
 
-## B4. api_family_delete
-### 功能
+### B4. api_family_delete
+#### 功能
 删除指定家庭，逻辑删除，不做物理删除。
 
-### 入参
+#### 入参
 ```json
 {
   "familyId": "familyId"
@@ -410,7 +410,7 @@ api_user_login
 ```
 > 此处 familyId 为**目标家庭**，由客户端指定（语义正确，予以保留）。
 
-### 处理规则
+#### 处理规则
 - 权限：`FAMILY_DELETE`
 - 获取当前登录用户：openid → user
 - 校验用户已注册且 `status = ACTIVE`
@@ -421,7 +421,7 @@ api_user_login
 - 若允许删除：更新 `family.status = DISABLED`，写入 `updated_by`、`updated_at`
 - 如果当前用户的 `currentFamilyId === familyId`：删除 `user.currentFamilyId` 字段（不能写 null）
 
-### 返回
+#### 返回
 **成功：**
 ```json
 { "success": true }
@@ -443,17 +443,17 @@ api_user_login
 
 ---
 
-## B5. api_family_list
-### 功能
+### B5. api_family_list
+#### 功能
 获取当前用户所属的全部家庭（自建 + 受邀加入）。
 
-### 入参
+#### 入参
 无（openid 后端解析）
 
-### 处理规则
+#### 处理规则
 - 该接口**不做 RBAC 校验**（仅 `getCurrentUser`）
 
-### 返回
+#### 返回
 ```json
 {
   "success": true,
@@ -471,14 +471,14 @@ api_user_login
 
 ---
 
-## B6. api_family_switchCurrent
-### 功能
+### B6. api_family_switchCurrent
+#### 功能
 切换当前登录用户的默认访问家庭（`user.currentFamilyId`）。
 
 > 仅校验"登录用户是否属于目标家庭"（`user_family` 存在对应记录），不做 `OWNER` / `MEMBER` 角色级权限校验；任何已激活家庭成员均可切换。
 > 切换后影响后续依赖 `currentFamilyId` 默认值的接口。
 
-### 入参
+#### 入参
 ```json
 {
   "familyId": "familyId"
@@ -486,7 +486,7 @@ api_user_login
 ```
 > 此处 familyId 为**目标家庭**，由客户端指定（语义正确，予以保留）。
 
-### 处理规则
+#### 处理规则
 - 获取当前登录用户：openid → user（`getCurrentUser`）
 - 校验 familyId 必填
 - 校验用户已注册且 `status = ACTIVE`
@@ -495,7 +495,7 @@ api_user_login
 - 更新 `user.currentFamilyId = familyId`
 - 不写 `updated_at` / `updated_by`；不做角色权限校验
 
-### 返回
+#### 返回
 **成功：**
 ```json
 { "success": true }
@@ -525,13 +525,13 @@ api_user_login
 
 ---
 
-# C. 手机端操作：书架主数据
+## C. 手机端操作：书架主数据
 
-## C1. api_bookshelf_create
-### 功能
+### C1. api_bookshelf_create
+#### 功能
 在指定家庭下创建书架。
 
-### 入参
+#### 入参
 ```json
 {
   "name": "书架名称"
@@ -539,7 +539,7 @@ api_user_login
 ```
 > familyId 由服务端从 `user.currentFamilyId` 解析（见 0.4），不接收客户端传入。
 
-### 处理规则
+#### 处理规则
 - 权限：`BOOKSHELF_CREATE`
 - name 必填，trim 后不能为空
 - 当前用户必须已注册且 `status = ACTIVE`
@@ -548,7 +548,7 @@ api_user_login
 - sort_order 由后端计算：当前 ACTIVE 书架最大 sort_order + 1
 - 创建时写入：familyId、name、sort_order、status = ACTIVE、created_by、created_at
 
-### 返回
+#### 返回
 ```json
 {
   "success": true,
@@ -565,11 +565,11 @@ api_user_login
 
 ---
 
-## C2. api_bookshelf_update
-### 功能
+### C2. api_bookshelf_update
+#### 功能
 修改指定书架名称。
 
-### 入参
+#### 入参
 ```json
 {
   "bookshelfId": "bookshelfId",
@@ -578,7 +578,7 @@ api_user_login
 ```
 > familyId 由服务端从书架记录（bookshelf.familyId）取得，不接收客户端传入。
 
-### 处理规则
+#### 处理规则
 - 权限：`BOOKSHELF_UPDATE`
 - bookshelfId 必填
 - name 必填
@@ -587,7 +587,7 @@ api_user_login
 - 只修改名称，不修改 familyId、sort_order
 - 写入 updated_by、updated_at
 
-### 返回
+#### 返回
 ```json
 {
   "success": true,
@@ -604,11 +604,11 @@ api_user_login
 
 ---
 
-## C3. api_bookshelf_delete
-### 功能
+### C3. api_bookshelf_delete
+#### 功能
 逻辑删除指定书架。
 
-### 入参
+#### 入参
 ```json
 {
   "bookshelfId": "bookshelfId"
@@ -616,7 +616,7 @@ api_user_login
 ```
 > familyId 由服务端从书架记录（bookshelf.familyId）取得，不接收客户端传入。
 
-### 处理规则
+#### 处理规则
 - 权限：`BOOKSHELF_DELETE`
 - bookshelfId 必填
 - 查询书架，取得 familyId
@@ -625,7 +625,7 @@ api_user_login
 - 若允许删除：更新 `bookshelf.status = DISABLED`，写入 `updated_by`、`updated_at`
 - 删除后重排同家庭下剩余 ACTIVE 书架的 sort_order
 
-### 返回
+#### 返回
 **成功：**
 ```json
 { "success": true }
@@ -638,23 +638,23 @@ api_user_login
 
 ---
 
-## C4. api_bookshelf_list
-### 功能
+### C4. api_bookshelf_list
+#### 功能
 查询指定家庭下 ACTIVE 书架列表。
 
-### 入参
+#### 入参
 ```json
 {}
 ```
 > familyId 由服务端从 `user.currentFamilyId` 解析（见 0.4），不接收客户端传入。
 
-### 处理规则
+#### 处理规则
 - 权限：`BOOKSHELF_LIST`
 - 当前用户必须属于该家庭，或为 ADMIN
 - 按 sort_order 升序返回
 - 默认只返回 `status = ACTIVE`
 
-### 返回
+#### 返回
 ```json
 {
   "success": true,
@@ -674,13 +674,13 @@ api_user_login
 
 ---
 
-## C5. api_bookshelf_reorder —— 🚧 脚手架（桩函数）
-### 功能
+### C5. api_bookshelf_reorder —— 🚧 脚手架（桩函数）
+#### 功能
 指定家庭下书架的重新排序（sort_order）。
 
 > **实现状态说明**：仓库中 `api_bookshelf_reorder` 当前仅为桩函数（回显 event 与微信上下文），未实现真实排序逻辑。下方为设计约定。
 
-### 入参（规划）
+#### 入参（规划）
 ```json
 {
   "orderedBookshelfIds": ["bs001", "bs002", "bs003"]
@@ -688,23 +688,23 @@ api_user_login
 ```
 > 参数定义待进一步明确（原文档仅占位）。familyId 由服务端从 `user.currentFamilyId` 解析。
 
-### 处理规则（规划）
+#### 处理规则（规划）
 - 权限：`BOOKSHELF_UPDATE`
 - 校验顺序数组归属当前家庭且覆盖全部 ACTIVE 书架
 
-### 返回（规划）
+#### 返回（规划）
 ```json
 { "success": true }
 ```
 
 ---
 
-# D. 手机端操作：书本主数据
+## D. 手机端操作：书本主数据
 
-## D1. api_bookmeta_getByIsbn
+### D1. api_bookmeta_getByIsbn
 （原 getBookMeta）
 
-### 功能
+#### 功能
 按 ISBN 查询系统级主数据。用于：
 ```
 扫码
@@ -714,19 +714,21 @@ api_user_login
 存在直接使用
 ```
 
-### 入参
+#### 入参
 ```json
 {
   "isbn": "9787111122334"
 }
 ```
 
-### 处理规则
+#### 处理规则
 （暂无）
 
-### 返回
+#### 返回
+**成功且系统已存在该 ISBN 主数据：**
 ```json
 {
+  "success": true,
   "exists": true,
   "book": {
     "isbn": "9787111122334",
@@ -743,30 +745,46 @@ api_user_login
   }
 }
 ```
-> 注意：ISBN 缺失时返回 `{ "exists": false }`（**无 `success` 字段**），与多数接口的 `{ "success": false }` 不一致；异常时直接 throw。属 0.3 命名的边界不一致，前端需特别处理。
+
+**成功但系统不存在该 ISBN 主数据（正常分支，前端据此转 fetchExternal）：**
+```json
+{
+  "success": true,
+  "exists": false
+}
+```
+
+**失败（ISBN 缺失 / 系统异常）：**
+```json
+{ "success": false, "message": "ISBN缺失" }
+```
+```json
+{ "success": false, "message": "<err.message>" }
+```
+> 说明：已统一为 `success` 标志（见 0.4 通用约定、第 4 章错误枚举）。`exists` 仅用于区分"系统已存在 / 不存在"两种**成功**结果（不存在不是错误，是转外部源抓取的正常前置条件），因此仍随 `success: true` 一并返回。原文档的 `{ "exists": false }`（无 `success`）与 D2 的 `{ "success": ... }` 不一致问题已在本次修改中统一——见遗留问题 6。
 
 ---
 
-## D2. api_bookmeta_fetchExternal
+### D2. api_bookmeta_fetchExternal
 （原 getBookFromDouban_v2）
 
-### 功能
+#### 功能
 从外部数据源抓取书籍信息。
 
 当前：豆瓣 HTML 解析。
 未来：豆瓣、OpenLibrary、Google Books、国家图书馆，都可以统一挂到这里。
 
-### 入参
+#### 入参
 ```json
 {
   "isbn": "9787111122334"
 }
 ```
 
-### 处理规则
+#### 处理规则
 （暂无）
 
-### 返回
+#### 返回
 ```json
 {
   "success": true,
@@ -785,16 +803,16 @@ api_user_login
   }
 }
 ```
-> 失败返回：`{ "success": false, "error": "..." }` 或 `{ "success": false, "msg": "ISBN missing" }`。封面 `cover_url` 因豆瓣版权保护通常为空，需用户拍摄上传补全。
+> 失败返回：`{ "success": false, "error": "..." }` 或 `{ "success": false, "message": "ISBN missing" }`。封面 `cover_url` 因豆瓣版权保护通常为空，需用户拍摄上传补全。
 
 ---
 
-# E. 手机端操作：实体书本上下架
+## E. 手机端操作：实体书本上下架
 
-## E1. api_bookitem_prepareCreate
+### E1. api_bookitem_prepareCreate
 （原 prepareInStock）
 
-### 功能
+#### 功能
 上架前预检查：book_meta 是否存在、当前家庭是否已存在同书、套装序号是否冲突。用于：
 ```
 扫码ISBN
@@ -806,7 +824,7 @@ api_user_login
 进入确认页
 ```
 
-### 入参
+#### 入参
 ```json
 {
   "isbn": "9787111122334",
@@ -818,10 +836,10 @@ api_user_login
 ```
 > familyId 由服务端从 `user.currentFamilyId` 解析（见 0.4），不接收客户端传入。
 
-### 处理规则
+#### 处理规则
 （暂无）
 
-### 返回
+#### 返回
 ```json
 {
   "success": true,
@@ -836,10 +854,10 @@ api_user_login
 
 ---
 
-## E2. api_bookitem_create
+### E2. api_bookitem_create
 （原 commitInStock）
 
-### 功能
+#### 功能
 正式执行上架。
 
 包含：
@@ -847,7 +865,7 @@ api_user_login
 - 创建 book_item
 - 写库存日志
 
-### 入参
+#### 入参
 ```json
 {
   "isbn": "9787111122334",
@@ -869,11 +887,11 @@ api_user_login
 ```
 > familyId 与 operator 由服务端从登录态解析（见 0.4），**不接收客户端传入**。原文档入参中的 `familyId`、`operator` 已移除。
 
-### 处理规则
+#### 处理规则
 - 当前用户须已注册且 `status = ACTIVE`
 - familyId 取自 `user.currentFamilyId`（缺失返回"未选择当前家庭"）
 
-### 返回
+#### 返回
 ```json
 {
   "success": true,
@@ -896,10 +914,10 @@ api_user_login
 
 ---
 
-## E3. api_bookitem_offstock
+### E3. api_bookitem_offstock
 （原 offBookItem）
 
-### 功能
+#### 功能
 执行下架。
 
 包含：
@@ -907,7 +925,7 @@ api_user_login
 - 更新 book_item.inventory_status = off_stock
 - 写库存日志
 
-### 入参
+#### 入参
 ```json
 {
   "item_id": "xxx",
@@ -917,21 +935,21 @@ api_user_login
 > familyId 与 operator 由服务端从登录态解析（见 0.4），**不接收客户端传入**。原文档入参中的 `family_id`、`operator` 已移除。
 > 注：本接口入参字段为 snake_case `item_id`（见 0.3 待统一项）。
 
-### 处理规则
+#### 处理规则
 - 当前用户须已注册且 `status = ACTIVE`
 - `item.inventory_status !== 'in_stock'` 时抛错拒绝
 
-### 返回
+#### 返回
 ```json
 { "success": true }
 ```
 
 ---
 
-## E4. api_bookitem_restock
+### E4. api_bookitem_restock
 （原 onBookItem）
 
-### 功能
+#### 功能
 重新上架已下架书籍。
 
 包含：
@@ -939,7 +957,7 @@ api_user_login
 - 恢复 `inventory_status = in_stock`
 - 写库存日志（`reason: '重新上架'`）
 
-### 入参
+#### 入参
 ```json
 {
   "item_id": "xxx"
@@ -948,11 +966,11 @@ api_user_login
 > familyId 与 operator 由服务端从登录态解析（见 0.4），**不接收客户端传入**。原文档入参中的 `family_id`、`operator` 已移除。
 > 注：本接口入参字段为 snake_case `item_id`。
 
-### 处理规则
+#### 处理规则
 - 当前用户须已注册且 `status = ACTIVE`
 - `item.inventory_status !== 'off_stock'` 时抛错拒绝
 
-### 返回
+#### 返回
 ```json
 { "success": true }
 ```
@@ -961,16 +979,16 @@ api_user_login
 
 ---
 
-## E5. api_bookitem_delete
+### E5. api_bookitem_delete
 （原 deleteBookItem）
 
-### 功能
+#### 功能
 逻辑删除（彻底删除）。
 
 执行：`fg_delete = false` → `true`。
 前提：`inventory_status = off_stock`（禁止 `in_stock → fg_delete = true`）。
 
-### 入参
+#### 入参
 ```json
 {
   "item_id": "xxx"
@@ -979,28 +997,28 @@ api_user_login
 > familyId 与 operator 由服务端从登录态解析（见 0.4），**不接收客户端传入**。原文档入参中的 `family_id`、`operator` 已移除。
 > 注：本接口入参字段为 snake_case `item_id`。
 
-### 处理规则
+#### 处理规则
 - 当前用户须已注册且 `status = ACTIVE`
 - 校验 `item.inventory_status === 'off_stock'`，否则拒绝
 
-### 返回
+#### 返回
 ```json
 { "success": true }
 ```
 
 ---
 
-## E6. api_bookitem_get
+### E6. api_bookitem_get
 （原 getBookItem）
 
 > 需研究：该函数被 `async loadFromId(itemId)` 调用，但 `loadFromId` 没有被任何地方调用。接口已实现但当前无调用方，待确认是否保留或接入页面。
 
-### 功能
+#### 功能
 根据 book_item_id 获取实体书详情。
 
 自动关联 book_item + book_meta + bookshelf，返回完整展示对象（三层结构）。
 
-### 入参
+#### 入参
 ```json
 {
   "itemId": "xxx"
@@ -1008,10 +1026,10 @@ api_user_login
 ```
 > 注：本接口入参字段为 camelCase `itemId`（与 E3/E4/E5 的 `item_id` 混用，见 0.3）。
 
-### 处理规则
+#### 处理规则
 （暂无）
 
-### 返回
+#### 返回
 ```json
 {
   "success": true,
@@ -1055,11 +1073,11 @@ api_user_login
 
 ---
 
-## E7. api_bookitem_updateBookshelf
-### 功能
+### E7. api_bookitem_updateBookshelf
+#### 功能
 修改指定实体书所在书架（移动图书）。
 
-### 入参
+#### 入参
 ```json
 {
   "itemId": "xxx",
@@ -1068,11 +1086,11 @@ api_user_login
 ```
 > familyId 与 operator 由服务端从登录态解析（见 0.4），**不接收客户端传入**。原文档入参中的 `familyId`、`operator` 已移除。
 
-### 处理规则
+#### 处理规则
 - 权限：`BOOKITEM_UPDATE`（经 `checkPermission` 校验）
 - familyId 取自 `user.currentFamilyId`
 
-### 返回
+#### 返回
 **成功：**
 ```json
 {
@@ -1103,12 +1121,12 @@ api_user_login
 
 ---
 
-# F. 手机端操作：书本检索
+## F. 手机端操作：书本检索
 
-## F1. api_book_search
+### F1. api_book_search
 （原 searchBooks）
 
-### 功能
+#### 功能
 图书检索。
 
 支持：
@@ -1121,7 +1139,7 @@ api_user_login
 - 时间筛选：上架期间
 - 分页
 
-### 入参
+#### 入参
 ```json
 {
   "keyword": "三体",
@@ -1137,11 +1155,11 @@ api_user_login
 > familyId 由服务端从 `user.currentFamilyId` 解析（见 0.4），不接收客户端传入。
 > `isbn`、`bookshelfId` 为原文档遗漏的参数，已补录。
 
-### 处理规则
+#### 处理规则
 - 默认 `status = in_stock`、默认 `pageSize = 10`、按 `created_at` 倒序
 - `isbn` 与 `keyword` 取交集（`_.and`）
 
-### 返回
+#### 返回
 ```json
 {
   "success": true,
@@ -1172,10 +1190,10 @@ api_user_login
 
 ---
 
-## F2. api_book_searchRecent
+### F2. api_book_searchRecent
 （原 getRecentBooks / api_recentbook_search）
 
-### 功能
+#### 功能
 首页最近上架书籍。
 
 规则：
@@ -1184,18 +1202,18 @@ api_user_login
 - 按 `created_at` 倒序
 - 最多 5 条
 
-### 入参
+#### 入参
 ```json
 {}
 ```
 > familyId 由服务端从 `user.currentFamilyId` 解析（见 0.4），不接收客户端传入。
 
-### 处理规则
+#### 处理规则
 - 当前用户须已注册且 `status = ACTIVE`
 - familyId 取自 `user.currentFamilyId`（缺失返回"未选择当前家庭"）
 - 关联 book_meta 拼装展示字段
 
-### 返回
+#### 返回
 ```json
 {
   "success": true,
@@ -1227,10 +1245,10 @@ api_user_login
 
 ---
 
-# G. 手机端操作：任务创建
+## G. 手机端操作：任务创建
 
-## G1. api_task_createBindRfid —— 🚧 脚手架（桩函数）
-### 功能
+### G1. api_task_createBindRfid —— 🚧 脚手架（桩函数）
+#### 功能
 创建 RFID 绑定任务。用于：
 ```
 图书检索页
@@ -1244,7 +1262,7 @@ PDA 后续轮询获取
 
 > **实现状态说明**：仓库中 `api_task_createBindRfid` 当前仅为桩函数（回显 event 与微信上下文），未实现真实创建逻辑。下方为设计约定。
 
-### 入参（规划）
+#### 入参（规划）
 ```json
 {
   "bookItemId": "bi00001"
@@ -1252,10 +1270,10 @@ PDA 后续轮询获取
 ```
 > created_by / operator 由服务端从登录态解析，不接收客户端传入。
 
-### 处理规则（规划）
+#### 处理规则（规划）
 （暂无）
 
-### 返回（规划）
+#### 返回（规划）
 ```json
 {
   "success": true,
@@ -1266,8 +1284,8 @@ PDA 后续轮询获取
 
 ---
 
-## G2. api_task_createFindBook —— 🚧 脚手架（桩函数）
-### 功能
+### G2. api_task_createFindBook —— 🚧 脚手架（桩函数）
+#### 功能
 创建寻书任务。用于：
 ```
 图书详情页
@@ -1281,7 +1299,7 @@ PDA 后续执行
 
 > **实现状态说明**：仓库中 `api_task_createFindBook` 当前仅为桩函数（回显 event 与微信上下文），未实现真实创建逻辑。下方为设计约定。
 
-### 入参（规划）
+#### 入参（规划）
 ```json
 {
   "bookItemId": "bi00001"
@@ -1289,10 +1307,10 @@ PDA 后续执行
 ```
 > operator 由服务端从登录态解析，不接收客户端传入。
 
-### 处理规则（规划）
+#### 处理规则（规划）
 （暂无）
 
-### 返回（规划）
+#### 返回（规划）
 ```json
 {
   "success": true,
@@ -1302,10 +1320,10 @@ PDA 后续执行
 
 ---
 
-# H. 手机端操作：任务执行
+## H. 手机端操作：任务执行
 
-## H1. api_task_unbindRfid —— 🚧 脚手架（桩函数）
-### 功能
+### H1. api_task_unbindRfid —— 🚧 脚手架（桩函数）
+#### 功能
 主动解绑 RFID。
 
 当前版本虽然业务中未出现入口，但未来（图书详情 → 解绑 RFID）大概率会需要，建议现在预留。
@@ -1313,7 +1331,7 @@ PDA 后续执行
 > **实现状态说明**：仓库中 `api_task_unbindRfid` 当前仅为桩函数（回显 event 与微信上下文），未实现真实解绑逻辑。下方为设计约定。
 > 注：架构表原用名 `api_rfid_unbind`，已与代码实现名 `api_task_unbindRfid` 对齐。
 
-### 入参（规划）
+#### 入参（规划）
 ```json
 {
   "bookItemId": "bi00001"
@@ -1321,22 +1339,22 @@ PDA 后续执行
 ```
 > operator 由服务端从登录态解析，不接收客户端传入。原文档入参写作 `{ "bookItemId", "operator"" }`（非法 JSON），已修正。
 
-### 处理规则（规划）
+#### 处理规则（规划）
 （暂无）
 
-### 返回（规划）
+#### 返回（规划）
 ```json
 { "success": true }
 ```
 
 ---
 
-# J. PDA操作：任务执行
+## J. PDA操作：任务执行
 
-## J1. api_task_accept —— 🚧 脚手架（桩函数）
+### J1. api_task_accept —— 🚧 脚手架（桩函数）
 （原 api_task_claim）
 
-### 功能
+#### 功能
 PDA 领取待执行任务。
 
 规则：
@@ -1358,17 +1376,17 @@ running
 
 > **实现状态说明**：仓库中 `api_task_accept` 当前仅为桩函数（回显 event 与微信上下文），未实现真实领取逻辑。下方为设计约定。
 
-### 入参（规划）
+#### 入参（规划）
 ```json
 {
   "deviceId": "pda001"
 }
 ```
 
-### 处理规则（规划）
+#### 处理规则（规划）
 （暂无）
 
-### 返回（规划）
+#### 返回（规划）
 **有任务：**
 ```json
 {
@@ -1391,13 +1409,13 @@ running
 
 ---
 
-## J2. api_task_complete —— 🚧 脚手架（桩函数）
-### 功能
+### J2. api_task_complete —— 🚧 脚手架（桩函数）
+#### 功能
 提交任务执行结果。适用于：bind_rfid、find_book。
 
 > **实现状态说明**：仓库中 `api_task_complete` 当前仅为桩函数（回显 event 与微信上下文），未实现真实提交逻辑。下方为设计约定。
 
-### 入参（规划）
+#### 入参（规划）
 ```json
 {
   "taskId": "task00001",
@@ -1408,18 +1426,18 @@ running
 }
 ```
 
-### 处理规则（规划）
+#### 处理规则（规划）
 （暂无）
 
-### 返回（规划）
+#### 返回（规划）
 ```json
 { "success": true }
 ```
 
 ---
 
-## J3. api_task_getRfidBindingInfo —— 🚧 脚手架（桩函数）
-### 功能
+### J3. api_task_getRfidBindingInfo —— 🚧 脚手架（桩函数）
+#### 功能
 绑定流程真正执行业务逻辑的部分。根据 RFID TID 查询当前绑定状态，用于 PDA 扫描标签后确认。流程：
 ```
 扫描TID
@@ -1434,17 +1452,17 @@ running
 > **实现状态说明**：仓库中 `api_task_getRfidBindingInfo` 当前仅为桩函数（回显 event 与微信上下文），未实现真实查询逻辑。下方为设计约定。
 > 注：架构表原用名 `api_rfid_getBindingInfo`，已与代码实现名 `api_task_getRfidBindingInfo` 对齐。
 
-### 入参（规划）
+#### 入参（规划）
 ```json
 {
   "tid": "E280699500000001"
 }
 ```
 
-### 处理规则（规划）
+#### 处理规则（规划）
 （暂无）
 
-### 返回（规划，未绑定）
+#### 返回（规划，未绑定）
 ```json
 {
   "success": true,
@@ -1452,7 +1470,7 @@ running
 }
 ```
 
-### 返回（规划，已绑定）
+#### 返回（规划，已绑定）
 ```json
 {
   "success": true,
@@ -1467,8 +1485,8 @@ running
 
 ---
 
-## J4. api_task_bindRfid —— 🚧 脚手架（桩函数）
-### 功能
+### J4. api_task_bindRfid —— 🚧 脚手架（桩函数）
+#### 功能
 执行 RFID 绑定（核心接口）。
 
 实现场景 A / 场景 B / 场景 C / 场景 D 全部统一处理。内部负责：
@@ -1482,7 +1500,7 @@ running
 > **实现状态说明**：仓库中 `api_task_bindRfid` 当前仅为桩函数（回显 event 与微信上下文），未实现真实绑定逻辑。下方为设计约定。
 > 注：架构表原用名 `api_rfid_bind`，已与代码实现名 `api_task_bindRfid` 对齐。
 
-### 入参（规划）
+#### 入参（规划）
 ```json
 {
   "bookItemId": "bi00001",
@@ -1491,10 +1509,10 @@ running
 ```
 > operator 由服务端从登录态解析，不接收客户端传入。
 
-### 处理规则（规划）
+#### 处理规则（规划）
 （暂无）
 
-### 返回（规划）
+#### 返回（规划）
 ```json
 {
   "success": true,
@@ -1512,10 +1530,78 @@ running
 
 2. **入参命名不统一（0.3 范围内）**：`itemId`（camel，如 api_bookitem_get / updateBookshelf）与 `item_id`（snake，如 offstock / restock / delete）跨接口混用；`familyId`/`family_id`、`tid`/`rfidTid` 同理。建议下一阶段统一为 camelCase。
 
-3. **通用失败返回 / 错误枚举未系统化**：代码通过 `checkPermission` 统一返回 `{ success:false, message, reason }`，`reason` 枚举含 `USER_NOT_FOUND` / `USER_DISABLED` / `MISSING_FAMILY_ID` / `NOT_FAMILY_MEMBER` / `PERMISSION_DENIED` / `MISSING_DB` / `MISSING_PERMISSION`。建议新增"通用错误返回"章节集中说明。
+3. **通用失败返回 / 错误枚举未系统化（已起草）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 4 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
 
 4. **权限体系未逐接口标注**：仅 family / bookshelf 的增改删与 `api_bookitem_updateBookshelf` 在代码中显式 `checkPermission`；bookitem 的上架/下架/重新上架/删除及检索类接口当前仅做 `getCurrentUser`（登录态）校验，未做细粒度权限检查。建议对照需求文档 RBAC 补齐，并在文档逐接口标注所需 `PERMISSION` 与允许角色（特别注意 GUEST 仅有 BOOKSHELF_LIST / BOOKITEM_SEARCH / RECENTBOOK_SEARCH 三项权限）。
 
 5. **api_bookitem_restock 刷新 created_at（隐藏业务影响）**：重新上架会把 `created_at` 刷新为当前时间，导致"最近上架"列表重排。若不符合预期，应改为仅更新 `updated_at`。
 
-6. **D1 getByIsbn 与 D2 fetchExternal 成功标志不一致**：D1 用 `exists`、D2 用 `success`，前端需分别处理。
+6. **D1 getByIsbn 与 D2 fetchExternal 成功标志不一致（已修复）**：原 D1 返回 `{ "exists": ... }`（无 `success`）、D2 返回 `{ "success": ... }`，前端需分别处理。已在本次修改中统一：D1 改为统一以 `success` 为顶层标志（`exists` 仅作"系统是否存在该 ISBN"的成功分支标记，随 `success: true` 返回），D2 保持 `success`；云函数代码与小程序调用处（`pages/book/book.js`）已同步修改。
+# 4. 通用错误返回规范（错误枚举）
+
+## 4.1 统一返回结构
+
+> 与 0.4 通用约定一致：所有接口**成功**统一含 `success: true`；**失败**统一含 `success: false` 与 `message`（人类可读信息）。
+
+**成功：**
+```json
+{ "success": true, "...": "..." }
+```
+
+**失败（通用）：**
+```json
+{ "success": false, "message": "<人类可读错误描述>" }
+```
+
+> 个别老接口异常分支写作 `{ "success": false, "error": "..." }`，属历史写法，建议统一收敛为 `message`（见 4.3）。
+
+## 4.2 失败原因枚举（reason）
+
+登录态与权限校验统一由 `_shared/permission.js` 的 `checkPermission` 完成。该校验对每个失败场景给定一个 `reason` 枚举值（机器可读），便于前端 / 上层按类型分支、埋点、国际化。
+
+> **现状（待系统化，即遗留问题 3）**：当前真实云函数在 `checkPermission` 返回 `allowed: false` 时，仅透传 `perm.message`（`return { success: false, message: perm.message }`），**未将 `reason` 透出到接口响应**。因此 `reason` 目前是"代码内部已实现、接口层面未暴露"的状态。建议后续在失败响应中统一补充 `reason` 字段：
+> ```json
+> { "success": false, "message": "<错误信息>", "reason": "PERMISSION_DENIED" }
+> ```
+
+### reason 枚举表
+
+| reason | message（当前实际文案） | 触发场景 | 建议前端动作 |
+|--------|----------------------|---------|------------|
+| `MISSING_DB` | 缺少数据库对象 | 云函数初始化未注入数据库对象（内部错误） | 提示"系统异常"，上报监控 |
+| `MISSING_PERMISSION` | 缺少权限定义 | 调用 `checkPermission` 时未传入 `permission`（开发期错误） | 提示"系统异常"，上报监控 |
+| `USER_NOT_FOUND` | 用户未注册 | `openid` 查不到 user（未注册 / 已删除） | 引导走注册流程 |
+| `USER_DISABLED` | 用户状态不可用 | `user.status !== 'ACTIVE'` | 提示"账号不可用" |
+| `MISSING_FAMILY_ID` | 缺少家庭ID | 需要家庭上下文但无法解析出 `familyId` | 提示"请先选择家庭" |
+| `NOT_FAMILY_MEMBER` | 用户不属于该家庭 | 目标家庭无该用户的 `user_family` 关系 | 提示"无该家庭权限" |
+| `PERMISSION_DENIED` | 无权限操作 | 角色 / 权限不满足 `hasPermission` | 提示"无操作权限" |
+
+> 说明：上表 `message` 文案取自 `_shared/permission.js` 当前实现，属服务端文案。若前端做国际化，应以 `reason` 为 key 做映射，而非依赖 `message` 文本。
+
+## 4.3 其他失败返回约定
+
+- **参数校验失败**：接口在调用 `checkPermission` 前自行校验入参（如必填项为空），直接返回 `{ success: false, message: "<具体字段>不能为空" }`，不进入 `checkPermission`，因此无 `reason`。
+- **业务规则拒绝**：如"书架下存在在架图书，无法删除""当前家庭已存在有效书架"等，返回 `{ success: false, message: "<业务提示>" }`；如需细分，可补充业务级 `reason`（建议后续扩展，如 `SHELF_NOT_EMPTY` 等）。
+- **系统异常**：`try/catch` 捕获后返回 `{ success: false, message: "<err.message>" }`（老接口写法为 `{ success: false, "error": "..." }`，建议统一为 `message`）。
+- **特殊成功分支**：`api_bookmeta_getByIsbn` 的 `{ success: true, exists: false }` 属"调用成功但系统内无此书"的**正常成功**结果（非失败），用于驱动前端转外部源抓取，不应视为错误。
+
+## 4.4 推荐（系统化）目标结构
+
+```json
+// 失败（系统化后）
+{
+  "success": false,
+  "message": "无权限操作",
+  "reason": "PERMISSION_DENIED"
+}
+```
+
+```json
+// 成功
+{
+  "success": true,
+  "...业务字段": "..."
+}
+```
+
+> **推进建议**：在 `checkPermission` 的调用封装处（或新增 `fail(reason)` 辅助函数）统一把 `reason` + `message` 包成 `{ success: false, message, reason }`，避免各接口散落 `return { success: false, message }`，从而把遗留问题 3 的"错误枚举"真正落到接口契约层。
