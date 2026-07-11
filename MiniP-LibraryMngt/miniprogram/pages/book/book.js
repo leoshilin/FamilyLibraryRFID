@@ -706,7 +706,7 @@ Page({
         });
 
       } else {
-        throw result.result.error
+        throw new Error(result.result.message || '操作失败')
       }
     } catch (err) {
       wx.hideLoading()
@@ -771,7 +771,7 @@ Page({
                 });
 
               } else {
-                throw result.result.error
+                throw new Error(result.result.message || '操作失败')
               }
 
             } catch (err) {
@@ -831,7 +831,7 @@ Page({
         //返回前页
         wx.navigateBack({ delta: 1 })
       } else {
-        throw result.result.error
+        throw new Error(result.result.message || '操作失败')
       }
     } catch (err) {
       wx.hideLoading()

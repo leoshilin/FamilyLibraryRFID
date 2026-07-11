@@ -8,7 +8,7 @@ const cloud = require('wx-server-sdk')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
 
-const { getCurrentUser } = require('./common/permission')
+const { PERMISSIONS, RESOURCE_TYPES, checkPermission, getCurrentUser } = require('./common/permission')
 
 // 写入时做格式清洗
 function normalizeInput(input) {
@@ -52,6 +52,17 @@ exports.main = async (event) => {
   const familyId = user.currentFamilyId
   if (!familyId) {
     return { success: false, message: '未选择当前家庭' }
+  }
+
+  // 权限检查：上架图书需 BOOKITEM_CREATE 权限（OWNER/MEMBER，GUEST 无此权限）
+  const perm = await checkPermission({
+    db,
+    openid: wxContext.OPENID,
+    permission: PERMISSIONS.BOOKITEM_CREATE,
+    familyId
+  })
+  if (!perm.allowed) {
+    return { success: false, message: perm.message }
   }
 
   console.log('api_bookitem_create params:', {

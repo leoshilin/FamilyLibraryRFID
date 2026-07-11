@@ -7,7 +7,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
 const db = cloud.database()
 const _ = db.command
 
-const { getCurrentUser } = require('./common/permission')
+const { PERMISSIONS, RESOURCE_TYPES, checkPermission, getCurrentUser } = require('./common/permission')
 
 // 云函数入口函数
 exports.main = async (event) => {
@@ -27,6 +27,17 @@ exports.main = async (event) => {
   const familyId = user.currentFamilyId
   if (!familyId) {
     return { success: false, message: '未选择当前家庭' }
+  }
+
+  // 权限检查：彻底删除图书需 BOOKITEM_DELETE 权限（OWNER/MEMBER，GUEST 无此权限）
+  const perm = await checkPermission({
+    db,
+    openid: wxContext.OPENID,
+    permission: PERMISSIONS.BOOKITEM_DELETE,
+    familyId
+  })
+  if (!perm.allowed) {
+    return { success: false, message: perm.message }
   }
 
   console.log(`api_bookitem_delete start, item_id=${item_id}, family_id=${familyId}`)

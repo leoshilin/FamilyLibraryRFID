@@ -121,6 +121,10 @@ api_user_login
 - 查询 user
 - 已注册用户：构建当前家庭下的权限集 `permissions`（`buildFamilyPermissions`）
 
+
+#### 权限
+- 无（仅登录态 / 注册校验，返回是否已注册）
+
 #### 返回
 **已注册：**
 ```json
@@ -181,6 +185,10 @@ api_user_login
   - 存在：返回失败
   - 不存在：创建 user
 
+
+#### 权限
+- 无（注册接口；已注册用户不可重复注册）
+
 #### 返回
 ```json
 {
@@ -211,6 +219,10 @@ api_user_login
 
 #### 处理规则（规划）
 （暂无）
+
+
+#### 权限
+- 无（登录态；查看用户自身或指定用户信息）
 
 #### 返回（规划）
 ```json
@@ -249,7 +261,7 @@ api_user_login
   ```
 
 #### 权限
-需登录（registered + ACTIVE）。
+- 无（登录态；当前用户须已注册且 status=ACTIVE）
 
 #### 返回
 **成功：**
@@ -286,6 +298,10 @@ api_user_login
 
 #### 处理规则
 （暂无）
+
+
+#### 权限
+- 无（登录态；返回当前访问家庭信息）
 
 #### 返回
 **成功（有家庭）：**
@@ -329,11 +345,16 @@ api_user_login
 > name 可选，为空时默认"我的家庭"。familyId 由服务端创建，不接收客户端传入。
 
 #### 处理规则
-- 权限：`FAMILY_CREATE`（注册用户均可，任意用户仅可创建一个家庭）
 - 校验用户是否已作为 `OWNER` 创建过家庭（一个用户只可创建一个家庭），失败返回"当前用户已创建家庭"
 - 创建默认书架"我的书架"
 - 在 `user_family` 建立 `OWNER` 关系
 - 更新 `user.currentFamilyId`
+
+
+#### 权限
+- 所需权限：`FAMILY_CREATE`
+- 允许角色：任意已注册用户（PUBLIC，不依赖家庭角色）；ADMIN 拥有全部
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
 #### 返回
 **成功：**
@@ -374,7 +395,12 @@ api_user_login
 > 此处 familyId 为**目标家庭**，由客户端指定（语义正确，予以保留）。
 
 #### 处理规则
-- 权限：`FAMILY_UPDATE`
+
+
+#### 权限
+- 所需权限：`FAMILY_UPDATE`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER（MEMBER、GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
 #### 返回
 **成功：**
@@ -413,7 +439,6 @@ api_user_login
 > 此处 familyId 为**目标家庭**，由客户端指定（语义正确，予以保留）。
 
 #### 处理规则
-- 权限：`FAMILY_DELETE`
 - 获取当前登录用户：openid → user
 - 校验用户已注册且 `status = ACTIVE`
 - 校验 familyId 必填
@@ -422,6 +447,12 @@ api_user_login
 - 删除前检查该家庭下是否存在 `status = ACTIVE` 的书架，若存在 ACTIVE 书架则拒绝删除
 - 若允许删除：更新 `family.status = DISABLED`，写入 `updated_by`、`updated_at`
 - 如果当前用户的 `currentFamilyId === familyId`：删除 `user.currentFamilyId` 字段（不能写 null）
+
+
+#### 权限
+- 所需权限：`FAMILY_DELETE`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER（MEMBER、GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
 #### 返回
 **成功：**
@@ -454,6 +485,10 @@ api_user_login
 
 #### 处理规则
 - 该接口**不做 RBAC 校验**（仅 `getCurrentUser`）
+
+
+#### 权限
+- 无（登录态；列出当前用户所属全部家庭，文档注明不做 RBAC 校验）
 
 #### 返回
 ```json
@@ -496,6 +531,10 @@ api_user_login
 - 查询目标 family，必须存在且 `status = ACTIVE`
 - 更新 `user.currentFamilyId = familyId`
 - 不写 `updated_at` / `updated_by`；不做角色权限校验
+
+
+#### 权限
+- 无（仅校验用户是否属于目标家庭 user_family，不做角色级权限校验）
 
 #### 返回
 **成功：**
@@ -542,13 +581,18 @@ api_user_login
 > familyId 由服务端从 `user.currentFamilyId` 解析（见 0.4），不接收客户端传入。
 
 #### 处理规则
-- 权限：`BOOKSHELF_CREATE`
 - name 必填，trim 后不能为空
 - 当前用户必须已注册且 `status = ACTIVE`
 - 目标家庭必须存在且 `status = ACTIVE`
 - 同一家庭下 ACTIVE 书架数量不能超过 99
 - sort_order 由后端计算：当前 ACTIVE 书架最大 sort_order + 1
 - 创建时写入：familyId、name、sort_order、status = ACTIVE、created_by、created_at
+
+
+#### 权限
+- 所需权限：`BOOKSHELF_CREATE`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
 #### 返回
 ```json
@@ -581,13 +625,18 @@ api_user_login
 > familyId 由服务端从书架记录（bookshelf.familyId）取得，不接收客户端传入。
 
 #### 处理规则
-- 权限：`BOOKSHELF_UPDATE`
 - bookshelfId 必填
 - name 必填
 - 查询书架，取得 familyId
 - 书架必须存在且 `status = ACTIVE`
 - 只修改名称，不修改 familyId、sort_order
 - 写入 updated_by、updated_at
+
+
+#### 权限
+- 所需权限：`BOOKSHELF_UPDATE`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
 #### 返回
 ```json
@@ -619,13 +668,18 @@ api_user_login
 > familyId 由服务端从书架记录（bookshelf.familyId）取得，不接收客户端传入。
 
 #### 处理规则
-- 权限：`BOOKSHELF_DELETE`
 - bookshelfId 必填
 - 查询书架，取得 familyId
 - 书架必须存在且 `status = ACTIVE`
 - 删除前检查该书架下是否存在有效在架图书：`book_item.bookshelf_id = bookshelfId` 且 `inventory_status = in_stock` 且 `fg_delete` 不为 true，若存在则拒绝删除
 - 若允许删除：更新 `bookshelf.status = DISABLED`，写入 `updated_by`、`updated_at`
 - 删除后重排同家庭下剩余 ACTIVE 书架的 sort_order
+
+
+#### 权限
+- 所需权限：`BOOKSHELF_DELETE`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
 #### 返回
 **成功：**
@@ -651,10 +705,15 @@ api_user_login
 > familyId 由服务端从 `user.currentFamilyId` 解析（见 0.4），不接收客户端传入。
 
 #### 处理规则
-- 权限：`BOOKSHELF_LIST`
 - 当前用户必须属于该家庭，或为 ADMIN
 - 按 sort_order 升序返回
 - 默认只返回 `status = ACTIVE`
+
+
+#### 权限
+- 所需权限：`BOOKSHELF_LIST`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER、GUEST
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
 #### 返回
 ```json
@@ -691,8 +750,13 @@ api_user_login
 > 参数定义待进一步明确（原文档仅占位）。familyId 由服务端从 `user.currentFamilyId` 解析。
 
 #### 处理规则（规划）
-- 权限：`BOOKSHELF_UPDATE`
 - 校验顺序数组归属当前家庭且覆盖全部 ACTIVE 书架
+
+
+#### 权限
+- 所需权限：`BOOKSHELF_UPDATE`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
 #### 返回（规划）
 ```json
@@ -725,6 +789,10 @@ api_user_login
 
 #### 处理规则
 （暂无）
+
+
+#### 权限
+- 无（登录态；按 ISBN 查询系统主数据，无家庭资源上下文）
 
 #### 返回
 **成功且系统已存在该 ISBN 主数据：**
@@ -786,6 +854,10 @@ api_user_login
 #### 处理规则
 （暂无）
 
+
+#### 权限
+- 无（登录态；从外部数据源抓取书籍信息）
+
 #### 返回
 ```json
 {
@@ -841,6 +913,12 @@ api_user_login
 #### 处理规则
 （暂无）
 
+
+#### 权限
+- 所需权限：`BOOKITEM_CREATE`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
+
 #### 返回
 ```json
 {
@@ -893,6 +971,12 @@ api_user_login
 - 当前用户须已注册且 `status = ACTIVE`
 - familyId 取自 `user.currentFamilyId`（缺失返回"未选择当前家庭"）
 
+
+#### 权限
+- 所需权限：`BOOKITEM_CREATE`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
+
 #### 返回
 ```json
 {
@@ -941,6 +1025,12 @@ api_user_login
 - 当前用户须已注册且 `status = ACTIVE`
 - `item.inventory_status !== 'in_stock'` 时抛错拒绝
 
+
+#### 权限
+- 所需权限：`BOOKITEM_OFFSTOCK`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
+
 #### 返回
 ```json
 { "success": true }
@@ -971,6 +1061,12 @@ api_user_login
 #### 处理规则
 - 当前用户须已注册且 `status = ACTIVE`
 - `item.inventory_status !== 'off_stock'` 时抛错拒绝
+
+
+#### 权限
+- 所需权限：`BOOKITEM_RESTOCK`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
 #### 返回
 ```json
@@ -1003,6 +1099,12 @@ api_user_login
 - 当前用户须已注册且 `status = ACTIVE`
 - 校验 `item.inventory_status === 'off_stock'`，否则拒绝
 
+
+#### 权限
+- 所需权限：`BOOKITEM_DELETE`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
+
 #### 返回
 ```json
 { "success": true }
@@ -1030,6 +1132,12 @@ api_user_login
 
 #### 处理规则
 （暂无）
+
+
+#### 权限
+- 所需权限：`BOOKITEM_SEARCH`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER、GUEST
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
 #### 返回
 ```json
@@ -1089,8 +1197,13 @@ api_user_login
 > familyId 与 operator 由服务端从登录态解析（见 0.4），**不接收客户端传入**。原文档入参中的 `familyId`、`operator` 已移除。
 
 #### 处理规则
-- 权限：`BOOKITEM_UPDATE`（经 `checkPermission` 校验）
 - familyId 取自 `user.currentFamilyId`
+
+
+#### 权限
+- 所需权限：`BOOKITEM_UPDATE`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
 #### 返回
 **成功：**
@@ -1161,6 +1274,12 @@ api_user_login
 - 默认 `status = in_stock`、默认 `pageSize = 10`、按 `created_at` 倒序
 - `isbn` 与 `keyword` 取交集（`_.and`）
 
+
+#### 权限
+- 所需权限：`BOOKITEM_SEARCH`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER、GUEST
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
+
 #### 返回
 ```json
 {
@@ -1214,6 +1333,12 @@ api_user_login
 - 当前用户须已注册且 `status = ACTIVE`
 - familyId 取自 `user.currentFamilyId`（缺失返回"未选择当前家庭"）
 - 关联 book_meta 拼装展示字段
+
+
+#### 权限
+- 所需权限：`RECENTBOOK_SEARCH`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER、GUEST
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
 #### 返回
 ```json
@@ -1275,6 +1400,12 @@ PDA 后续轮询获取
 #### 处理规则（规划）
 （暂无）
 
+
+#### 权限
+- 所需权限：`RFID_TASK_CREATE_BIND`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
+
 #### 返回（规划）
 ```json
 {
@@ -1312,6 +1443,12 @@ PDA 后续执行
 #### 处理规则（规划）
 （暂无）
 
+
+#### 权限
+- 所需权限：`RFID_TASK_CREATE_FIND`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
+
 #### 返回（规划）
 ```json
 {
@@ -1343,6 +1480,12 @@ PDA 后续执行
 
 #### 处理规则（规划）
 （暂无）
+
+
+#### 权限
+- 所需权限：`RFID_UNBIND`
+- 允许角色：ADMIN（系统管理员，拥有全部）、OWNER（MEMBER、GUEST 无此权限）
+- 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
 #### 返回（规划）
 ```json
@@ -1388,6 +1531,10 @@ running
 #### 处理规则（规划）
 （暂无）
 
+
+#### 权限
+- 无（PDA 专用；按 deviceId 领取待执行任务，不做家庭角色校验）
+
 #### 返回（规划）
 **有任务：**
 ```json
@@ -1431,6 +1578,10 @@ running
 #### 处理规则（规划）
 （暂无）
 
+
+#### 权限
+- 无（PDA 专用；提交任务执行结果）
+
 #### 返回（规划）
 ```json
 { "success": true }
@@ -1463,6 +1614,10 @@ running
 
 #### 处理规则（规划）
 （暂无）
+
+
+#### 权限
+- 无（PDA 专用；按 RFID TID 查询绑定状态）
 
 #### 返回（规划，未绑定）
 ```json
@@ -1514,6 +1669,10 @@ running
 #### 处理规则（规划）
 （暂无）
 
+
+#### 权限
+- 无（PDA 专用；执行 RFID 绑定）
+
 #### 返回（规划）
 ```json
 {
@@ -1534,7 +1693,11 @@ running
 
 3. **通用失败返回 / 错误枚举未系统化（已起草）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 4 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
 
-4. **权限体系未逐接口标注**：仅 family / bookshelf 的增改删与 `api_bookitem_updateBookshelf` 在代码中显式 `checkPermission`；bookitem 的上架/下架/重新上架/删除及检索类接口当前仅做 `getCurrentUser`（登录态）校验，未做细粒度权限检查。建议对照需求文档 RBAC 补齐，并在文档逐接口标注所需 `PERMISSION` 与允许角色（特别注意 GUEST 仅有 BOOKSHELF_LIST / BOOKITEM_SEARCH / RECENTBOOK_SEARCH 三项权限）。
+4. **权限体系未逐接口标注（已修复）**：原仅 family / bookshelf 的增改删与 `api_bookitem_updateBookshelf` 在代码中显式 `checkPermission`；bookitem 的上架/下架/重新上架/删除及检索类接口此前仅做 `getCurrentUser`（登录态）校验。本次已**逐接口补齐并标注**：
+   - **文档侧**：每个接口（含桩函数 G1/G2/H1）新增 `#### 权限` 子节，标注「所需权限 / 允许角色 / 校验方式」，角色口径严格对齐需求文档 RBAC——GUEST 仅拥有 `BOOKSHELF_LIST` / `BOOKITEM_SEARCH` / `RECENTBOOK_SEARCH` 三项。
+   - **代码侧**：对 8 个真实接口补充 `checkPermission` 细粒度校验 —— `api_bookitem_prepareCreate`、`api_bookitem_create`（→`BOOKITEM_CREATE`）、`api_bookitem_offstock`（→`BOOKITEM_OFFSTOCK`）、`api_bookitem_restock`（→`BOOKITEM_RESTOCK`）、`api_bookitem_delete`（→`BOOKITEM_DELETE`）、`api_bookitem_get`（→`BOOKITEM_SEARCH`，并补 `getCurrentUser`）、`api_book_search`（→`BOOKITEM_SEARCH`）、`api_book_searchRecent`（→`RECENTBOOK_SEARCH`）。校验统一置于「登录态解析 + 家庭解析」之后、业务/事务逻辑之前（与 `api_bookitem_updateBookshelf` 同模式）；未授权返回 `{ "success": false, "message": "无权限操作" }`。
+   - **调用侧**：修复 `pages/book/book.js`、`pages/book-search/book-search.js` 中失败分支原误用 `throw result.result.error`（该字段不存在）的缺陷，改为 `throw new Error(result.result.message || '操作失败')`，使「无权限操作」等错误信息可正确透出；并给 `api_book_search` 调用补 `success` 判断，避免权限失败时静默空列表。
+   - 说明：受前端 `FRONTEND_PERMISSION_KEYS` 角色门控影响，GUEST 在界面上本就看不到增改删/上下架按钮，服务端 `checkPermission` 为纵深防御；二者口径一致。
 
 5. **api_bookitem_restock 刷新 created_at（隐藏业务影响）**：重新上架会把 `created_at` 刷新为当前时间，导致"最近上架"列表重排。若不符合预期，应改为仅更新 `updated_at`。
 
