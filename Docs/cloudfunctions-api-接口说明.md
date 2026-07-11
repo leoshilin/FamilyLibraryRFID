@@ -31,35 +31,15 @@ user.currentFamilyId
 7. 所有云函数目录下的common目录是通用模块，但不应该单独维护。该模块下的文件来源是_shared 目录，通过npm run sync-common来同步到所有云函数下。因此，Git Hub可能仅保存_shared 目录一个拷贝。部署时需要执行同步脚本。
 ---
 
-## 0.2 命名统一专项（API / 前端实体层，已完成）
+## 0.2 a类问题（代码侧 + 文档侧均未修正）
+无
 
-> 范围：API 入参 / 返回（前端实体）全链路 camelCase；数据库内部字段保持 snake_case。
+---
 
-### 已完成内容
-- **API 入参统一为 camelCase**：`itemId`（offstock / restock / delete / get / updateBookshelf 跨接口一致，不再混用 `item_id`）、`familyId`、`bookshelfId`、`coverUrl`、`bookMetaId` 等。
-- **API 返回统一为 camelCase**：`createdAt` / `updatedAt` / `createdBy`、`sortOrder`、`coverUrl`、`bookshelfName`、`itemId` / `familyId` / `bookshelfId` / `bookMetaId`、`publishYear` / `isSet` / `setTotalCount` 等（见各接口"返回"示例）。
-- **前端实体（miniprogram）已对齐**：发送与读取均不再使用 snake_case；历史混用项（`item_id` ↔ `itemId`、`family_id` ↔ `familyId` 等）已消除。
-- **映射器边界**：snake_case 的 DB 与 camelCase 的 API 之间由映射器转换 —— `toUserEntity` / `toBookItemEntity` / `toBookMetaEntity` / `toBookshelfEntity`（DB→API）与 `normalizeInput`（API→DB）。
+## 0.3 b类问题（代码侧已修正，文档侧未修正）
+无
 
-### DB 字段重命名（已完成）
-数据库设计层面原有的 4 个 camelCase 字段（违反 DB 内部 snake_case 约定）已完成重命名与历史数据迁移：
-
-- 改动点：DB 设计文档字段名 + 各云函数 DB 读写（`user_family` 查询/写入、`bookshelf`/`user` 写入）+ 映射器（`toUserEntity` / `toBookshelfEntity` 等由 snake_case 读取、仍输出 camelCase）+ 迁移脚本。
-- 迁移工具：`script_data_migration`（一次性，部署新代码前由管理员云端测试执行一次，幂等）。
-
-| 表 | 旧字段（DB 内部 camelCase） | 新字段（snake_case） |
-|----|------------------------------|-------------------|
-| `user` | `currentFamilyId` | `current_family_id` |
-| `user_family` | `userId` | `user_id` |
-| `user_family` | `familyId` | `family_id` |
-| `bookshelf` | `familyId` | `family_id` |
-
-> 注：API 入参 / 返回（前端实体）仍统一为 camelCase（`currentFamilyId` / `familyId` / `userId` 等），仅 DB 内部存储改为 snake_case；映射器负责两者转换。
-
-
-## 0.3 文档与代码一致性
-本文档请求/返回示例已与代码实现保持一致（camelCase 实体 + snake_case DB 内部字段）。如后续发现代码与文档不一致，记录于"3. 遗留问题"。
-
+---
 
 # 1. API整体清单
 
@@ -1715,25 +1695,28 @@ running
 
 ---
 
+# 3. 一次性数据迁移工具（script_data_migration）
 
-# 3. 遗留问题
+> **性质：临时工具，非业务接口。** 本云函数**不在**第 1 章「API 整体清单」中，因为它不是面向手机端 / PDA 的业务接口，而是运维期用于调整数据库表结构（改字段名、增减字段、迁移历史数据）的一次性脚本。
 
-1. **实现状态 / 脚手架**：架构表所列 33 个接口中，25 个已有真实实现（含 F2 `api_book_searchRecent`），另有 9 个云函数文件仅为**桩函数**（仅回显 `event` 与微信上下文，未实现业务逻辑）：A3 `api_user_get`、C5 `api_bookshelf_reorder`、G1/G2（任务创建）、H1 `api_task_unbindRfid`、J1–J4（PDA 任务执行/RFID 绑定）。文档已在架构表与各章节标注 ✅/🚧，避免读者误判为已上线。
+## 3.1 用途
+将线上历史数据对齐到最新设计文档（`家庭图书管理系统数据库表结构设计.md`），消除「代码 / 设计 / 历史数据」三方字段差异。代码逻辑根据临时迁移目标而不断变化，此处不做逻辑说明。
 
-2. **入参命名不统一（已解决）**：原 `itemId`（camel，如 api_bookitem_get / updateBookshelf）与 `item_id`（snake，如 offstock / restock / delete）跨接口混用；`familyId`/`family_id` 同理。RFID 字段已统一为 `rfidTid`。
-已通过映射器（`toUserEntity` / `toBookItemEntity` / `toBookMetaEntity` / `toBookshelfEntity` / `normalizeInput`）将 API 入参 / 返回（前端实体）全链路统一为 camelCase：`itemId`/`familyId`/`bookshelfId`/`bookMetaId`/`coverUrl`/`sortOrder`/`createdAt`/`updatedAt`/`createdBy` 等，DB 内部字段保持 snake_case。剩余 4 个 DB 内部 camelCase 字段（`user.currentFamilyId`、`user_family.userId`/`familyId`、`bookshelf.familyId`）作为独立迁移专项处理。
+## 3.2 幂等性与安全性
+- **幂等**：仅处理「仍含旧字段」的记录（`_.exists(true)`）；已迁移记录因旧字段被删除而不再命中，可**重复执行**、安全不报错。
+- **分批**：每批 `BATCH_SIZE = 100`，按 `while` 循环推进；集合规模变化或超时后可再次执行，断点续跑。
+- **仅运维**：不接收任何业务入参，不依赖家庭角色；仅由管理员在云端测试手动触发。
 
-3. **通用失败返回 / 错误枚举未系统化（已起草到文档）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 4 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
+## 3.3 使用方式（部署新代码前必做）
+1. 在微信开发者工具中右键部署 `script_data_migration`（上传并部署：云端安装依赖）。
+2. 右键 → 云端测试，测试参数输入 `{}`，点击运行测试。
+3. 如遇超时，请在云开发控制台把云函数超时时间调到 20 秒以上，再执行一次（幂等，可重复）。
+4. 返回 `success: true` 且 `stats.errors` 为空，即迁移完成。
 
-4. **权限体系未逐接口标注（已修复）**：原仅 family / bookshelf 的增改删与 `api_bookitem_updateBookshelf` 在代码中显式 `checkPermission`；bookitem 的上架/下架/重新上架/删除及检索类接口此前仅做 `getCurrentUser`（登录态）校验。本次已**逐接口补齐并标注**：
-   - **文档侧**：每个接口（含桩函数 G1/G2/H1）新增 `#### 权限` 子节，标注「所需权限 / 允许角色 / 校验方式」，角色口径严格对齐需求文档 RBAC——GUEST 仅拥有 `BOOKSHELF_LIST` / `BOOKITEM_SEARCH` / `RECENTBOOK_SEARCH` 三项。
-   - **代码侧**：对 8 个真实接口补充 `checkPermission` 细粒度校验 —— `api_bookitem_prepareCreate`、`api_bookitem_create`（→`BOOKITEM_CREATE`）、`api_bookitem_offstock`（→`BOOKITEM_OFFSTOCK`）、`api_bookitem_restock`（→`BOOKITEM_RESTOCK`）、`api_bookitem_delete`（→`BOOKITEM_DELETE`）、`api_bookitem_get`（→`BOOKITEM_SEARCH`，并补 `getCurrentUser`）、`api_book_search`（→`BOOKITEM_SEARCH`）、`api_book_searchRecent`（→`RECENTBOOK_SEARCH`）。校验统一置于「登录态解析 + 家庭解析」之后、业务/事务逻辑之前（与 `api_bookitem_updateBookshelf` 同模式）；未授权返回 `{ "success": false, "message": "无权限操作" }`。
-   - **调用侧**：修复 `pages/book/book.js`、`pages/book-search/book-search.js` 中失败分支原误用 `throw result.result.error`（该字段不存在）的缺陷，改为 `throw new Error(result.result.message || '操作失败')`，使「无权限操作」等错误信息可正确透出；并给 `api_book_search` 调用补 `success` 判断，避免权限失败时静默空列表。
-   - 说明：受前端 `FRONTEND_PERMISSION_KEYS` 角色门控影响，GUEST 在界面上本就看不到增改删/上下架按钮，服务端 `checkPermission` 为纵深防御；二者口径一致。
-
-5. **api_bookitem_restock 刷新 created_at（隐藏业务影响）—— 已实施并部署**：原代码在重新上架时把 `created_at` 刷新为当前时间，导致"最近上架"列表重排。根因是 `created_at` 被错用于"上架时间"语义。已在 `book_item` 新增独立字段 **`on_shelf_at`（上架时间）**（`created_at` 回归"记录创建时间"语义，仅初次上架写入一次）；重新上架改为**刷新 `on_shelf_at` + `updated_at`，不再动 `created_at`**；`api_book_search` 的"上架期间"筛选、`api_book_searchRecent` 的"最近上架"排序及详情页"上架日"展示均改用 `on_shelf_at`。数据库设计文档（3.6）与本文档 0.4、E2/E3/E4/E5/E6/E7/F1/F2 已同步更新；代码改动与一次性数据回填云函数 `api_bookitem_backfill_onshelf` 已落地（见"五、代码更新确认"）。部署新代码**前**须先运行一次回填云函数。
-
-6. **D1 getByIsbn 与 D2 fetchExternal 成功标志不一致（已修复）**：原 D1 返回 `{ "exists": ... }`（无 `success`）、D2 返回 `{ "success": ... }`，前端需分别处理。已在本次修改中统一：D1 改为统一以 `success` 为顶层标志（`exists` 仅作"系统是否存在该 ISBN"的成功分支标记，随 `success: true` 返回），D2 保持 `success`；云函数代码与小程序调用处（`pages/book/book.js`）已同步修改。
+## 3.4 重要提醒
+- **需要数据迁移前必须先成功执行一次**，否则读写新字段的api函数会运行错误
+- 执行后应**及时下架 / 不再调用**本函数；它属于一次性迁移工具，不应保留在常态调用链路中。
+- 如后续又有表结构变更，可改写本函数（保留幂等与分批模式）后再次执行。
 
 ---
 
@@ -1741,7 +1724,7 @@ running
 
 ## 4.1 统一返回结构
 
-> 与 0.4 通用约定一致：所有接口**成功**统一含 `success: true`；**失败**统一含 `success: false` 与 `message`（人类可读信息）。
+> 与 0.1 通用约定一致：所有接口**成功**统一含 `success: true`；**失败**统一含 `success: false` 与 `message`（人类可读信息）。
 
 **成功：**
 ```json
@@ -1753,13 +1736,11 @@ running
 { "success": false, "message": "<人类可读错误描述>" }
 ```
 
-> 个别老接口异常分支写作 `{ "success": false, "error": "..." }`，属历史写法，建议统一收敛为 `message`（见 4.3）。
-
 ## 4.2 失败原因枚举（reason）
 
 登录态与权限校验统一由 `_shared/permission.js` 的 `checkPermission` 完成。该校验对每个失败场景给定一个 `reason` 枚举值（机器可读），便于前端 / 上层按类型分支、埋点、国际化。
 
-> **现状（待系统化，即遗留问题 3）**：当前真实云函数在 `checkPermission` 返回 `allowed: false` 时，仅透传 `perm.message`（`return { success: false, message: perm.message }`），**未将 `reason` 透出到接口响应**。因此 `reason` 目前是"代码内部已实现、接口层面未暴露"的状态。建议后续在失败响应中统一补充 `reason` 字段：
+> **现状（待系统化，即遗留问题 5.2）**：当前真实云函数在 `checkPermission` 返回 `allowed: false` 时，仅透传 `perm.message`（`return { success: false, message: perm.message }`），**未将 `reason` 透出到接口响应**。因此 `reason` 目前是"代码内部已实现、接口层面未暴露"的状态。建议后续在失败响应中统一补充 `reason` 字段：
 > ```json
 > { "success": false, "message": "<错误信息>", "reason": "PERMISSION_DENIED" }
 > ```
@@ -1808,98 +1789,11 @@ running
 
 ---
 
-# 5. 代码更新确认（遗留问题 5 实施方案）
 
-> 阶段一（设计）已完成：字段语义、数据库设计（表 3.6）、接口契约（0.4、E2/E3/E4/E5/E6/E7/F1/F2）均按"新增 `on_shelf_at`"方案更新。本章为阶段二（实现）的逐文件改动清单，**已全部落地**（云函数 + 前端 + 一次性回填云函数），待 push、云端部署及运行一次回填。
+# 5. 遗留问题
 
-## 5.1 数据库字段改动
-- `book_item` 新增 `on_shelf_at`（datetime，必须）：初次上架与重新上架写入/刷新；下架、更换书架、彻底删除、绑定/解绑 RFID 不改动。
-- 既有 `created_at` 语义收敛为"记录创建时间"，仅初次上架写入一次。
+1. **实现状态 / 脚手架**：架构表所列 33 个接口中，25 个已有真实实现（含 F2 `api_book_searchRecent`），另有 9 个云函数文件仅为**桩函数**（仅回显 `event` 与微信上下文，未实现业务逻辑）：A3 `api_user_get`、C5 `api_bookshelf_reorder`、G1/G2（任务创建）、H1 `api_task_unbindRfid`、J1–J4（PDA 任务执行/RFID 绑定）。文档已在架构表与各章节标注 ✅/🚧，避免读者误判为已上线。
 
-## 5.2 云函数改动清单
-
-| 云函数 | 文件 | 改动点 |
-| ------ | ---- | ------ |
-| E2 `api_bookitem_create` | `index.js` | 创建 `book_item` 时增加 `on_shelf_at: now`；返回实体 `bookItem` 增加 `onShelfAt: now` |
-| E4 `api_bookitem_restock` | `index.js` | **核心修复**：把 `created_at: now` 改为 `on_shelf_at: now`（保留 `updated_at: now`）。不再刷新 `created_at` |
-| E3 `api_bookitem_offstock` | `index.js` | 无需改动（本就只写 `updated_at`，不动 `on_shelf_at`） |
-| E7 `api_bookitem_updateBookshelf` | `index.js` | 无需改动（本就只写 `updated_at`，不动 `on_shelf_at`） |
-| E5 `api_bookitem_delete` | `index.js` | 无需改动（本就只写 `updated_at`，不动 `on_shelf_at`） |
-| E6 `api_bookitem_get` | `index.js` | `toBookItemEntity` 增加 `onShelfAt: item.on_shelf_at` |
-| F1 `api_book_search` | `index.js` | 排序 `sort({ created_at: -1 })` → `sort({ on_shelf_at: -1 })`；"上架期间"筛选 `itemMatch.created_at` → `itemMatch.on_shelf_at`；返回增加 `onShelfAt: item.on_shelf_at` |
-| F2 `api_book_searchRecent` | `index.js` | `orderBy('created_at','desc')` → `orderBy('on_shelf_at','desc')`；返回 `inStockDate: item.created_at` → `onShelfAt: item.on_shelf_at` |
-| G1/G2/H1/J3/J4（RFID 绑定/解绑，桩函数，待实现） | `index.js` | 实现时仅刷新 `updated_at`，**不**改动 `on_shelf_at` |
-| 一次性回填 `api_bookitem_backfill_onshelf`（新增云函数） | `index.js` | 上线前跑一次：`on_shelf_at` 缺失时置为 `created_at`；返回 `migrated` / `remainWithoutOnShelfAt` |
-
-## 5.3 前端（小程序）改动
-- `pages/book/book.js`（约第 292 行）：详情页"上架日"映射 `inStockDate: bookItem?.createdAt` → `inStockDate: bookItem?.onShelfAt`（改读新字段）。
-- 消费 `api_book_searchRecent` 的搜索/首页页：将 `inStockDate` 字段名切换为 `onShelfAt`（与 F2 返回一致）。
-
-## 5.4 一次性数据回填（上线前必做）
-历史 `book_item` 记录只有 `created_at`，无 `on_shelf_at`。由于旧代码在重新上架时已将 `created_at` 刷成"上架时间"，故回填语义为：`on_shelf_at` 为空（或不存在）时，置为 `created_at`。
-
-```js
-// 一次性回填云函数（仅跑一次，部署新代码前执行）
-const cloud = require('wx-server-sdk')
-cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
-const db = cloud.database()
-const _ = db.command
-
-exports.main = async () => {
-  // 1. 取出所有缺少 on_shelf_at 的 book_item
-  const res = await db.collection('book_item')
-    .where({ on_shelf_at: _.exists(false) })
-    .limit(1000)
-    .get()
-
-  let count = 0
-  for (const item of res.data) {
-    // 2. 历史数据中 created_at 实际就是"上架时间"（含曾被重新上架刷新过的值），直接回填
-    await db.collection('book_item').doc(item._id).update({
-      data: { on_shelf_at: item.created_at }
-    })
-    count++
-  }
-  return { success: true, migrated: count }
-}
-```
-
-> 说明：微信云开发不支持"把 A 字段值原子复制给 B 字段"的更新，故采用逐条 `doc(id).update` 的循环方式（超 1000 条需分页/分批）。若数据量大，建议在低峰期执行并做分页。部署新代码**前**先完成回填，避免新排序/筛选落到空值。
-
-## 5.5 验证要点
-- 重新上架后：`created_at` 不变、`on_shelf_at` 刷新为当前时间；`api_book_searchRecent` 把该书按新上架时间正确排序（不再因"记录创建时间"被刷新而异常置顶）。
-- 下架 / 更换书架 / 彻底删除：`on_shelf_at` 保持不变。
-- `api_book_search` 按"上架期间"筛选、`api_book_searchRecent` 排序均基于 `on_shelf_at`。
+2. **通用失败返回 / 错误枚举未系统化（已起草到文档）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 4 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
 
 ---
-
-# 6. 一次性数据迁移工具（script_data_migration）
-
-> **性质：临时工具，非业务接口。** 本云函数**不在**第 1 章「API 整体清单」中，因为它不是面向手机端 / PDA 的业务接口，而是运维期用于调整数据库表结构（改字段名、增减字段、迁移历史数据）的一次性脚本。
-
-## 6.1 用途
-将线上历史数据对齐到最新设计文档（`家庭图书管理系统数据库表结构设计.md`），消除「代码 / 设计 / 历史数据」三方字段差异。当前实现对应 `.今后改善事项/DB差异0711.md` 的 **修复1、修复2**：
-
-| 迁移项 | 来源字段（旧） | 目标字段（设计） | 说明 |
-| ------ | ------------- | --------------- | ---- |
-| 修复1 | `book_item.rfid_tag_id` | `book_item.rfid_tid`（唯一索引） | 把历史 `rfid_tag_id` 的值复制给 `rfid_tid`，并 `_.remove()` 删除旧字段 |
-| 修复2 | `book_item.operator` | （删除） | 删除 `book_item` 上残留的 `operator` 字段（上下架操作人统一记录于 `inventory_change_log`） |
-
-> 历史曾用于 `status → inventory_status` 的迁移逻辑已完成其使命，本次已整体替换为本脚本的新版实现。
-
-## 6.2 幂等性与安全性
-- **幂等**：仅处理「仍含旧字段」的记录（`_.exists(true)`）；已迁移记录因旧字段被删除而不再命中，可**重复执行**、安全不报错。
-- **分批**：每批 `BATCH_SIZE = 100`，按 `while` 循环推进；集合规模变化或超时后可再次执行，断点续跑。
-- **仅运维**：不接收任何业务入参，不依赖家庭角色；仅由管理员在云端测试手动触发。
-
-## 6.3 使用方式（部署新代码前必做）
-1. 在微信开发者工具中右键部署 `script_data_migration`（上传并部署：云端安装依赖）。
-2. 右键 → 云端测试，测试参数输入 `{}`，点击运行测试。
-3. 如遇超时，请在云开发控制台把云函数超时时间调到 20 秒以上，再执行一次（幂等，可重复）。
-4. 返回 `success: true` 且 `stats.errors` 为空，即迁移完成。
-
-## 6.4 重要提醒
-- **部署新代码前必须先执行一次**：新代码（修复1）统一以 `rfid_tid` 读写 `book_item`，若历史数据仍停留在 `rfid_tag_id`，则按 `rfid_tid` 的查询 / 唯一索引会落空。
-- 执行后应**及时下架 / 不再调用**本函数；它属于一次性迁移工具，不应保留在常态调用链路中。
-- 如后续又有表结构变更，可改写本函数（保留幂等与分批模式）后再次执行。
-

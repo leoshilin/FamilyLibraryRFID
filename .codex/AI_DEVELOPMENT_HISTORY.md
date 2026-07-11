@@ -7,9 +7,29 @@
 ---
 
 # 2026
+---
+
+## 命名统一专项（API / 前端实体层: camelCase）
+
+> 范围：API 入参 / 返回（前端实体）全链路 camelCase；数据库内部字段保持 snake_case。映射器负责两者转换。
+
+- **API 入参统一为 camelCase**：`itemId`（offstock / restock / delete / get / updateBookshelf 跨接口一致，不再混用 `item_id`）、`familyId`、`bookshelfId`、`coverUrl`、`bookMetaId` 等。
+- **API 返回统一为 camelCase**：`createdAt` / `updatedAt` / `createdBy`、`sortOrder`、`coverUrl`、`bookshelfName`、`itemId` / `familyId` / `bookshelfId` / `bookMetaId`、`publishYear` / `isSet` / `setTotalCount` 等（见各接口"返回"示例）。
+- **前端实体（miniprogram）已对齐**：发送与读取均不再使用 snake_case；历史混用项（`item_id` ↔ `itemId`、`family_id` ↔ `familyId` 等）已消除。
+- **映射器边界**：snake_case 的 DB 与 camelCase 的 API 之间由映射器转换 —— `toUserEntity` / `toBookItemEntity` / `toBookMetaEntity` / `toBookshelfEntity`（DB→API）与 `normalizeInput`（API→DB）。
+
+- **数据库设计层面**原有的 4 个 camelCase 字段（违反 DB 内部 snake_case 约定）已完成重命名与历史数据迁移：
+
+| 表 | 旧字段（DB 内部 camelCase） | 新字段（snake_case） |
+|----|------------------------------|-------------------|
+| `user` | `currentFamilyId` | `current_family_id` |
+| `user_family` | `userId` | `user_id` |
+| `user_family` | `familyId` | `family_id` |
+| `bookshelf` | `familyId` | `family_id` |
+
 
 ---
-### 云函数的Shared Module的处理方式
+## 云函数的Shared Module的处理方式
 在cloudfunctions下，Shared Module的处理方式规定如下：
 
   * _shared/ 是公共源码目录，下面配置共通代码模块（比如： permission.js），共通代码模块的修改只允许通过此目录进行。api_xxx/common/ 是自动生成目录，禁止手工修改。
