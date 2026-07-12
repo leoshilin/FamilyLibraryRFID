@@ -1,0 +1,16 @@
+# ============================================================
+# 本地配置模板（复制为 local.properties 后填写，local.properties 已被 .gitignore 忽略，不会入库）
+#
+# 用途：微信云开发直连所需的凭证。Android PDA 通过 appid+appsecret 换取 access_token，
+#       再调用云函数 HTTP 接口 invokecloudfunction。
+# 安全提示：appsecret 会打包进客户端 APK，请勿用于多租户/商业发布场景。
+# ============================================================
+
+# 微信小程序 AppID
+wechat.appId=wxYOUR_APPID
+
+# 微信小程序 AppSecret（注意保密）
+wechat.appSecret=YOUR_APPSECRET
+
+# 微信云开发环境 ID（env，形如：family-library-1a2b3c）
+wechat.envId=YOUR_ENV_ID
