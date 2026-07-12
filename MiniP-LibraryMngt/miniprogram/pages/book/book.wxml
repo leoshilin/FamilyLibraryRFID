@@ -115,11 +115,11 @@
           </view>
         </view>
 
-        <!-- view模式下显示 RFID -->
+        <!-- view模式下显示 RFID：4 态（已绑定显示TID / 未绑定 / 绑定中 / 重新绑定中） -->
         <view wx:if="{{mode === 'view'}}" class="field">
           <text class="label">RFID</text>
-          <text class="value">
-            {{ book.rfidTid ? book.rfidTid : '未绑定' }}
+          <text class="value {{bindInProgress ? 'rfid-status-progress' : ''}}">
+            {{ bindInProgress ? (isBound ? '重新绑定中…' : '绑定中…') : (book.rfidTid ? book.rfidTid : '未绑定') }}
           </text>
         </view>
 
@@ -207,10 +207,6 @@
               </button>
             </block>
 
-            <!-- 进行中提示语（B：绑定中… / D：重新绑定中…） -->
-            <view wx:if="{{bindInProgress}}" class="rfid-progress-hint">
-              {{ isBound ? '重新绑定中…' : '绑定中…' }}
-            </view>
           </block>
         </block>
       </block>

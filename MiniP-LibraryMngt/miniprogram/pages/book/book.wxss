@@ -203,6 +203,11 @@
   color: #111;
 }
 
+/* RFID 字段处于绑定任务中（绑定中… / 重新绑定中…）的橙色提示 */
+.rfid-status-progress {
+  color: #fa8c16;
+}
+
 /* 书架选择器（view模式可修改） */
 .bookshelf-picker {
   color: #1677ff;
@@ -270,13 +275,5 @@
   font-weight: 600;
   background: #ff4d4f;
   color: #fff;
-}
-
-/* RFID 任务进行中提示语（绑定中… / 重新绑定中…） */
-.rfid-progress-hint {
-  flex-basis: 100%;
-  text-align: center;
-  font-size: 24rpx;
-  color: #fa8c16;
 }
 
