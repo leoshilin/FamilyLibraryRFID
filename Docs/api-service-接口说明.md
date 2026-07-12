@@ -1,4 +1,4 @@
-# Cloudfunctions API 接口说明文档
+# Cloudfunctions API-Service 接口说明文档
 
 # 0. 当前待处理问题
 本章记载内容根据进度更新可能有两类：
@@ -128,7 +128,7 @@ Cloud Database
 | `bookSearchServices.js` | 检索 / 最近 | F1–F2 | ✅ 已实现 |
 | `taskServices.js` | 任务 / RFID | G1 / G2 / H1（手机端）+ J1–J4（PDA） | 🚧 待新增 |
 
-> 注：`userServices.js` / `familyServices.js` / `bookshelfServices.js` 仓库中已存在；其余为本次设计新增文件。J 系列（PDA 操作）按架构由 Android PDA 直接调用云函数，此处列出仅为「全局 API 视图」统一维护，小程序页面一般不调用。
+> 注：J 系列（PDA 操作）按架构由 Android PDA 直接调用云函数，此处列出仅为「全局 API 视图」统一维护，小程序页面一般不调用。
 
 ## 2.3 通用封装实现
 
@@ -267,29 +267,7 @@ getRfidBindingInfo(tid)                   // → api_task_getRfidBindingInfo { t
 bindRfid(bookItemId, tid)                 // → api_task_bindRfid          { bookItemId, tid }  🚧
 ```
 
-## 2.6 与现有页面的衔接
-
-代码审查原发现 20 处页面直接调用 `wx.cloud.callFunction()`（`book.js` 9 处、`book-search.js` 4 处、`index.js` 1 处、`example/` 6 处），根因正是 `book` / `bookItem` / `bookMeta` / `search` / `recent` 缺少 Service 封装。补齐本章 2.5.4–2.5.6 三个新增模块并改造页面后：
-
-- **业务页面违规清零**：`book.js`（9 处）、`book-search.js`（4 处）、`index.js`（1 处）已全部改为经 `bookMetaServices` / `bookItemServices` / `bookSearchServices` 调用，当前业务页面直接调用 `wx.cloud.callFunction()` 的违规数为 **0**。
-
-```js
-// 改造前（book.js 直接调用）
-const res = await wx.cloud.callFunction({
-  name: 'api_bookitem_updateBookshelf',
-  data: { itemId: book.itemId, bookshelfId: newBookshelfId }
-})
-
-// 改造后
-const bookItemServices = require('../../services/bookItemServices')
-const res = await bookItemServices.updateBookshelf(book.itemId, newBookshelfId)
-```
-
-- `example/` 的 6 处仍保留（quickstart 脚手架，调用 `quickstartFunctions`，非 `api_*` 业务），按约定从生产构建下线，不纳入 Service 约束。
-
-> 改造涉及页面：`pages/book/book.js`、`pages/book-search/book-search.js`、`pages/index/index.js`。其中 `book.loadFromISBN` 原用 `.then()` 链式调用 `api_bookmeta_getByIsbn` 与 `api_bookmeta_fetchExternal`，重构为 `async / await` 经 `bookMetaServices.getByIsbn` / `fetchExternal` 串联，逻辑与错误分支保持一致。
-
-## 2.7 维护约定
+## 2.6 维护约定
 
 - 任何 `api_*` 云函数的**新增 / 改名 / 下线 / 入参变更**，必须同步更新：第 1 章清单、第 3 章详细定义、本章 2.4 映射表与 2.5 签名。
 - Service 方法命名语义化（动词 + 资源），不暴露云函数名；云函数名变更时只需改 `callFunction(name, ...)` 一处。
