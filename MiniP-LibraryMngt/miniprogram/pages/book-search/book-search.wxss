@@ -290,27 +290,30 @@
 }
 
 .author {
-  margin-top: 12rpx;
+  margin-top: 6rpx;
   font-size: 26rpx;
   color: #888;
 }
 
 /* RFID 状态行（位于图书信息区，动态按钮上方） */
 .rfid-line {
-  margin-top: 10rpx;
+  margin-top: 4rpx;
   display: flex;
   align-items: center;
   font-size: 24rpx;
+  line-height: 1;   /* 收紧行高，使 RFID 标签与状态文案（中英文混排）行盒等高，配合 align-items:center 实现垂直居中对齐 */
 }
 
 .rfid-label {
   color: #999;
   margin-right: 12rpx;
+  line-height: 1;   /* 与 .rfid-line 保持一致，避免中英文行盒高度差导致文案下沉 */
 }
 
 .rfid-value {
   color: #333;
   word-break: break-all;
+  line-height: 1;
 }
 
 /* 绑定任务进行中（绑定中… / 重新绑定中…）橙色提示 */
