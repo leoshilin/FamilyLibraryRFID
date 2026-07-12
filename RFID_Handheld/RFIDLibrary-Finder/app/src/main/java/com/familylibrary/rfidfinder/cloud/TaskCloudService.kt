@@ -38,7 +38,7 @@ class TaskCloudService(
 
     /**
      * J1 领取一个待执行任务。
-     * 云端从 pending/running 取创建时间最早的一条，置为 running 避免重复执行。
+     * 云端只从 pending 取创建时间最早的一条，置为 running 避免重复执行（running 任务不再被领取）。
      * @return 任务对象；无任务时返回 ApiResult.Success(null)。
      */
     suspend fun acceptTask(deviceId: String): ApiResult<DeviceTask?> = safeCall {

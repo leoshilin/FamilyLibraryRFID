@@ -1,5 +1,7 @@
 // PDA 领取一个待执行任务
-// 仅 PDA 调用：从 pending / running 中按创建时间升序取一个，置为 running 避免重复执行。
+// 仅 PDA 调用：只从 pending 中取创建时间最早的一个，置为 running 避免重复执行。
+// 设计约束：领取任务时只看 pending（见功能需求与流程定义书 F4.3 / §2.3）；
+// running（以及 success/failed/cancel）任务不再被领取，防止同一任务被重复执行。
 // device_task 仅作为精简任务队列（只存 book_item_id / target_tid 等调度字段，不冗余存储展示字段）；
 // 领取后经 book_item → book_meta 关联补齐 ISBN / 书名 / 作者等展示字段返回，供 PDA 直接显示并校验 ISBN。
 // 无家庭 / 角色校验（PDA 专用）。
@@ -9,7 +11,6 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
 
 const db = cloud.database()
-const _ = db.command
 
 // 云函数入口函数
 exports.main = async (event) => {
@@ -20,10 +21,11 @@ exports.main = async (event) => {
     return { success: false, message: 'deviceId不能为空' }
   }
 
-  // 从 pending / running 中按创建时间升序取一个（兼容 PDA 断线导致的 running 残留）
+  // 只从 pending 中取创建时间最早的一条（设计：领取任务时只看 pending）。
+  // 领取后置 running，后续查询不再命中，确保同一任务不被重复领取/执行。
   const res = await db.collection('device_task')
     .where({
-      status: _.in(['pending', 'running'])
+      status: 'pending'
     })
     .orderBy('created_at', 'asc')
     .limit(1)
