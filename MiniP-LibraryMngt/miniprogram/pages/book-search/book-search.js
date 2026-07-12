@@ -14,6 +14,9 @@ Page({
     canBind: false,
     canUnbind: false,
 
+    // 批量读取绑定任务状态期间为 true，期间禁用 RFID 按钮，防止「置灰前抢点」竞态
+    bindStatusLoading: false,
+
     // 检索模式：isbn / condition
     searchMode: 'isbn',
 
@@ -739,9 +742,14 @@ Page({
 
     if (!ids.length) return
 
+    // 加载期间禁用所有 RFID 按钮，待状态确认后再放开 / 保持置灰
+    this.setData({ bindStatusLoading: true })
     try {
       const res = await taskServices.getBindStatus({ bookItemIds: ids })
-      if (!res || !res.success || !res.map) return
+      if (!res || !res.success || !res.map) {
+        this.setData({ bindStatusLoading: false })
+        return
+      }
 
       const map = res.map
       const updates = {}
@@ -751,9 +759,11 @@ Page({
           updates[`books[${i}].bindInProgress`] = st.inProgress
         }
       })
+      updates.bindStatusLoading = false
       if (Object.keys(updates).length) this.setData(updates)
     } catch (err) {
       console.error('book_search.loadBindStatuses error:', err)
+      this.setData({ bindStatusLoading: false })
     }
   },
 
@@ -764,9 +774,9 @@ Page({
     const index = e.currentTarget.dataset.index
     const book = this.data.books[index]
 
-    // 进行中（B/D 态）禁止重复发起
-    if (!book || book.bindInProgress) {
-      console.log('handleBind: 存在进行中任务，忽略重复点击')
+    // 进行中（B/D 态）或状态加载中禁止重复发起
+    if (!book || book.bindInProgress || this.data.bindStatusLoading) {
+      console.log('handleBind: 存在进行中任务或状态加载中，忽略点击')
       return
     }
 
@@ -797,6 +807,8 @@ Page({
         wx.showToast({ title: '已发起绑定任务，等待 PDA 执行', icon: 'none' })
       } else {
         wx.showToast({ title: (result && result.message) || '发起失败', icon: 'none' })
+        // 服务端可能因「已有进行中任务」而拒绝（防重复），刷新状态让按钮置灰
+        this.loadBindStatuses()
       }
     } catch (err) {
       wx.hideLoading()
@@ -812,9 +824,9 @@ Page({
     const index = e.currentTarget.dataset.index
     const book = this.data.books[index]
 
-    // 进行中（D 态）禁止解绑
-    if (!book || book.bindInProgress) {
-      console.log('handleUnbind: 存在进行中任务，忽略')
+    // 进行中（D 态）或状态加载中禁止解绑
+    if (!book || book.bindInProgress || this.data.bindStatusLoading) {
+      console.log('handleUnbind: 存在进行中任务或状态加载中，忽略')
       return
     }
 

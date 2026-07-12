@@ -184,7 +184,7 @@
             <button
               wx:if="{{canBind && !isBound}}"
               class="secondary-btn"
-              disabled="{{bindInProgress}}"
+              disabled="{{bindInProgress || bindStatusLoading}}"
               bindtap="onBindRFID">
               绑定RFID
             </button>
@@ -201,7 +201,7 @@
               <button
                 wx:if="{{canBind}}"
                 class="secondary-btn"
-                disabled="{{bindInProgress}}"
+                disabled="{{bindInProgress || bindStatusLoading}}"
                 bindtap="onBindRFID">
                 重新绑定
               </button>

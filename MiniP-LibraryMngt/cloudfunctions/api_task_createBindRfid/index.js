@@ -63,6 +63,34 @@ exports.main = async (event) => {
     return { success: false, message: '仅上架中的图书可发起绑定任务' }
   }
 
+  // 防重复：若该书已存在进行中（pending/running）的绑定任务，则拒绝新建。
+  // 这是防止手机端在「读取任务状态 → 置灰按钮」的间隙抢点导致重复建任务的
+  // 权威拦截（前端置灰只是体验优化，无法彻底杜绝竞态）。
+  // 注意 device_task 无 family_id 字段，这里仅按 book_item_id 去重即可
+  // （同一实体书不会跨家庭），且需确认目标图书归属当前家庭（上面已校验）。
+  let hasInProgress = false
+  try {
+    const inProgressRes = await db.collection('device_task')
+      .where({
+        book_item_id: bookItemId,
+        task_type: 'bind_rfid',
+        status: _.in(['pending', 'running'])
+      })
+      .limit(1)
+      .get()
+    hasInProgress = inProgressRes.data.length > 0
+  } catch (e) {
+    // device_task 集合尚未创建等异常：降级放行（无任务可重复）
+    console.error('api_task_createBindRfid: 查询进行中任务失败，已降级放行:', e)
+  }
+  if (hasInProgress) {
+    return {
+      success: false,
+      code: 'TASK_IN_PROGRESS',
+      message: '该书已有进行中的绑定任务，请勿重复发起'
+    }
+  }
+
   // 创建 device_task（bind_rfid）
   const taskRes = await db.collection('device_task').add({
     data: {

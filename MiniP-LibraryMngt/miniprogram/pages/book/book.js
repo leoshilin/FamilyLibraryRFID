@@ -28,6 +28,7 @@ Page({
     isBound: false,      // 是否已绑定 RFID（rfid_tid 非空）
     showRfid: false,     // 是否展示 RFID 按钮区（仅 in_stock 展示）
     bindInProgress: false, // 是否存在进行中的绑定任务（pending/running）
+    bindStatusLoading: true, // 读取绑定任务状态期间禁用 RFID 按钮，防止「置灰前抢点」竞态
     busy: false          // 动作乐观锁，防止重复点击
   },
 
@@ -818,14 +819,19 @@ Page({
   async loadBindStatus() {
     const itemId = this.data.book && this.data.book.itemId
     if (!itemId) return
+    // 加载期间禁用按钮，待状态确认后再放开 / 保持置灰，杜绝置灰前的抢点窗口
+    this.setData({ bindStatusLoading: true })
     try {
       const res = await taskServices.getBindStatus({ bookItemId: itemId })
       if (res && res.success && res.map) {
         const st = res.map[itemId] || { inProgress: false, status: null }
-        this.setData({ bindInProgress: st.inProgress })
+        this.setData({ bindInProgress: st.inProgress, bindStatusLoading: false })
+      } else {
+        this.setData({ bindStatusLoading: false })
       }
     } catch (err) {
       console.error('book.loadBindStatus error:', err)
+      this.setData({ bindStatusLoading: false })
     }
   },
 
@@ -918,6 +924,8 @@ Page({
       } else {
         this.setData({ busy: false })
         wx.showToast({ title: (result && result.message) || '发起失败', icon: 'none' })
+        // 服务端可能因「已有进行中任务」而拒绝（防重复），刷新状态让按钮置灰
+        this.loadBindStatus()
       }
     } catch (err) {
       wx.hideLoading()
