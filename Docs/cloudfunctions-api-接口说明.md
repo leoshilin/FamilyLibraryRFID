@@ -86,7 +86,219 @@ user.currentFamilyId
 
 ---
 
-# 2. API接口详细定义
+# 2. Service 层（前端封装）定义
+
+> 本章与「第 1 章 API 整体清单」「第 3 章 API 接口详细定义」作为一个整体共同维护：新增 / 改名 / 下线任何 `api_*` 云函数时，必须同步更新本章的 Service 方法定义，确保小程序端调用入口唯一、契约稳定。
+
+## 2.1 设计原则
+
+依据 `.codex/AI_PROJECT_GUIDE.md` 第 6 节「Service 层」，前端调用链为：
+
+```
+微信小程序页面
+      │
+      ▼
+Service 层（miniprogram/services/*.js）
+      │  唯一允许调用 wx.cloud.callFunction() 的位置
+      ▼
+Cloud Function API（api_*）
+      │
+      ▼
+Cloud Database
+```
+
+约束：
+
+1. **页面禁止直接调用** `wx.cloud.callFunction()`；所有云函数访问必须经 `services/` 封装。
+2. `services/` 是**唯一**允许 `wx.cloud.callFunction()` 的位置（对应代码审查已发现的 20 处违规，整改后即消除）。
+3. `familyId` / `operator` / `created_by` 一律由服务端从登录态解析（见第 0.1 节），Service 方法签名**不接收**这些字段；B3 / B4 / B6 的"目标家庭" `familyId` 为客户端显式指定，例外列出。
+4. 入参 / 返回结构遵循第 0.1 节与第 5 章（错误枚举）：成功 `success: true`，失败 `success: false` + `message`（未来补充 `reason`）。
+
+## 2.2 模块划分
+
+按业务领域将 33 个 `api_*` 归入 7 个 Service 模块，文件位于 `miniprogram/services/`：
+
+| Service 文件 | 领域 | 封装的 API | 状态 |
+|---|---|---|---|
+| `userServices.js` | 用户 | A1–A4 | 部分已实现（缺 `getUser`） |
+| `familyServices.js` | 家庭 | B1–B6 | ✅ 已实现 |
+| `bookshelfServices.js` | 书架 | C1–C5 | 部分已实现（缺 `reorder`） |
+| `bookMetaServices.js` | 书本主数据 | D1–D2 | 🚧 待新增 |
+| `bookItemServices.js` | 实体书上下架 | E1–E7 | 🚧 待新增 |
+| `bookSearchServices.js` | 检索 / 最近 | F1–F2 | 🚧 待新增 |
+| `taskServices.js` | 任务 / RFID | G1 / G2 / H1（手机端）+ J1–J4（PDA） | 🚧 待新增 |
+
+> 注：`userServices.js` / `familyServices.js` / `bookshelfServices.js` 仓库中已存在；其余为本次设计新增文件。J 系列（PDA 操作）按架构由 Android PDA 直接调用云函数，此处列出仅为「全局 API 视图」统一维护，小程序页面一般不调用。
+
+## 2.3 通用封装实现
+
+所有模块共享同一封装模式（与现有 `familyServices.js` / `bookshelfServices.js` 一致）：
+
+```js
+// miniprogram/services/_base.js（可选抽离的公共封装）
+const callFunction = async (name, data = {}) => {
+  const res = await wx.cloud.callFunction({ name, data })
+  return res.result
+}
+module.exports = { callFunction }
+```
+
+各模块 `require` 公共封装后，仅声明业务方法：
+
+```js
+// miniprogram/services/bookItemServices.js
+const { callFunction } = require('./_base')
+
+const get             = (itemId)               => callFunction('api_bookitem_get', { itemId })
+const prepareCreate   = (isbn, book)           => callFunction('api_bookitem_prepareCreate', { isbn, book })
+const create          = (isbn, bookshelfId, book, editionType) =>
+                                                  callFunction('api_bookitem_create', { isbn, bookshelfId, book, editionType })
+const updateBookshelf = (itemId, bookshelfId)  => callFunction('api_bookitem_updateBookshelf', { itemId, bookshelfId })
+const restock         = (itemId)               => callFunction('api_bookitem_restock', { itemId })
+const offstock        = (itemId, reason)       => callFunction('api_bookitem_offstock', { itemId, reason })
+const remove          = (itemId)               => callFunction('api_bookitem_delete', { itemId })
+
+module.exports = { get, prepareCreate, create, updateBookshelf, restock, offstock, remove }
+```
+
+> 实现状态为 🚧 的桩函数，Service 方法同样先行声明（签名不变），待云函数业务逻辑补齐后即可直接连通，无需再改页面 / Service 接口。
+
+## 2.4 Service 方法总览（33 个 API → 方法映射）
+
+| 编号 | API | Service 模块 | Service 方法 | 关键入参 | 实现状态 |
+|---|---|---|---|---|---|
+| A1 | api_user_login | userServices | `login()` | — | ✅ |
+| A2 | api_user_register | userServices | `register(nickName)` | nickName | ✅ |
+| A3 | api_user_get | userServices | `getUser(userId?)` | userId? | 🚧 |
+| A4 | api_user_update | userServices | `updateUser(nickName)` | nickName | ✅ |
+| B1 | api_family_getCurrent | familyServices | `getCurrent()` | — | ✅ |
+| B2 | api_family_create | familyServices | `create(name?)` | name? | ✅ |
+| B3 | api_family_update | familyServices | `update(familyId, name)` | familyId, name | ✅ |
+| B4 | api_family_delete | familyServices | `remove(familyId)` | familyId | ✅ |
+| B5 | api_family_list | familyServices | `list()` | — | ✅ |
+| B6 | api_family_switchCurrent | familyServices | `switchCurrent(familyId)` | familyId | ✅ |
+| C1 | api_bookshelf_create | bookshelfServices | `create(name)` | name | ✅ |
+| C2 | api_bookshelf_update | bookshelfServices | `update(bookshelfId, name)` | bookshelfId, name | ✅ |
+| C3 | api_bookshelf_delete | bookshelfServices | `remove(bookshelfId)` | bookshelfId | ✅ |
+| C4 | api_bookshelf_list | bookshelfServices | `list()` | — | ✅ |
+| C5 | api_bookshelf_reorder | bookshelfServices | `reorder(orderedBookshelfIds)` | orderedBookshelfIds[] | 🚧 |
+| D1 | api_bookmeta_getByIsbn | bookMetaServices | `getByIsbn(isbn)` | isbn | ✅ |
+| D2 | api_bookmeta_fetchExternal | bookMetaServices | `fetchExternal(isbn)` | isbn | ✅ |
+| E1 | api_bookitem_prepareCreate | bookItemServices | `prepareCreate(isbn, book)` | isbn, book | ✅ |
+| E2 | api_bookitem_create | bookItemServices | `create(isbn, bookshelfId, book, editionType?)` | isbn, bookshelfId, book, editionType? | ✅ |
+| E3 | api_bookitem_offstock | bookItemServices | `offstock(itemId, reason)` | itemId, reason | ✅ |
+| E4 | api_bookitem_restock | bookItemServices | `restock(itemId)` | itemId | ✅ |
+| E5 | api_bookitem_delete | bookItemServices | `remove(itemId)` | itemId | ✅ |
+| E6 | api_bookitem_get | bookItemServices | `get(itemId)` | itemId | ✅ |
+| E7 | api_bookitem_updateBookshelf | bookItemServices | `updateBookshelf(itemId, bookshelfId)` | itemId, bookshelfId | ✅ |
+| F1 | api_book_search | bookSearchServices | `search(params)` | keyword?, isbn?, bookshelfId?, status?, startDate?, endDate?, page?, pageSize? | ✅ |
+| F2 | api_book_searchRecent | bookSearchServices | `searchRecent()` | — | ✅ |
+| G1 | api_task_createBindRfid | taskServices | `createBindRfid(bookItemId)` | bookItemId | 🚧 |
+| G2 | api_task_createFindBook | taskServices | `createFindBook(bookItemId)` | bookItemId | 🚧 |
+| H1 | api_task_unbindRfid | taskServices | `unbindRfid(bookItemId)` | bookItemId | 🚧 |
+| J1 | api_task_accept | taskServices | `accept(deviceId)` | deviceId | 🚧 |
+| J2 | api_task_complete | taskServices | `complete(taskId, status, result?)` | taskId, status, result? | 🚧 |
+| J3 | api_task_getRfidBindingInfo | taskServices | `getRfidBindingInfo(tid)` | tid | 🚧 |
+| J4 | api_task_bindRfid | taskServices | `bindRfid(bookItemId, tid)` | bookItemId, tid | 🚧 |
+
+> 入参标注 `?` 的为可选；`familyId` / `operator` / `created_by` 一律服务端解析，不在任何方法签名中出现（B3 / B4 / B6 的"目标家庭" `familyId` 除外，已在方法签名显式列出）。
+
+## 2.5 各模块方法签名定义
+
+### 2.5.1 userServices.js（用户）
+```js
+login()                                    // → api_user_login        {}
+register(nickName)                         // → api_user_register     { nickName }
+getUser(userId)                            // → api_user_get          { userId? }              🚧
+updateUser(nickName)                       // → api_user_update       { nickName }
+```
+> 现有 `userServices.js` 已实现 `login` / `register` / `updateUser`，需补 `getUser`（对应 A3 桩函数）。
+
+### 2.5.2 familyServices.js（家庭）
+```js
+getCurrent()                               // → api_family_getCurrent {}
+create(name = '我的家庭')                  // → api_family_create     { name? }
+list()                                    // → api_family_list       {}
+update(familyId, name)                    // → api_family_update     { familyId, name }
+remove(familyId)                          // → api_family_delete     { familyId }
+switchCurrent(familyId)                   // → api_family_switchCurrent { familyId }
+```
+> 已实现；命名沿用既有 `remove` 代表逻辑删除。
+
+### 2.5.3 bookshelfServices.js（书架）
+```js
+list()                                    // → api_bookshelf_list     {}
+create(name)                              // → api_bookshelf_create   { name }
+update(bookshelfId, name)                 // → api_bookshelf_update   { bookshelfId, name }
+remove(bookshelfId)                       // → api_bookshelf_delete   { bookshelfId }
+reorder(orderedBookshelfIds)              // → api_bookshelf_reorder { orderedBookshelfIds }  🚧
+```
+> 已实现 `list` / `create` / `update` / `remove`，需补 `reorder`（对应 C5 桩函数）。
+
+### 2.5.4 bookMetaServices.js（书本主数据）🚧 新增
+```js
+getByIsbn(isbn)                           // → api_bookmeta_getByIsbn     { isbn }
+fetchExternal(isbn)                       // → api_bookmeta_fetchExternal { isbn }
+```
+
+### 2.5.5 bookItemServices.js（实体书上下架）🚧 新增
+```js
+prepareCreate(isbn, book)                 // → api_bookitem_prepareCreate  { isbn, book }
+create(isbn, bookshelfId, book, editionType) // → api_bookitem_create    { isbn, bookshelfId, book, editionType? }
+updateBookshelf(itemId, bookshelfId)      // → api_bookitem_updateBookshelf { itemId, bookshelfId }
+restock(itemId)                           // → api_bookitem_restock        { itemId }
+offstock(itemId, reason)                  // → api_bookitem_offstock        { itemId, reason }
+remove(itemId)                            // → api_bookitem_delete          { itemId }
+get(itemId)                               // → api_bookitem_get             { itemId }
+```
+
+### 2.5.6 bookSearchServices.js（检索 / 最近）🚧 新增
+```js
+search({ keyword, isbn, bookshelfId, status, startDate, endDate, page, pageSize })
+                                        // → api_book_search   { keyword?, isbn?, bookshelfId?, status?, startDate?, endDate?, page?, pageSize? }
+searchRecent()                           // → api_book_searchRecent {}
+```
+
+### 2.5.7 taskServices.js（任务 / RFID）🚧 新增
+```js
+// —— 手机端创建 / 解绑 ——
+createBindRfid(bookItemId)                // → api_task_createBindRfid    { bookItemId }  🚧
+createFindBook(bookItemId)                // → api_task_createFindBook    { bookItemId }  🚧
+unbindRfid(bookItemId)                    // → api_task_unbindRfid        { bookItemId }  🚧
+// —— PDA 执行（Android 直连，此处仅作全局视图维护）——
+accept(deviceId)                          // → api_task_accept            { deviceId }   🚧
+complete(taskId, status, result)          // → api_task_complete          { taskId, status, result? }  🚧
+getRfidBindingInfo(tid)                   // → api_task_getRfidBindingInfo { tid }       🚧
+bindRfid(bookItemId, tid)                 // → api_task_bindRfid          { bookItemId, tid }  🚧
+```
+
+## 2.6 与现有页面的衔接
+
+代码审查发现 20 处页面直接调用 `wx.cloud.callFunction()`（`book.js` 9 处、`book-search.js` 4 处、`index.js` 1 处、`example/` 6 处），根因正是 `book` / `bookItem` / `bookMeta` / `search` / `recent` 缺少 Service 封装。补齐本章 2.5.4–2.5.7 的新增模块后，页面改为：
+
+```js
+// 改造前（book.js 直接调用）
+const res = await wx.cloud.callFunction({
+  name: 'api_bookitem_updateBookshelf',
+  data: { itemId: book.itemId, bookshelfId: newBookshelfId }
+})
+
+// 改造后
+const bookItemServices = require('../../services/bookItemServices')
+const res = await bookItemServices.updateBookshelf(book.itemId, newBookshelfId)
+```
+
+`example/` 为 quickstart 脚手架（调用 `quickstartFunctions`，非 `api_*` 业务），建议从生产构建下线，而非纳入 Service 约束。
+
+## 2.7 维护约定
+
+- 任何 `api_*` 云函数的**新增 / 改名 / 下线 / 入参变更**，必须同步更新：第 1 章清单、第 3 章详细定义、本章 2.4 映射表与 2.5 签名。
+- Service 方法命名语义化（动词 + 资源），不暴露云函数名；云函数名变更时只需改 `callFunction(name, ...)` 一处。
+- 桩函数（🚧）对应的 Service 方法先行声明，保持页面 / Service 契约稳定，待云函数实现后零改动连通。
+
+---
+
+# 3. API接口详细定义
 ## A. 手机端操作：用户登录与管理
 
 整体流程
@@ -834,7 +1046,7 @@ api_user_login
 ```json
 { "success": false, "message": "<err.message>" }
 ```
-> 说明：已统一为 `success` 标志（见 0.4 通用约定、第 4 章错误枚举）。`exists` 仅用于区分"系统已存在 / 不存在"两种**成功**结果（不存在不是错误，是转外部源抓取的正常前置条件），因此仍随 `success: true` 一并返回。原文档的 `{ "exists": false }`（无 `success`）与 D2 的 `{ "success": ... }` 不一致问题已在本次修改中统一——见遗留问题 6。
+> 说明：已统一为 `success` 标志（见 0.4 通用约定、第 5 章错误枚举）。`exists` 仅用于区分"系统已存在 / 不存在"两种**成功**结果（不存在不是错误，是转外部源抓取的正常前置条件），因此仍随 `success: true` 一并返回。原文档的 `{ "exists": false }`（无 `success`）与 D2 的 `{ "success": ... }` 不一致问题已在本次修改中统一——见遗留问题 6。
 
 ---
 
@@ -1068,7 +1280,7 @@ api_user_login
 - 当前用户须已注册且 `status = ACTIVE`
 - `item.inventory_status !== 'off_stock'` 时抛错拒绝
 - 恢复 `inventory_status = in_stock`，并**刷新 `on_shelf_at`（上架时间）与 `updated_at`**；**不改动 `created_at`**（记录创建时间保持初次上架时的值）
-  > 由此修复"重新上架导致'最近上架'列表重排"的历史问题（见"三、遗留问题"第 5 条）：重新上架现在只更新"上架时间 `on_shelf_at`"，`created_at` 不被刷新。
+  > 由此修复"重新上架导致'最近上架'列表重排"的历史问题（见"六、遗留问题"第 5 条）：重新上架现在只更新"上架时间 `on_shelf_at`"，`created_at` 不被刷新。
 
 
 #### 权限
@@ -1695,34 +1907,34 @@ running
 
 ---
 
-# 3. 一次性数据迁移工具（script_data_migration）
+# 4. 一次性数据迁移工具（script_data_migration）
 
 > **性质：临时工具，非业务接口。** 本云函数**不在**第 1 章「API 整体清单」中，因为它不是面向手机端 / PDA 的业务接口，而是运维期用于调整数据库表结构（改字段名、增减字段、迁移历史数据）的一次性脚本。
 
-## 3.1 用途
+## 4.1 用途
 将线上历史数据对齐到最新设计文档（`家庭图书管理系统数据库表结构设计.md`），消除「代码 / 设计 / 历史数据」三方字段差异。代码逻辑根据临时迁移目标而不断变化，此处不做逻辑说明。
 
-## 3.2 幂等性与安全性
+## 4.2 幂等性与安全性
 - **幂等**：仅处理「仍含旧字段」的记录（`_.exists(true)`）；已迁移记录因旧字段被删除而不再命中，可**重复执行**、安全不报错。
 - **分批**：每批 `BATCH_SIZE = 100`，按 `while` 循环推进；集合规模变化或超时后可再次执行，断点续跑。
 - **仅运维**：不接收任何业务入参，不依赖家庭角色；仅由管理员在云端测试手动触发。
 
-## 3.3 使用方式（部署新代码前必做）
+## 4.3 使用方式（部署新代码前必做）
 1. 在微信开发者工具中右键部署 `script_data_migration`（上传并部署：云端安装依赖）。
 2. 右键 → 云端测试，测试参数输入 `{}`，点击运行测试。
 3. 如遇超时，请在云开发控制台把云函数超时时间调到 20 秒以上，再执行一次（幂等，可重复）。
 4. 返回 `success: true` 且 `stats.errors` 为空，即迁移完成。
 
-## 3.4 重要提醒
+## 4.4 重要提醒
 - **需要数据迁移前必须先成功执行一次**，否则读写新字段的api函数会运行错误
 - 执行后应**及时下架 / 不再调用**本函数；它属于一次性迁移工具，不应保留在常态调用链路中。
 - 如后续又有表结构变更，可改写本函数（保留幂等与分批模式）后再次执行。
 
 ---
 
-# 4. 通用错误返回规范（错误枚举）
+# 5. 通用错误返回规范（错误枚举）
 
-## 4.1 统一返回结构
+## 5.1 统一返回结构
 
 > 与 0.1 通用约定一致：所有接口**成功**统一含 `success: true`；**失败**统一含 `success: false` 与 `message`（人类可读信息）。
 
@@ -1736,7 +1948,7 @@ running
 { "success": false, "message": "<人类可读错误描述>" }
 ```
 
-## 4.2 失败原因枚举（reason）
+## 5.2 失败原因枚举（reason）
 
 登录态与权限校验统一由 `_shared/permission.js` 的 `checkPermission` 完成。该校验对每个失败场景给定一个 `reason` 枚举值（机器可读），便于前端 / 上层按类型分支、埋点、国际化。
 
@@ -1759,14 +1971,14 @@ running
 
 > 说明：上表 `message` 文案取自 `_shared/permission.js` 当前实现，属服务端文案。若前端做国际化，应以 `reason` 为 key 做映射，而非依赖 `message` 文本。
 
-## 4.3 其他失败返回约定
+## 5.3 其他失败返回约定
 
 - **参数校验失败**：接口在调用 `checkPermission` 前自行校验入参（如必填项为空），直接返回 `{ success: false, message: "<具体字段>不能为空" }`，不进入 `checkPermission`，因此无 `reason`。
 - **业务规则拒绝**：如"书架下存在在架图书，无法删除""当前家庭已存在有效书架"等，返回 `{ success: false, message: "<业务提示>" }`；如需细分，可补充业务级 `reason`（建议后续扩展，如 `SHELF_NOT_EMPTY` 等）。
 - **系统异常**：`try/catch` 捕获后返回 `{ success: false, message: "<err.message>" }`（老接口写法为 `{ success: false, "error": "..." }`，建议统一为 `message`）。
 - **特殊成功分支**：`api_bookmeta_getByIsbn` 的 `{ success: true, exists: false }` 属"调用成功但系统内无此书"的**正常成功**结果（非失败），用于驱动前端转外部源抓取，不应视为错误。
 
-## 4.4 推荐（系统化）目标结构
+## 5.4 推荐（系统化）目标结构
 
 ```json
 // 失败（系统化后）
@@ -1790,10 +2002,10 @@ running
 ---
 
 
-# 5. 遗留问题
+# 6. 遗留问题
 
 1. **实现状态 / 脚手架**：架构表所列 33 个接口中，25 个已有真实实现（含 F2 `api_book_searchRecent`），另有 9 个云函数文件仅为**桩函数**（仅回显 `event` 与微信上下文，未实现业务逻辑）：A3 `api_user_get`、C5 `api_bookshelf_reorder`、G1/G2（任务创建）、H1 `api_task_unbindRfid`、J1–J4（PDA 任务执行/RFID 绑定）。文档已在架构表与各章节标注 ✅/🚧，避免读者误判为已上线。
 
-2. **通用失败返回 / 错误枚举未系统化（已起草到文档）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 4 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
+2. **通用失败返回 / 错误枚举未系统化（已起草到文档）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 5 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
 
 ---
