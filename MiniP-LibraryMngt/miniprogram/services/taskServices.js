@@ -41,8 +41,9 @@ const getRfidBindingInfo = (tid) => {
 
 // PDA 执行 RFID 绑定（核心接口，内部处理 4 种绑定场景）
 // taskId 可选：用于关联 rfid_bind_log；不传时按 book_item_id 反查进行中任务
-const bindRfid = (bookItemId, tid, taskId) => {
-  return callFunction('api_task_bindRfid', { bookItemId, tid, taskId })
+// deviceId 可选：PDA 设备ID，作为 rfid_bind_log.operator；不传时回退到任务领取设备，再回退到固定串 "PDA"
+const bindRfid = (bookItemId, tid, taskId, deviceId) => {
+  return callFunction('api_task_bindRfid', { bookItemId, tid, taskId, deviceId })
 }
 
 module.exports = {
