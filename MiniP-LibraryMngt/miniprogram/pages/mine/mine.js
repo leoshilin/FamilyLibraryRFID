@@ -49,7 +49,8 @@ Page({
 
     const app = getApp()
 
-    await app.login()
+    // 使用幂等的 ensureLogin：应用启动已触发过登录时直接复用缓存，避免重复云调用
+    await app.ensureLogin()
 
     await this.initPage()
 

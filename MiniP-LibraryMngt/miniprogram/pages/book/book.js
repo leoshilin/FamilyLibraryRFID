@@ -57,7 +57,7 @@ Page({
         console.warn('没有 eventChannel')
         return
       }
-      eventChannel.on('bookData', (book) => {
+      eventChannel.on('bookData', async (book) => {
         if (!book) {
           console.warn('未收到 book 数据')
           return
@@ -78,12 +78,8 @@ Page({
         })
         console.log(`book on page, title=${book.title}, status=${book.status}`)
 
-        // 设置 RFID 权限门控（无 RFID_TASK_CREATE_BIND 隐藏绑定/重绑；无 RFID_UNBIND 隐藏解绑）
-        const perms = (getApp() && getApp().globalData.permissions) || {}
-        this.setData({
-          canBind: !!perms.canCreateBindRfidTask,
-          canUnbind: !!perms.canUnbindRfid
-        })
+        // 确保权限已加载（应用启动即触发，此处兜底 await，避免 race 导致 RFID 按钮被隐藏）
+        await this.ensurePermissions()
 
         // 依据 book 推导 RFID 展示态（isBound / showRfid）
         this.refreshRfidState()
@@ -856,9 +852,26 @@ Page({
 
   // 页面重新展示（从列表返回）时：重载 book + 重查任务状态，实现 PDA 完成后的状态自愈
   onShow() {
+    // 重新展示时刷新权限门控（例如从「我的」页登录/切换家庭后返回），实现 RFID 按钮自愈
+    this.ensurePermissions()
     if (this.data.book && this.data.book.itemId) {
       this.refreshBookFromServer()
     }
+  },
+
+  // 等待全局权限加载完成，并刷新本页 RFID 按钮门控（canBind / canUnbind）
+  // 同时打印到 console 便于确认权限是否到位
+  async ensurePermissions() {
+    const app = getApp()
+    if (app && app.ensureLogin) {
+      await app.ensureLogin()
+    }
+    const perms = (app && app.globalData.permissions) || {}
+    this.setData({
+      canBind: !!perms.canCreateBindRfidTask,
+      canUnbind: !!perms.canUnbindRfid
+    })
+    console.log('[book] RFID 权限门控: canBind=', this.data.canBind, 'canUnbind=', this.data.canUnbind, 'permissions=', perms)
   },
 
   // 绑定 / 重新绑定 RFID
