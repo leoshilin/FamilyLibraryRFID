@@ -50,11 +50,21 @@
 
 **影响**：PDA 绑定/寻书界面要显示的书名、作者、ISBN 无数据来源；F4.3 的「扫码 ISBN 与任务 ISBN 校验」也无基准值。
 
-**建议（二选一，需你确认）**：
-- **方案 A（推荐）**：扩展 `device_task`，新增可选展示字段 `book_title` / `book_author` / `book_isbn`，由 `api_task_createBindRfid` / `api_task_createFindBook` 在创建时从 `book_item→book_meta` 反查填入；`api_task_accept` 的返回 `TaskPayload` 一并返回。改动集中在云函数 + 数据库，PDA 直接读取。
-- **方案 B**：PDA 领取后凭 `book_item_id` 另调一个“按 ID 查书”的云函数取展示字段。但现有 PDA 专用 J 系列无此接口，且小程序侧 `book` 类接口需家庭权限，不适合 PDA 直连——不推荐。
+**结论（已与用户确认）：采用方案 A** —— 扩展 `device_task` 携带展示字段。
 
-> 本文 UI 按**方案 A** 设计（任务携带展示字段）。在方案 A 落地前，界面先用 `book_item_id` 占位显示，ISBN 校验暂不可用。
+**字段规格（已同步更新 Docs §3.9 device_task）**：
+- `book_title` (varchar(255), 可选)：书名
+- `book_author` (varchar(255), 可选)：作者
+- `book_isbn` (varchar(32), 可选)：ISBN（绑定流程中 PDA 扫码 ISBN 与之校验）
+
+**落地涉及改动（开发阶段实现）**：
+1. 云函数 `api_task_createBindRfid`：创建时由 `book_item → book_meta` 反查填入上述三字段。
+2. 云函数 `api_task_createFindBook`：同上（寻书任务同样携带）。
+3. 云函数 `api_task_accept`（J1）：返回 `TaskPayload` 一并返回这三字段。
+4. PDA 框架：`cloud/model/CloudModels.kt` 的 `TaskPayload` 与 `model/DeviceTask` 增加对应字段；`TaskCloudService.acceptTask` 映射带入。
+5. PDA UI：绑定/寻书界面读取展示；绑定流程在 SCAN_ISBN 态与 `book_isbn` 校验。
+
+> 本文 UI 即按方案 A 设计。在云端字段落地前，界面可先用 `book_item_id` 占位，ISBN 校验待字段就绪后启用。
 
 ---
 
