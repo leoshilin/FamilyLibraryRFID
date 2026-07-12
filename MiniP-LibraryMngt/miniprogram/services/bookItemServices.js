@@ -1,13 +1,7 @@
 // 实体书上下架相关 API 封装
 // 页面通过此 Service 调用云函数，不直接调用 wx.cloud.callFunction()
 
-const callFunction = async (name, data = {}) => {
-  const res = await wx.cloud.callFunction({
-    name,
-    data
-  })
-  return res.result
-}
+const { callFunction } = require('./_base')
 
 // 上架前预检查：book_meta 是否存在、当前家庭是否已存在同书、套装序号是否冲突
 // 返回结构：{ success, metaExists, bookMetaId?, isSet?, existingItemCount?, needUserConfirm?, duplicateType? }
