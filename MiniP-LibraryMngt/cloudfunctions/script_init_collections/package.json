@@ -1,0 +1,14 @@
+{
+  "name": "script_init_collections",
+  "version": "1.0.0",
+  "description": "一次性集合初始化：创建 device_task / rfid_bind_log",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "wx-server-sdk": "~4.0.2"
+  }
+}

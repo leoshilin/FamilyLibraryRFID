@@ -89,22 +89,30 @@ exports.main = async (event) => {
   }
 
   // 2️⃣ 查询绑定任务（仅查询归属本家庭的 item；device_task 无 family_id 字段）
+  //    容错：若 device_task 集合尚未创建（-502005 资源不存在），则视为「无进行中任务」
+  //          降级返回，不让查询失败阻断详情页 / 列表页渲染（前端本就按 rfid_tid 判断
+  //          已绑定 / 未绑定，仅 inProgress 来自本接口）。
   const taskMap = {} // itemId -> tasks[]
   const allowedIds = [...allowedSet]
-  for (let i = 0; i < allowedIds.length; i += BATCH_SIZE) {
-    const batch = allowedIds.slice(i, i + BATCH_SIZE)
-    const res = await db.collection('device_task')
-      .where({
-        book_item_id: _.in(batch),
-        task_type: 'bind_rfid'
+  try {
+    for (let i = 0; i < allowedIds.length; i += BATCH_SIZE) {
+      const batch = allowedIds.slice(i, i + BATCH_SIZE)
+      const res = await db.collection('device_task')
+        .where({
+          book_item_id: _.in(batch),
+          task_type: 'bind_rfid'
+        })
+        .field({ book_item_id: true, status: true, created_at: true })
+        .limit(1000)
+        .get()
+      res.data.forEach(t => {
+        if (!taskMap[t.book_item_id]) taskMap[t.book_item_id] = []
+        taskMap[t.book_item_id].push(t)
       })
-      .field({ book_item_id: true, status: true, created_at: true })
-      .limit(1000)
-      .get()
-    res.data.forEach(t => {
-      if (!taskMap[t.book_item_id]) taskMap[t.book_item_id] = []
-      taskMap[t.book_item_id].push(t)
-    })
+    }
+  } catch (err) {
+    // 集合不存在 / 其它读取异常：记日志并降级为「全部无进行中任务」，保证页面不崩溃
+    console.error('api_task_getBindStatus: 查询 device_task 失败，已降级为无进行中任务:', err)
   }
 
   // 3️⃣ 归并状态，按请求顺序返回（未授权 / 不存在的 item 也占位，便于前端直接按 id 取用）

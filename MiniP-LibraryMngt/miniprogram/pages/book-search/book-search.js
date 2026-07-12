@@ -4,6 +4,7 @@ const bookshelfServices = require('../../services/bookshelfServices')
 const familyServices = require('../../services/familyServices')
 const bookSearchServices = require('../../services/bookSearchServices')
 const bookItemServices = require('../../services/bookItemServices')
+const taskServices = require('../../services/taskServices')
 
 Page({
   data: {

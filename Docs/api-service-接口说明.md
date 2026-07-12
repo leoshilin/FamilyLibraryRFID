@@ -1760,6 +1760,8 @@ PDA 后续执行
 5. 返回 `{ [itemId]: { inProgress, status } }` 映射（包含请求的全部 id，未授权 / 不存在的 id 占位为 `{ inProgress:false, status:null }`，便于前端直接按 id 取用）。
 6. `in` 查询按每批 100 拆分，避免微信云数据库数组长度约束。
 
+> **容错说明（健壮性）**：本接口对 `device_task` 的查询包裹了 `try/catch`。若 `device_task` 集合尚未创建（云端报 `-502005 database collection not exists`），接口**不抛错**、降级为「全部 `inProgress:false`」并返回 `success:true`，使详情页 / 列表页仍能按 `rfid_tid` 正常渲染「已绑定 / 未绑定」按钮，仅「绑定中…」态暂不显示。请见 §4.5 用 `script_init_collections` 补齐缺失集合。
+
 #### 权限
 - 仅需登录且已选择当前家庭（本接口为只读查询，不要求 `RFID_TASK_CREATE_BIND` / `RFID_UNBIND`；GUEST 也可读取，用于展示进行中态）。
 - 越权探测通过「归属校验」拦截：非本家庭的 `book_item_id` 一律返回 `{ inProgress:false, status:null }`。
@@ -2050,6 +2052,32 @@ running
 
 ---
 
+# 4.5 一次性集合初始化工具（script_init_collections）
+
+> **性质：临时工具，非业务接口。** 本云函数**不在**第 1 章「API 整体清单」中。用于首次部署 / 环境重建时补齐 RFID 任务链路所需的云数据库集合。
+
+## 4.5.1 背景
+经核查，RFID 任务链路依赖以下集合，但仓库此前**没有任何建集合脚本**（仅有 `script_data_migration` 做字段迁移、不创建集合）。首次部署后云端缺少这些集合，会导致相关云函数调用失败（典型报错 `-502005 database collection not exists: device_task`）。
+
+| 集合 | 依赖该集合的云函数 |
+| --- | --- |
+| `device_task` | `api_task_createBindRfid`、`api_task_createFindBook`、`api_task_accept`、`api_task_complete`、`api_task_bindRfid`、`api_task_getBindStatus` |
+| `rfid_bind_log` | `api_task_bindRfid`、`api_task_unbindRfid` |
+
+## 4.5.2 幂等性与安全性
+- **幂等**：集合已存在时 `db.createCollection` 会抛「已存在」错误（`errCode -502003`），本函数捕获后视为成功，**可重复执行**、安全不报错。
+- **仅运维**：不接收任何业务入参，不依赖家庭角色；仅由管理员在云端测试手动触发。
+
+## 4.5.3 使用方式（部署新代码前必做）
+1. 在微信开发者工具中右键部署 `script_init_collections`（上传并部署：云端安装依赖）。
+2. 右键 → 云端测试，测试参数输入 `{}`，点击运行测试。
+3. 返回 `success: true` 即表示 `device_task` / `rfid_bind_log` 已就绪（已存在也会返回成功）。
+4. 执行后本函数可保留，建议与 `script_data_migration` 同样仅在运维期调用。
+
+> 注：本函数仅创建空集合。若后续需要为 `device_task.book_item_id`、`rfid_bind_log.book_item_id` 等字段建索引以提升查询性能，可在云开发控制台手动创建。
+
+---
+
 # 5. 通用错误返回规范（错误枚举）
 
 ## 5.1 统一返回结构
@@ -2122,6 +2150,8 @@ running
 
 # 6. 遗留问题
 
-1. **通用失败返回 / 错误枚举未系统化**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**。后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
+1. **实现状态**：架构表所列 34 个接口全部已有真实实现（含 A3 `api_user_get`、C5 `api_bookshelf_reorder` 与 G1/G2/G3/H1/J1–J4 任务域），无遗留桩函数。文档已在架构表与各章节统一标注 ✅。
+
+2. **通用失败返回 / 错误枚举未系统化（已起草到文档）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 5 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
 
 ---
