@@ -266,7 +266,7 @@ complete(taskId, status, result)          // → api_task_complete          { ta
 getRfidBindingInfo(tid)                   // → api_task_getRfidBindingInfo { tid }
 bindRfid(bookItemId, tid, taskId)         // → api_task_bindRfid          { bookItemId, tid, taskId? }
 ```
-> `bindRfid` 的 `taskId` 为可选：用于关联 `rfid_bind_log.task_id`；不传时按 `book_item_id` 反查进行中的 `bind_rfid` 任务。
+> `bindRfid` 的 `taskId` 为可选：用于关联 `rfid_bind_log.task_id`；不传时按 `book_item_id` 反查进行中的 `bind_rfid` 任务。`deviceId` 为可选：作为 `rfid_bind_log.operator`（PDA 设备ID），不传时回退到任务领取设备，再回退到固定串 `"PDA"`。
 
 ## 2.6 维护约定
 
@@ -1748,7 +1748,7 @@ PDA 后续执行
 #### 权限
 - 解析当前用户与 `current_family_id`；校验 `RFID_UNBIND` 权限（OWNER；MEMBER/GUEST 无）。
 - 校验 `book_item` 存在、未删除；`rfid_tid` 为空则提示未绑定。
-- **事务**：置 `book_item.rfid_tid=null` + `updated_at`；写 `rfid_bind_log`（`action_type:'unbind'`，`old_tid=原标签`，`new_tid`/`task_id` 占位空串，`operator=user._id`）。提交失败回滚。
+- **事务**：置 `book_item.rfid_tid=null` + `updated_at`；写 `rfid_bind_log`（`action_type:'unbind'`，`old_tid=原标签`，`new_tid`/`task_id` 不适用写 `null`，`operator=user._id`）。提交失败回滚。
 
 #### 权限
 - 所需权限：`RFID_UNBIND`
@@ -1953,8 +1953,8 @@ running
 
 #### 权限
 - 无家庭 / 角色校验（PDA 专用）。
-- 解析 `taskId`（未传则按 `book_item_id` 反查进行中 `bind_rfid` 任务），取 `created_by` 作为 `operator`。
-- 查目标 `book1`（须未删除）与占用 `tid` 的其它书 `book2`；**事务**内：必要时解绑 `book2` → 绑定 `book1.rfid_tid=tid` → 写 `rfid_bind_log`（`action_type` 视是否涉及旧书/旧标签取 `rebind` 或 `bind`）。返回 `{ success:true, action:'bind'|'rebind' }`；失败回滚。对应设计 4 场景 A/B/C/D。
+- 解析 `taskId`（未传则按 `book_item_id` 反查进行中 `bind_rfid` 任务）；`operator` 取入参 `deviceId`，其次用关联任务的领取设备 `claimed_by_device`，均取不到时固定串 `"PDA"`（PDA 无微信登录态，不得使用 `user._id`）。`task_id` 可选（无关联任务为 `null`）。
+- 查目标 `book1`（须未删除）与占用 `tid` 的其它书 `book2`；**事务**内：必要时解绑 `book2` → 绑定 `book1.rfid_tid=tid` → 写 `rfid_bind_log`（`action_type` 视是否涉及旧书/旧标签取 `rebind` 或 `bind`；`new_tid` 为本次标签、`old_book_item_id`/`old_tid` 不适用写 `null`）。返回 `{ success:true, action:'bind'|'rebind' }`；失败回滚。对应设计 4 场景 A/B/C/D。
 
 #### 权限
 - 无（PDA 专用；执行 RFID 绑定）

@@ -82,15 +82,16 @@ exports.main = async (event) => {
       })
 
     // 2️⃣ 写 RFID 绑定历史（解绑）
-    //    new_tid 为解绑后新标签（无）→ 占位空串；task_id 为手机端主动解绑（无任务）→ 占位空串
+    //    unbind 动作下：new_tid 不适用（无新标签）→ null；task_id 为手机端主动解绑（无任务）→ null；
+    //    old_tid 记录被解绑的原标签；operator 为当前登录用户。
     await transaction.collection('rfid_bind_log').add({
       data: {
         book_item_id: bookItemId,
-        new_tid: '',
+        new_tid: null,
         old_tid: item.rfid_tid,
         action_type: 'unbind',
         created_at: now,
-        task_id: '',
+        task_id: null,
         operator: user._id
       }
     })
