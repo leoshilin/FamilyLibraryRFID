@@ -40,6 +40,8 @@ RFID_Handheld/
 Android RFID PDA
 ```
 
+---
+
 ## Generated Files
 
 The following directories are generated files:
