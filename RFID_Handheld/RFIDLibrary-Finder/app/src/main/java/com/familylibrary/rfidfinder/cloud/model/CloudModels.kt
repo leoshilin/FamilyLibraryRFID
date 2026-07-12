@@ -41,7 +41,12 @@ data class TaskPayload(
     val taskId: String = "",
     val taskType: String = "",
     val bookItemId: String = "",
-    val targetTid: String = ""
+    val targetTid: String = "",
+    // 展示字段：由 api_task_accept 在领取时经 book_item → book_meta 关联返回，
+    // device_task 本身不冗余存储；PDA 直接显示并用 isbn 做扫码校验。
+    val isbn: String = "",
+    val title: String = "",
+    val authors: String = ""
 )
 
 /** J1 api_task_accept 返回：{ success, task }，无任务时 task 为 null。 */

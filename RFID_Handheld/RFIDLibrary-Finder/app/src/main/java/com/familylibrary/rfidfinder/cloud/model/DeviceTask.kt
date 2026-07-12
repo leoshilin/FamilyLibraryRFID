@@ -44,12 +44,18 @@ enum class TaskStatus {
  * 本地任务表达。
  * @param taskId 任务 ID（_id）
  * @param taskType 任务类型
- * @param bookItemId 目标书籍（绑定任务）
+ * @param bookItemId 目标书籍（绑定任务 / 寻书任务），用于关联 book_item
  * @param targetTid 目标 TID（寻书任务）
+ * @param isbn 展示字段（ISBN）：由 api_task_accept 关联返回，绑定流程中用于扫码校验
+ * @param title 展示字段（书名）：由 api_task_accept 关联返回，PDA 直接显示
+ * @param authors 展示字段（作者）：由 api_task_accept 关联返回，PDA 直接显示
  */
 data class DeviceTask(
     val taskId: String,
     val taskType: TaskType,
     val bookItemId: String = "",
-    val targetTid: String = ""
+    val targetTid: String = "",
+    val isbn: String = "",
+    val title: String = "",
+    val authors: String = ""
 )

@@ -53,7 +53,10 @@ class TaskCloudService(
                 taskId = payload.taskId,
                 taskType = type,
                 bookItemId = payload.bookItemId,
-                targetTid = payload.targetTid
+                targetTid = payload.targetTid,
+                isbn = payload.isbn,
+                title = payload.title,
+                authors = payload.authors
             )
         }
     }

@@ -1844,7 +1844,7 @@ api_task_accept
 running
 ```
 
-> **实现状态说明**：`api_task_accept` 已实现真实领取逻辑（pending/running 升序取 1 条置 running）。
+> **实现状态说明**：`api_task_accept` 已实现真实领取逻辑（pending/running 升序取 1 条置 running）；并在领取时经 `book_item → book_meta` 关联返回 `isbn` / `title` / `authors` 展示字段（`device_task` 不冗余存储展示字段，见数据库表结构设计 §3.9）。
 
 #### 入参（规划）
 ```json
@@ -1859,7 +1859,9 @@ running
 
 #### 权限
 - 无家庭 / 角色校验（PDA 专用）。
-- 从 `device_task` 取 `status in ['pending','running']` 按 `created_at` 升序 1 条；置 `status:'running'`、`claimed_by_device=deviceId`、`claimed_at`；返回 `{ success:true, task:{ taskId, taskType, bookItemId, targetTid } }`，无任务返回 `{ success:true, task:null }`。
+- 从 `device_task` 取 `status in ['pending','running']` 按 `created_at` 升序 1 条；置 `status:'running'`、`claimed_by_device=deviceId`、`claimed_at`。
+- **展示字段实时关联**：`device_task` 仅存调度字段（`book_item_id` / `target_tid`），不冗余保存 ISBN / 书名 / 作者。领取后由本接口经 `book_item.book_meta_id → book_meta` 反查拼装 `isbn` / `title` / `authors`，随任务一并返回（供 PDA 直接显示并校验 ISBN）。任一关联缺失或异常均降级为空字符串，不影响领取主流程。
+- 返回 `{ success:true, task:{ taskId, taskType, bookItemId, targetTid, isbn, title, authors } }`，无任务返回 `{ success:true, task:null }`。
 
 #### 权限
 - 无（PDA 专用；按 deviceId 领取待执行任务，不做家庭角色校验）
@@ -1872,7 +1874,11 @@ running
   "task": {
     "taskId": "task00001",
     "taskType": "bind_rfid",
-    "bookItemId": "bi00001"
+    "bookItemId": "bi00001",
+    "targetTid": "",
+    "isbn": "9787111122334",
+    "title": "三体",
+    "authors": "刘慈欣"
   }
 }
 ```
