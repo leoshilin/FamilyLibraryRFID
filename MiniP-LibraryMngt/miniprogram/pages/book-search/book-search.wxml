@@ -252,7 +252,7 @@
             <text class="author">
               {{item.authors}}
             </text>
-
+            
             <!-- RFID 状态（4 态：已绑定显示TID / 未绑定 / 绑定中 / 重新绑定中），位于动态按钮上方 -->
             <view class="rfid-line">
               <text class="rfid-label">RFID</text>
@@ -260,10 +260,10 @@
                 {{ item.bindInProgress ? (item.rfidTid ? '重新绑定中…' : '绑定中…') : (item.rfidTid ? item.rfidTid : '未绑定') }}
               </text>
             </view>
-
-          </view>
-
-        </view>
+            
+            </view>
+            
+            </view>
 
         <!-- 展开按钮 -->
         <view class="actions" wx:if="{{currentExpandedId === item.itemId}}">

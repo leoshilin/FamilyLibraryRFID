@@ -1,439 +1,449 @@
-.page {
-  background: #f5f6f8;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow:hidden;
+  .page {
+    background: #f5f6f8;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow:hidden;
+  }
+
+  /* ======================== */
+  /* 检索方式 Tab */
+  /* ======================== */
+
+  .search-tabs {
+    display: flex;
+    margin: 20rpx;
+    background: #ffffff;
+    border-radius: 16rpx;
+    overflow: hidden;
+    box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+  }
+
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 24rpx 0;
+    font-size: 30rpx;
+    color: #666;
+    background: #fff;
+  }
+
+  .tab.active {
+    background: #1677ff;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  /* ======================== */
+  /* ISBN 检索 */
+  /* ======================== */
+
+  .isbn-panel {
+    margin: 0 20rpx 20rpx;
+    padding: 24rpx;
+    background: #fff;
+    border-radius: 20rpx;
+    box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+  }
+
+  .isbn-search-row {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border-radius: 20rpx;
+    padding: 0 24rpx;
+    height: 96rpx;
+    box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+  }
+
+  .isbn-input {
+    flex: 1;
+    height: 96rpx;
+    font-size: 30rpx;
+  }
+
+  .search-icon,
+  .scan-icon {
+      width:42rpx;
+      height:42rpx;
+      margin-left:28rpx;
+  }
+
+  /* ======================== */
+  /* 条件检索 (左右布局)*/
+  /* ======================== */
+
+  .advanced-panel {
+    margin: 0 20rpx 20rpx;
+    padding: 24rpx;
+    background: #fff;
+    border-radius: 20rpx;
+    box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+  }
+
+  /* 每一行 */
+  .form-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 24rpx;
+  }
+
+  /* 左侧标题 */
+  .form-label {
+    width: 160rpx;
+    flex-shrink: 0;
+    font-size: 28rpx;
+    color: #666;
+  }
+
+  /* 输入框 */
+  .form-input {
+    flex: 1;
+    height: 72rpx;
+    padding: 0 20rpx;
+    background: #f5f5f5;
+    border-radius: 12rpx;
+    font-size: 28rpx;
+    display: flex;
+    align-items: center;
+  }
+
+  /* picker */
+  .form-picker {
+    flex: 1;
+    min-height: 72rpx;
+    padding: 0 20rpx;
+    background: #f5f5f5;
+    border-radius: 12rpx;
+    display: flex;
+    align-items: center;
+    font-size: 28rpx;
+    color: #333;
+  }
+
+  /* 日期 */
+  .date-row {
+    flex: 1;
+    display: flex;
+    align-items: center;
+  }
+
+  .date-picker {
+    flex: 1;
+    height: 72rpx;
+    background: #f5f5f5;
+    border-radius: 12rpx;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 26rpx;
+    padding: 18rpx;
+  }
+
+  .date-sep {
+    margin: 0 12rpx;
+    color: #888;
+    flex-shrink: 0;
+  }
+
+  /* 搜索按钮 */
+  .confirm-btn {
+    margin-top: 12rpx;
+    background: #1677ff;
+    color: #fff;
+    border-radius: 14rpx;
+    font-size: 30rpx;
+  }
+
+  /* ======================== */
+  /* 条件摘要（折叠状态） */
+  /* ======================== */
+
+  .condition-summary {
+    margin: 0 20rpx 20rpx;
+    padding: 24rpx;
+    background: #fff;
+    border-radius: 20rpx;
+    box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+  }
+
+  .summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12rpx;
+  }
+
+  .summary-title {
+    font-size: 30rpx;
+    font-weight: 600;
+    color: #222;
+  }
+
+  .summary-edit {
+    color: #1677ff;
+    font-size: 26rpx;
+  }
+
+  .summary-item {
+    display: flex;
+    margin-top: 8rpx;
+    line-height: 40rpx;
+  }
+
+  .summary-label {
+    color: #888;
+    font-size: 26rpx;
+    flex-shrink: 0;
+  }
+
+  .summary-value {
+    color: #333;
+    font-size: 26rpx;
+    word-break: break-all;
+  }
+  /* ======================== */
+  /* 表单 */
+  /* ======================== */
+
+  .form-item {
+    margin-bottom: 24rpx;
+  }
+
+  .adv-input {
+    padding: 18rpx;
+    background: #f5f5f5;
+    border-radius: 12rpx;
+    font-size: 30rpx;
+  }
+
+  .picker {
+    padding: 18rpx;
+    background: #f5f5f5;
+    border-radius: 12rpx;
+    font-size: 28rpx;
+  }
+
+
+  .date-sep {
+    margin: 0 16rpx;
+    color: #666;
+  }
+
+  /* ======================== */
+  /* ISBN 按钮 */
+  /* ======================== */
+
+
+  /* ======================== */
+  /* 图书列表 */
+  /* ======================== */
+
+  .list {
+    flex: 1;  
+    min-height:0;
+  }
+
+  .book-list {
+    padding: 0 20rpx 20rpx;
+  }
+
+  /* 每一本书 */
+
+  .swipe-item {
+    margin-bottom: 20rpx;
+    background: #fff;
+    border-radius: 18rpx;
+    overflow: hidden;
+  }
+
+  /* 主体 */
+
+  .book-item {
+    display: flex;
+    align-items: center;
+    padding: 24rpx;
+  }
+
+  .cover {
+    width: 120rpx;
+    height: 160rpx;
+    border-radius: 8rpx;
+    flex-shrink: 0;
+  }
+
+  .info{
+    flex:1;
+    margin-left:24rpx;
+
+    display:flex;
+    flex-direction:column;
 }
 
-/* ======================== */
-/* 检索方式 Tab */
-/* ======================== */
-
-.search-tabs {
-  display: flex;
-  margin: 20rpx;
-  background: #ffffff;
-  border-radius: 16rpx;
-  overflow: hidden;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
-}
-
-.tab {
-  flex: 1;
-  text-align: center;
-  padding: 24rpx 0;
-  font-size: 30rpx;
-  color: #666;
-  background: #fff;
-}
-
-.tab.active {
-  background: #1677ff;
-  color: #fff;
-  font-weight: 600;
-}
-
-/* ======================== */
-/* ISBN 检索 */
-/* ======================== */
-
-.isbn-panel {
-  margin: 0 20rpx 20rpx;
-  padding: 24rpx;
-  background: #fff;
-  border-radius: 20rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
-}
-
-.isbn-search-row {
-  display: flex;
-  align-items: center;
-  background: #ffffff;
-  border-radius: 20rpx;
-  padding: 0 24rpx;
-  height: 96rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
-}
-
-.isbn-input {
-  flex: 1;
-  height: 96rpx;
-  font-size: 30rpx;
-}
-
-.search-icon,
-.scan-icon {
-    width:42rpx;
-    height:42rpx;
-    margin-left:28rpx;
-}
-
-/* ======================== */
-/* 条件检索 (左右布局)*/
-/* ======================== */
-
-.advanced-panel {
-  margin: 0 20rpx 20rpx;
-  padding: 24rpx;
-  background: #fff;
-  border-radius: 20rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
-}
-
-/* 每一行 */
-.form-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 24rpx;
-}
-
-/* 左侧标题 */
-.form-label {
-  width: 160rpx;
-  flex-shrink: 0;
-  font-size: 28rpx;
-  color: #666;
-}
-
-/* 输入框 */
-.form-input {
-  flex: 1;
-  height: 72rpx;
-  padding: 0 20rpx;
-  background: #f5f5f5;
-  border-radius: 12rpx;
-  font-size: 28rpx;
-  display: flex;
-  align-items: center;
-}
-
-/* picker */
-.form-picker {
-  flex: 1;
-  min-height: 72rpx;
-  padding: 0 20rpx;
-  background: #f5f5f5;
-  border-radius: 12rpx;
-  display: flex;
-  align-items: center;
-  font-size: 28rpx;
-  color: #333;
-}
-
-/* 日期 */
-.date-row {
-  flex: 1;
-  display: flex;
-  align-items: center;
-}
-
-.date-picker {
-  flex: 1;
-  height: 72rpx;
-  background: #f5f5f5;
-  border-radius: 12rpx;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 26rpx;
-  padding: 18rpx;
-}
-
-.date-sep {
-  margin: 0 12rpx;
-  color: #888;
-  flex-shrink: 0;
-}
-
-/* 搜索按钮 */
-.confirm-btn {
-  margin-top: 12rpx;
-  background: #1677ff;
-  color: #fff;
-  border-radius: 14rpx;
-  font-size: 30rpx;
-}
-
-/* ======================== */
-/* 条件摘要（折叠状态） */
-/* ======================== */
-
-.condition-summary {
-  margin: 0 20rpx 20rpx;
-  padding: 24rpx;
-  background: #fff;
-  border-radius: 20rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
-}
-
-.summary-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12rpx;
-}
-
-.summary-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #222;
-}
-
-.summary-edit {
-  color: #1677ff;
-  font-size: 26rpx;
-}
-
-.summary-item {
-  display: flex;
-  margin-top: 8rpx;
-  line-height: 40rpx;
-}
-
-.summary-label {
-  color: #888;
-  font-size: 26rpx;
-  flex-shrink: 0;
-}
-
-.summary-value {
-  color: #333;
-  font-size: 26rpx;
-  word-break: break-all;
-}
-/* ======================== */
-/* 表单 */
-/* ======================== */
-
-.form-item {
-  margin-bottom: 24rpx;
-}
-
-.adv-input {
-  padding: 18rpx;
-  background: #f5f5f5;
-  border-radius: 12rpx;
-  font-size: 30rpx;
-}
-
-.picker {
-  padding: 18rpx;
-  background: #f5f5f5;
-  border-radius: 12rpx;
-  font-size: 28rpx;
-}
-
-
-.date-sep {
-  margin: 0 16rpx;
-  color: #666;
-}
-
-/* ======================== */
-/* ISBN 按钮 */
-/* ======================== */
-
-
-/* ======================== */
-/* 图书列表 */
-/* ======================== */
-
-.list {
-  flex: 1;  
-  min-height:0;
-}
-
-.book-list {
-  padding: 0 20rpx 20rpx;
-}
-
-/* 每一本书 */
-
-.swipe-item {
-  margin-bottom: 20rpx;
-  background: #fff;
-  border-radius: 18rpx;
-  overflow: hidden;
-}
-
-/* 主体 */
-
-.book-item {
-  display: flex;
-  align-items: center;
-  padding: 24rpx;
-}
-
-.cover {
-  width: 120rpx;
-  height: 160rpx;
-  border-radius: 8rpx;
-  flex-shrink: 0;
-}
-
-.info {
-  flex: 1;
-  margin-left: 24rpx;
-}
-
-.title-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #222;
-}
-
-.author {
-  margin-top: 6rpx;
-  font-size: 26rpx;
-  color: #888;
-}
-
-/* RFID 状态行（位于图书信息区，动态按钮上方） */
-.rfid-line {
-  margin-top: 4rpx;
-  display: flex;
-  align-items: center;
-  font-size: 24rpx;
-  line-height: 1;   /* 收紧行高，使 RFID 标签与状态文案（中英文混排）行盒等高，配合 align-items:center 实现垂直居中对齐 */
-}
-
-.rfid-label {
-  color: #999;
-  margin-right: 12rpx;
-  line-height: 1;   /* 与 .rfid-line 保持一致，避免中英文行盒高度差导致文案下沉 */
-}
-
-.rfid-value {
-  color: #333;
-  word-break: break-all;
-  line-height: 1;
-}
-
-/* 绑定任务进行中（绑定中… / 重新绑定中…）橙色提示 */
-.rfid-value.rfid-progress {
-  color: #fa8c16;
-}
-
-/* 下架 */
-
-.off-book {
-  opacity: 0.6;
-}
-
-.off-tag {
-  margin-left: 12rpx;
-  padding: 2rpx 10rpx;
-  font-size: 22rpx;
-  color: #ff4d4f;
-  border: 1rpx solid #ff4d4f;
-  border-radius: 8rpx;
-}
-
-/* ======================== */
-/* 操作按钮 */
-/* ======================== */
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  padding: 20rpx;
-  background: #f8f8f8;
-  gap: 20rpx;
-}
-
-.btn {
-  flex: 1;
-  height: 72rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12rpx;
-  color: #fff;
-  font-size: 28rpx;
-}
-
-.btn.detail {
-  background: #409eff;
-}
-
-.btn.off {
-  background: #e6a23c;
-}
-
-.btn.rfid {
-  background: #67c23a;
-}
-
-.btn.on {
-  background: #409eff;
-}
-
-.btn.delete {
-  background: #f56c6c;
-}
-
-/* 解绑按钮（危险色，区别于绑定/重绑的绿色） */
-.btn.rfid-unbind {
-  background: #f56c6c;
-}
-
-/* 进行中（B/D 态）按钮置灰，仅作视觉提示，点击已在 handler 中拦截 */
-.btn.disabled {
-  opacity: 0.45;
-}
-
-/* ======================== */
-/* 底部提示 */
-/* ======================== */
-
-/* 固定底栏：位于 .page 内、列表 scroll-view 之后，
-   作为 flex 纵向容器的末位元素常驻页面底部（不随列表滚动）。
-   高度与首页 TabBar 内容区一致(约100rpx)，并适配底部安全区，
-   使消息位于与首页 TabBar 相同的高度，而非紧贴屏幕底线 */
-.list-footer{
-  flex-shrink:0;          /* 不被压缩，始终保留在底部 */
-  min-height:100rpx;      /* 与首页 TabBar 内容区高度对齐 */
-  padding:0 20rpx;        /* 与上方列表左右边距保持一致 */
-  padding-bottom:env(safe-area-inset-bottom);  /* 适配底部安全区，同 TabBar 处于安全区之上 */
-  display:flex;
-  align-items:center;     /* 消息在底栏带内垂直居中 */
-  justify-content:center;
-  background:#f5f6f8;      /* 与页面背景一致，避免透出列表内容 */
-}
-
-/* 三类提示统一结构：[分割线][文字][分割线]
-   给容器显式高度 + align-items:center，
-   使 1rpx 分割线在固定高度内与文字垂直居中对齐
-   （容器高度自推导时细线会按行盒而非字形居中，导致偏上） */
-.loading-line{
+  .title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .title {
+    font-size: 30rpx;
+    line-height:32  rpx;
+    font-weight: 600;
+    color: #222;
+  }
+
+  .author {
+    margin-top: -2rpx;
+    font-size: 26rpx;
+    line-height:26rpx;
+    color: #888;
+  }
+
+  /* RFID 状态行（位于图书信息区，动态按钮上方） */ 
+ 
+.rfid-line{
   display:flex;
   align-items:center;
-  justify-content:center;
-  height:40rpx;
-  width:100%;
+  height:30rpx;
+  margin-top:2rpx;
 }
 
-.loading-divider{
-  flex:1;
-  height:1rpx;
-  background:#e5e5e5;
-  align-self:center;
+/* 左边 RFID */
+.rfid-label{
+    font-size:24rpx;
+    line-height:24  rpx;
+    color:#999;
+    margin-right:24rpx;   /* ← 建议比以前12更大一点 */
+    
 }
 
-/* 收紧行高至与字号一致，使行盒恰好包裹字形、字形中线与行盒中线重合；
-   再经容器 align-items:center 居中，1rpx 分割线即可对齐文字视觉中线，
-   而非对齐行盒顶部（此前 line-height 大于字号导致行盒偏高、中线偏移） */
-.loading-text{
-  padding:0 24rpx;
-  color:#999;
-  font-size:26rpx;
-  line-height:1;
-  white-space:nowrap;
+/* 右边状态 */
+.rfid-value {
+    font-size:24rpx;
+    line-height:3rpx;
+    color:#333;
+    word-break:break-all;
 }
+
+/* 绑定中 */
+  .rfid-value.rfid-progress{
+    color:#fa8c16;
+}
+
+  /* 下架 */
+
+  .off-book {
+    opacity: 0.6;
+  }
+
+  .off-tag {
+    margin-left: 12rpx;
+    padding: 2rpx 10rpx;
+    font-size: 22rpx;
+    color: #ff4d4f;
+    border: 1rpx solid #ff4d4f;
+    border-radius: 8rpx;
+  }
+
+  /* ======================== */
+  /* 操作按钮 */
+  /* ======================== */
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 20rpx;
+    background: #f8f8f8;
+    gap: 20rpx;
+  }
+
+  .btn {
+    flex: 1;
+    height: 72rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12rpx;
+    color: #fff;
+    font-size: 28rpx;
+  }
+
+  .btn.detail {
+    background: #409eff;
+  }
+
+  .btn.off {
+    background: #e6a23c;
+  }
+
+  .btn.rfid {
+    background: #67c23a;
+  }
+
+  .btn.on {
+    background: #409eff;
+  }
+
+  .btn.delete {
+    background: #f56c6c;
+  }
+
+  /* 解绑按钮（危险色，区别于绑定/重绑的绿色） */
+  .btn.rfid-unbind {
+    background: #f56c6c;
+  }
+
+  /* 进行中（B/D 态）按钮置灰，仅作视觉提示，点击已在 handler 中拦截 */
+  .btn.disabled {
+    opacity: 0.45;
+  }
+
+  /* ======================== */
+  /* 底部提示 */
+  /* ======================== */
+
+  /* 固定底栏：位于 .page 内、列表 scroll-view 之后，
+    作为 flex 纵向容器的末位元素常驻页面底部（不随列表滚动）。
+    高度与首页 TabBar 内容区一致(约100rpx)，并适配底部安全区，
+    使消息位于与首页 TabBar 相同的高度，而非紧贴屏幕底线 */
+  .list-footer{
+    flex-shrink:0;          /* 不被压缩，始终保留在底部 */
+    min-height:100rpx;      /* 与首页 TabBar 内容区高度对齐 */
+    padding:0 20rpx;        /* 与上方列表左右边距保持一致 */
+    padding-bottom:env(safe-area-inset-bottom);  /* 适配底部安全区，同 TabBar 处于安全区之上 */
+    display:flex;
+    align-items:center;     /* 消息在底栏带内垂直居中 */
+    justify-content:center;
+    background:#f5f6f8;      /* 与页面背景一致，避免透出列表内容 */
+  }
+
+  /* 三类提示统一结构：[分割线][文字][分割线]
+    给容器显式高度 + align-items:center，
+    使 1rpx 分割线在固定高度内与文字垂直居中对齐
+    （容器高度自推导时细线会按行盒而非字形居中，导致偏上） */
+  .loading-line{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    height:40rpx;
+    width:100%;
+  }
+
+  .loading-divider{
+    flex:1;
+    height:1rpx;
+    background:#e5e5e5;
+    align-self:center;
+  }
+
+  /* 收紧行高至与字号一致，使行盒恰好包裹字形、字形中线与行盒中线重合；
+    再经容器 align-items:center 居中，1rpx 分割线即可对齐文字视觉中线，
+    而非对齐行盒顶部（此前 line-height 大于字号导致行盒偏高、中线偏移） */
+  .loading-text{
+    padding:0 24rpx;
+    color:#999;
+    font-size:26rpx;
+    line-height:1;
+    white-space:nowrap;
+  }
