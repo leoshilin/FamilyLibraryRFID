@@ -1,8 +1,11 @@
 package com.familylibrary.rfidfinder.cloud
 
+import android.util.Log
 import com.familylibrary.rfidfinder.cloud.model.WxTokenResponse
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -29,6 +32,8 @@ class AccessTokenProvider(
 
     /**
      * 获取可用的 access_token（必要时刷新）。
+     * 注意：网络请求必须在 IO 调度器执行，避免在主线程调用阻塞式 OkHttp.execute() 抛出
+     * NetworkOnMainThreadException（其 message 为 null，会导致上层拿到“领取失败：null”）。
      * @throws CloudException.ConfigMissing 配置缺失
      * @throws CloudException.HttpError 网络错误
      * @throws CloudException.WxError 微信返回错误
@@ -49,18 +54,26 @@ class AccessTokenProvider(
             append("&secret=").append(config.appSecret)
         }
 
-        val resp = client.newCall(Request.Builder().url(url).get().build()).execute()
-        if (!resp.isSuccessful) {
-            throw CloudException.HttpError("获取 access_token 失败：HTTP ${resp.code}")
+        // 阻塞式网络调用必须切到 IO 线程
+        val (code, bodyStr) = withContext(Dispatchers.IO) {
+            val r = client.newCall(Request.Builder().url(url).get().build()).execute()
+            r.code to (r.body?.string().orEmpty())
         }
-        val token = json.decodeFromString<WxTokenResponse>(resp.body?.string().orEmpty())
+        if (code !in 200..299) {
+            Log.e(TAG, "cgi-bin/token HTTP $code")
+            throw CloudException.HttpError("获取 access_token 失败：HTTP $code")
+        }
+        val token = json.decodeFromString<WxTokenResponse>(bodyStr)
         if (!token.accessToken.isNullOrEmpty()) {
             cachedToken = token.accessToken
             // 提前 5 分钟过期，规避临界失效
             val ttlMs = ((token.expiresIn ?: 7200L) - 300) * 1000
             expiredAt = now + ttlMs
+            Log.d(TAG, "access_token 获取成功（已缓存）")
             cachedToken!!
         } else {
+            // 微信返回了 errcode（如 40164 IP 白名单 / 40013 appid 无效 / 40001 secret 错误）
+            Log.e(TAG, "cgi-bin/token 业务错误 errcode=${token.errcode} errmsg=${token.errmsg}")
             throw CloudException.WxError(
                 token.errcode ?: -1,
                 token.errmsg ?: "获取 access_token 失败"
@@ -75,6 +88,8 @@ class AccessTokenProvider(
     }
 
     companion object {
+        private const val TAG = "RFIDCloud"
+
         private fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)

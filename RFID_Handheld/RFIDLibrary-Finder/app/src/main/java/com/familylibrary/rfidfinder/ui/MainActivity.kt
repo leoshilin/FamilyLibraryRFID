@@ -109,7 +109,13 @@ fun FinderHomeScreen() {
                             }
                         }
                         is ApiResult.Failure -> {
-                            taskText = "领取失败：${res.exception.message}"
+                            val e = res.exception
+                            // 异常 message 可能为 null（如 NetworkOnMainThreadException），
+                            // 用异常类型兜底，确保总能看到可读信息。
+                            val detail = e.message
+                                ?: (e.cause?.message?.let { "${e.javaClass.simpleName}（${it}）" }
+                                    ?: e.javaClass.simpleName)
+                            taskText = "领取失败：$detail"
                         }
                     }
                     busy = false

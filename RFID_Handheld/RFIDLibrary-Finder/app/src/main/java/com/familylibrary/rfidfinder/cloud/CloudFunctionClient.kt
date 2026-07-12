@@ -1,5 +1,6 @@
 package com.familylibrary.rfidfinder.cloud
 
+import android.util.Log
 import com.familylibrary.rfidfinder.cloud.model.WxInvokeResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -55,15 +56,20 @@ class CloudFunctionClient(
             client.newCall(Request.Builder().url(url).post(body).build()).execute()
         }
         if (!resp.isSuccessful) {
+            Log.e(TAG, "invoke $name HTTP ${resp.code}")
             throw CloudException.HttpError("调用 $name 失败：HTTP ${resp.code}")
         }
 
+        val raw = resp.body?.string().orEmpty()
         val envelope = try {
-            json.decodeFromString<WxInvokeResponse>(resp.body?.string().orEmpty())
+            json.decodeFromString<WxInvokeResponse>(raw)
         } catch (e: Exception) {
+            Log.e(TAG, "invoke $name 返回体解析失败：\n$raw")
             throw CloudException.ParseError("返回体解析失败", e)
         }
         if (envelope.errcode != 0) {
+            // 已到达微信云：envId 错/函数未部署等会以 errcode 体现
+            Log.e(TAG, "invoke $name 微信返回 errcode=${envelope.errcode} errmsg=${envelope.errmsg}")
             throw CloudException.FunctionError(
                 envelope.errcode ?: -1,
                 envelope.errmsg ?: "调用 $name 失败"
@@ -71,9 +77,11 @@ class CloudFunctionClient(
         }
 
         val data = envelope.respData ?: throw CloudException.ParseError("resp_data 为空")
+        Log.d(TAG, "invoke $name 成功，resp_data=$data")
         return try {
             json.decodeFromString(serializer, data)
         } catch (e: Exception) {
+            Log.e(TAG, "invoke $name resp_data 解析失败：\n$data")
             throw CloudException.ParseError("resp_data 解析失败：$data", e)
         }
     }
@@ -84,6 +92,8 @@ class CloudFunctionClient(
     }
 
     companion object {
+        private const val TAG = "RFIDCloud"
+
         private fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
