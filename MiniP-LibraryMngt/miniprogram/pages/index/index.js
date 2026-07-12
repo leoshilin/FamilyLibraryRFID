@@ -2,6 +2,7 @@
 const eventBus = require('../../utils/eventBus')
 const EVENTS = require('../../utils/events')
 const familyServices = require('../../services/familyServices')
+const bookSearchServices = require('../../services/bookSearchServices')
 
 Page({
   data: {
@@ -120,13 +121,10 @@ Page({
     if (!familyId) return
 
     try {
-      const res = await wx.cloud.callFunction({
-        name: 'api_book_searchRecent',
-        data: {}
-      })
+      const res = await bookSearchServices.searchRecent()
 
-      if (res.result.success) {
-        const list = res.result.list || []
+      if (res.success) {
+        const list = res.list || []
         const fileList = list
           .filter(item => item.coverUrl)
           .map(item => item.coverUrl)

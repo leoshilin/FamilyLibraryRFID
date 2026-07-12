@@ -2,6 +2,8 @@ const eventBus = require('../../utils/eventBus')
 const EVENTS = require('../../utils/events')
 const bookshelfServices = require('../../services/bookshelfServices')
 const familyServices = require('../../services/familyServices')
+const bookSearchServices = require('../../services/bookSearchServices')
+const bookItemServices = require('../../services/bookItemServices')
 
 Page({
   data: {
@@ -440,15 +442,9 @@ Page({
   
         }
   
-        const res = await wx.cloud.callFunction({
+        const res = await bookSearchServices.search(data)
 
-          name: 'api_book_search',
-
-          data
-
-        })
-
-        if (!res.result || !res.result.success) {
+        if (!res || !res.success) {
           wx.showToast({
             title: res.result?.message || '查询失败',
             icon: 'none'
@@ -457,7 +453,7 @@ Page({
           return
         }
 
-        const list = res.result.data || []
+        const list = res.data || []
   
         console.log(
   
@@ -517,7 +513,7 @@ Page({
   
           : this.data.books.concat(list)
   
-        const total = res.result.total
+        const total = res.total
   
         this.setData({
   
@@ -625,23 +621,11 @@ Page({
 
             try {
 
-              const result = await wx.cloud.callFunction({
-
-                name: 'api_bookitem_offstock',
-
-                data: {
-
-                  itemId: book.itemId,
-
-                  reason
-
-                }
-
-              })
+              const result = await bookItemServices.offstock(book.itemId, reason)
 
               wx.hideLoading()
 
-              if (result.result.success) {
+              if (result.success) {
 
                 wx.showToast({
                   title: '已下架'
@@ -659,7 +643,7 @@ Page({
 
               } else {
 
-                throw new Error(result.result.message || '操作失败')
+                throw new Error(result.message || '操作失败')
 
               }
 
@@ -744,21 +728,11 @@ Page({
 
     try {
 
-      const result = await wx.cloud.callFunction({
-
-        name: 'api_bookitem_delete',
-
-        data: {
-
-          itemId: book.itemId
-
-        }
-
-      })
+      const result = await bookItemServices.remove(book.itemId)
 
       wx.hideLoading()
 
-      if (result.result.success) {
+      if (result.success) {
 
         wx.showToast({
 
@@ -778,7 +752,7 @@ Page({
 
       } else {
 
-        throw new Error(result.result.message || '操作失败')
+        throw new Error(result.message || '操作失败')
 
       }
 
@@ -851,16 +825,11 @@ Page({
     })
 
     try {
-      const result = await wx.cloud.callFunction({
-        name: 'api_bookitem_restock',
-        data: {
-          itemId: book.itemId
-        }
-      })
+      const result = await bookItemServices.restock(book.itemId)
 
       wx.hideLoading()
 
-      if (result.result.success) {
+      if (result.success) {
         wx.showToast({
           title: '已重新上架'
         })
@@ -873,7 +842,7 @@ Page({
         //立即刷新本页数据
         this.fetchBooks(true)
       } else {
-        throw new Error(result.result.message || '操作失败')
+        throw new Error(result.message || '操作失败')
       }
     } catch (err) {
       wx.hideLoading()

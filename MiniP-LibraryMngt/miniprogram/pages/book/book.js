@@ -2,6 +2,8 @@ const eventBus = require('../../utils/eventBus')
 const EVENTS = require('../../utils/events')
 const bookshelfServices = require('../../services/bookshelfServices')
 const familyServices = require('../../services/familyServices')
+const bookMetaServices = require('../../services/bookMetaServices')
+const bookItemServices = require('../../services/bookItemServices')
 
 Page({
     
@@ -137,22 +139,16 @@ Page({
     wx.showLoading({ title: '更新中...' })
 
     try {
-      const res = await wx.cloud.callFunction({
-        name: 'api_bookitem_updateBookshelf',
-        data: {
-          itemId: book.itemId,
-          bookshelfId: newBookshelfId
-        }
-      })
+      const res = await bookItemServices.updateBookshelf(book.itemId, newBookshelfId)
 
       wx.hideLoading()
 
-      if (res.result.success) {
+      if (res.success) {
         this.setData({
           bookshelfIndex: index,
           bookshelfId: newBookshelfId,
           'book.bookshelfId': newBookshelfId,
-          'book.bookshelfName': res.result.bookshelfName || this.data.bookshelves[index].name
+          'book.bookshelfName': res.bookshelfName || this.data.bookshelves[index].name
         })
         wx.showToast({ title: '已更新书架', icon: 'success' })
 
@@ -161,7 +157,7 @@ Page({
           familyId: familyId || book.familyId
         })
       } else {
-        wx.showToast({ title: res.result.message || '更新失败', icon: 'none' })
+        wx.showToast({ title: res.message || '更新失败', icon: 'none' })
       }
     } catch (err) {
       wx.hideLoading()
@@ -170,20 +166,17 @@ Page({
     }
   },
 
-  loadFromISBN(isbn){
+  async loadFromISBN(isbn){
     console.log('book.loadFromISBN: 收到 ISBN:', isbn)
 
     wx.showLoading({
       title: '查询书籍信息中...' + isbn
     })
 
-    wx.cloud.callFunction({
-      name: 'api_bookmeta_getByIsbn',
-      data: { isbn }
-    })
-    .then(res => {
-      const result = res.result
-      // 统一以 success 判断云函数调用是否成功（与 fetchExternal 一致）
+    try {
+      // 1️⃣ 先查本系统主数据（book_meta）
+      const result = await bookMetaServices.getByIsbn(isbn)
+      // 统一以 success 判断云函数调用是否成功
       if (!result || !result.success) {
         throw new Error('book.loadFromISBN: 调用云函数api_bookmeta_getByIsbn返回异常')
       }
@@ -194,57 +187,43 @@ Page({
 
         this.setData({
           book: result.book,
-          metaExists: true,          
+          metaExists: true,
           canEditMeta: false,
           loading: false
-        })        
+        })
         console.log('book.loadFromISBN: book.coverUrl from meta =', result.book.coverUrl)
-        return null
+        return
       }
 
-      // meta 不存在（exists=false 属正常分支），继续查 douban
-      // 此处理论上存在douban也无法获取信息的可能，今后可以增加获取的方式（api），应维护为相应的source。
-      // api也无法获取到的情况，最终只能后台管理员维护（前台不开放给用户手动登录新书），并注意保持source ='manual'
+      // 2️⃣ meta 不存在（exists=false 属正常分支），继续查外部数据源
+      // 此处理论上存在外部源也无法获取信息的可能，今后可以增加获取的方式（api），应维护为相应的 source。
+      // api 也无法获取到的情况，最终只能后台管理员维护（前台不开放给用户手动登录新书），并注意保持 source ='manual'
       console.log('book.loadFromISBN: book not exist in meta, call function api_bookmeta_fetchExternal to get book info')
-      return wx.cloud.callFunction({
-        name: 'api_bookmeta_fetchExternal',
-        data: { isbn }
-      })
-    })
-    .then(res => {
-      console.log('book.loadFromISBN: 云函数返回:', res)
-
-      // 1️⃣ 先校验结构
-      if (!res) return  // meta 已存在时直接跳过
-
-      const result = res.result
-      if (!result || !result.success || !result.book) {
+      const extResult = await bookMetaServices.fetchExternal(isbn)
+      if (!extResult || !extResult.success || !extResult.book) {
         throw new Error('book.loadFromISBN: 调用云函数api_bookmeta_fetchExternal返回格式异常')
       }
 
-      // 2️⃣ 真正的书籍对象          
-      console.log('book.loadFromISBN: book =', result.book)
-                     
-      // 3️⃣ 更新页面数据
+      console.log('book.loadFromISBN: book =', extResult.book)
+
+      // 3️⃣ 真正的书籍对象
       this.setData({
-        book: result.book,
+        book: extResult.book,
         metaExists: false,
         loading: false,
         error: '',
         // 当前阶段：默认你是系统管理员
         canEditMeta: true
       })
-    })
-    .catch(err => {
+    } catch (err) {
       console.error('book.loadFromISBN: 查询失败:', err)
       this.setData({
         loading: false,
         error: '书籍信息获取失败'
       })
-    })
-    .finally(() => {
+    } finally {
       wx.hideLoading()
-    })
+    }
   },
 
   async loadFromId(itemId) {
@@ -254,14 +233,7 @@ Page({
     })
 
     try {
-      const res = await wx.cloud.callFunction({
-        name: 'api_bookitem_get',
-        data: {
-          itemId
-        }
-      })
-
-      const result = res.result
+      const result = await bookItemServices.get(itemId)
 
       if (!result.success) {
         this.setData({
@@ -531,19 +503,13 @@ Page({
       isbn,
       book
     } = this.data
-  
-    const res = await wx.cloud.callFunction({
-      name: 'api_bookitem_prepareCreate',
-      data: {
-        isbn,
-        book
-      }
-    })
-  
-    if (!res.result || !res.result.success) {
-      throw new Error(res.result?.message || '准备入库失败')
-    }  
-    return res.result
+
+    const result = await bookItemServices.prepareCreate(isbn, book)
+
+    if (!result || !result.success) {
+      throw new Error(result?.message || '准备入库失败')
+    }
+    return result
   },
 
   async callCommit() {
@@ -553,22 +519,14 @@ Page({
       book,
       editionType
     } = this.data
-  
+
     console.log(`callCommit Para: isbn=${isbn},book=${book},editionType=${editionType}`)
-    const res = await wx.cloud.callFunction({
-      name: 'api_bookitem_create',
-      data: {
-        isbn,
-        bookshelfId,
-        book,
-        editionType
-      }
-    })
-  
-    if (!res.result || !res.result.success) {
-      throw new Error(res.result?.message || '入库失败')
-    }  
-    return res.result
+    const result = await bookItemServices.create(isbn, bookshelfId, book, editionType)
+
+    if (!result || !result.success) {
+      throw new Error(result?.message || '入库失败')
+    }
+    return result
   },  
 
   // 用户在页面上操作是否套装书，当非套装书时需要清空相关变量
@@ -681,16 +639,11 @@ Page({
     })
 
     try {
-      const result = await wx.cloud.callFunction({
-        name: 'api_bookitem_restock',
-        data: {
-          itemId: book.itemId
-        }
-      })
+      const result = await bookItemServices.restock(book.itemId)
 
       wx.hideLoading()
 
-      if (result.result.success) {
+      if (result.success) {
         wx.showToast({
           title: '已重新上架'
         })
@@ -706,7 +659,7 @@ Page({
         });
 
       } else {
-        throw new Error(result.result.message || '操作失败')
+        throw new Error(result.message || '操作失败')
       }
     } catch (err) {
       wx.hideLoading()
@@ -746,17 +699,11 @@ Page({
             })
 
             try {
-              const result = await wx.cloud.callFunction({
-                name: 'api_bookitem_offstock',
-                data: {
-                  itemId: book.itemId,
-                  reason: reason
-                }
-              })
+              const result = await bookItemServices.offstock(book.itemId, reason)
 
               wx.hideLoading()
 
-              if (result.result.success) {
+              if (result.success) {
                 wx.showToast({
                   title: '已下架'
                 })
@@ -771,7 +718,7 @@ Page({
                 });
 
               } else {
-                throw new Error(result.result.message || '操作失败')
+                throw new Error(result.message || '操作失败')
               }
 
             } catch (err) {
@@ -811,16 +758,11 @@ Page({
 
     try {
       // familyId 由服务端按 currentFamilyId 解析，前端不再下传
-      const result = await wx.cloud.callFunction({
-        name: 'api_bookitem_delete',
-        data: {
-          itemId: book.itemId
-        }
-      })
+      const result = await bookItemServices.remove(book.itemId)
 
       wx.hideLoading()
 
-      if (result.result.success) {
+      if (result.success) {
         wx.showToast({ title: '已删除' })
 
         //eventBus中注册共有事件，供其他页面响应更新
@@ -831,7 +773,7 @@ Page({
         //返回前页
         wx.navigateBack({ delta: 1 })
       } else {
-        throw new Error(result.result.message || '操作失败')
+        throw new Error(result.message || '操作失败')
       }
     } catch (err) {
       wx.hideLoading()

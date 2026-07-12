@@ -123,31 +123,26 @@ Cloud Database
 | `userServices.js` | 用户 | A1–A4 | ✅ 已实现 |
 | `familyServices.js` | 家庭 | B1–B6 | ✅ 已实现 |
 | `bookshelfServices.js` | 书架 | C1–C5 | ✅ 已实现 |
-| `bookMetaServices.js` | 书本主数据 | D1–D2 | 🚧 待新增 |
-| `bookItemServices.js` | 实体书上下架 | E1–E7 | 🚧 待新增 |
-| `bookSearchServices.js` | 检索 / 最近 | F1–F2 | 🚧 待新增 |
+| `bookMetaServices.js` | 书本主数据 | D1–D2 | ✅ 已实现 |
+| `bookItemServices.js` | 实体书上下架 | E1–E7 | ✅ 已实现 |
+| `bookSearchServices.js` | 检索 / 最近 | F1–F2 | ✅ 已实现 |
 | `taskServices.js` | 任务 / RFID | G1 / G2 / H1（手机端）+ J1–J4（PDA） | 🚧 待新增 |
 
 > 注：`userServices.js` / `familyServices.js` / `bookshelfServices.js` 仓库中已存在；其余为本次设计新增文件。J 系列（PDA 操作）按架构由 Android PDA 直接调用云函数，此处列出仅为「全局 API 视图」统一维护，小程序页面一般不调用。
 
 ## 2.3 通用封装实现
 
-所有模块共享同一封装模式（与现有 `familyServices.js` / `bookshelfServices.js` 一致）：
+所有模块共享同一封装模式（与现有 `familyServices.js` / `bookshelfServices.js` 一致）：每个 Service 文件内联一份 `callFunction` 公共封装（仓库不依赖额外 `_base.js`，与现有文件保持同构），页面统一经 Service 调用云函数。
 
 ```js
-// miniprogram/services/_base.js（可选抽离的公共封装）
+// miniprogram/services/bookItemServices.js
+// 实体书上下架相关 API 封装
+// 页面通过此 Service 调用云函数，不直接调用 wx.cloud.callFunction()
+
 const callFunction = async (name, data = {}) => {
   const res = await wx.cloud.callFunction({ name, data })
   return res.result
 }
-module.exports = { callFunction }
-```
-
-各模块 `require` 公共封装后，仅声明业务方法：
-
-```js
-// miniprogram/services/bookItemServices.js
-const { callFunction } = require('./_base')
 
 const get             = (itemId)               => callFunction('api_bookitem_get', { itemId })
 const prepareCreate   = (isbn, book)           => callFunction('api_bookitem_prepareCreate', { isbn, book })
@@ -235,13 +230,13 @@ reorder(orderedBookshelfIds)              // → api_bookshelf_reorder { ordered
 ```
 > 已实现 `list` / `create` / `update` / `remove` / `reorder`；`reorder` 对应 C5，由 mine 页「↑ / ↓」按钮调用以重排书架。
 
-### 2.5.4 bookMetaServices.js（书本主数据）🚧 新增
+### 2.5.4 bookMetaServices.js（书本主数据）✅ 已实现
 ```js
 getByIsbn(isbn)                           // → api_bookmeta_getByIsbn     { isbn }
 fetchExternal(isbn)                       // → api_bookmeta_fetchExternal { isbn }
 ```
 
-### 2.5.5 bookItemServices.js（实体书上下架）🚧 新增
+### 2.5.5 bookItemServices.js（实体书上下架）✅ 已实现
 ```js
 prepareCreate(isbn, book)                 // → api_bookitem_prepareCreate  { isbn, book }
 create(isbn, bookshelfId, book, editionType) // → api_bookitem_create    { isbn, bookshelfId, book, editionType? }
@@ -252,7 +247,7 @@ remove(itemId)                            // → api_bookitem_delete          { 
 get(itemId)                               // → api_bookitem_get             { itemId }
 ```
 
-### 2.5.6 bookSearchServices.js（检索 / 最近）🚧 新增
+### 2.5.6 bookSearchServices.js（检索 / 最近）✅ 已实现
 ```js
 search({ keyword, isbn, bookshelfId, status, startDate, endDate, page, pageSize })
                                         // → api_book_search   { keyword?, isbn?, bookshelfId?, status?, startDate?, endDate?, page?, pageSize? }
@@ -274,7 +269,9 @@ bindRfid(bookItemId, tid)                 // → api_task_bindRfid          { bo
 
 ## 2.6 与现有页面的衔接
 
-代码审查发现 20 处页面直接调用 `wx.cloud.callFunction()`（`book.js` 9 处、`book-search.js` 4 处、`index.js` 1 处、`example/` 6 处），根因正是 `book` / `bookItem` / `bookMeta` / `search` / `recent` 缺少 Service 封装。补齐本章 2.5.4–2.5.7 的新增模块后，页面改为：
+代码审查原发现 20 处页面直接调用 `wx.cloud.callFunction()`（`book.js` 9 处、`book-search.js` 4 处、`index.js` 1 处、`example/` 6 处），根因正是 `book` / `bookItem` / `bookMeta` / `search` / `recent` 缺少 Service 封装。补齐本章 2.5.4–2.5.6 三个新增模块并改造页面后：
+
+- **业务页面违规清零**：`book.js`（9 处）、`book-search.js`（4 处）、`index.js`（1 处）已全部改为经 `bookMetaServices` / `bookItemServices` / `bookSearchServices` 调用，当前业务页面直接调用 `wx.cloud.callFunction()` 的违规数为 **0**。
 
 ```js
 // 改造前（book.js 直接调用）
@@ -288,7 +285,9 @@ const bookItemServices = require('../../services/bookItemServices')
 const res = await bookItemServices.updateBookshelf(book.itemId, newBookshelfId)
 ```
 
-`example/` 为 quickstart 脚手架（调用 `quickstartFunctions`，非 `api_*` 业务），建议从生产构建下线，而非纳入 Service 约束。
+- `example/` 的 6 处仍保留（quickstart 脚手架，调用 `quickstartFunctions`，非 `api_*` 业务），按约定从生产构建下线，不纳入 Service 约束。
+
+> 改造涉及页面：`pages/book/book.js`、`pages/book-search/book-search.js`、`pages/index/index.js`。其中 `book.loadFromISBN` 原用 `.then()` 链式调用 `api_bookmeta_getByIsbn` 与 `api_bookmeta_fetchExternal`，重构为 `async / await` 经 `bookMetaServices.getByIsbn` / `fetchExternal` 串联，逻辑与错误分支保持一致。
 
 ## 2.7 维护约定
 
