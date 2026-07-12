@@ -1,13 +1,7 @@
 // 图书检索 / 最近上架相关 API 封装
 // 页面通过此 Service 调用云函数，不直接调用 wx.cloud.callFunction()
 
-const callFunction = async (name, data = {}) => {
-  const res = await wx.cloud.callFunction({
-    name,
-    data
-  })
-  return res.result
-}
+const { callFunction } = require('./_base')
 
 // 图书检索（支持 ISBN 精确、关键词模糊、书架筛选、状态筛选、上架期间筛选、分页）
 // params: { keyword?, isbn?, bookshelfId?, status?, startDate?, endDate?, page?, pageSize? }

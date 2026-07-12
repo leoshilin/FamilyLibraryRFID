@@ -1,13 +1,7 @@
 // 家庭相关 API 封装
 // 页面通过此 Service 调用云函数，不直接调用 wx.cloud.callFunction()
 
-const callFunction = async (name, data = {}) => {
-  const res = await wx.cloud.callFunction({
-    name,
-    data
-  })
-  return res.result
-}
+const { callFunction } = require('./_base')
 
 // 获取当前用户访问中的家庭
 const getCurrent = () => {

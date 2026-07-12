@@ -1,23 +1,14 @@
-const callUserApi = async (name, data = {}) => {
-
-  const res = await wx.cloud.callFunction({
-    name,
-    data
-  })
-
-  return res.result
-
-}
+const { callFunction } = require('./_base')
 
 const login = async () => {
 
-  return callUserApi('api_user_login')
+  return callFunction('api_user_login')
 
 }
 
 const register = async (nickName) => {
 
-  return callUserApi(
+  return callFunction(
     'api_user_register',
     {
       nickName
@@ -28,7 +19,7 @@ const register = async (nickName) => {
 
 const updateUser = async (nickName) => {
 
-  return callUserApi(
+  return callFunction(
     'api_user_update',
     {
       nickName
@@ -40,7 +31,7 @@ const updateUser = async (nickName) => {
 // 获取用户信息：不传 userId 取当前登录用户（含权限集），传 userId 取指定用户基础档案
 const getUser = async (userId) => {
 
-  return callUserApi(
+  return callFunction(
     'api_user_get',
     userId ? { userId } : {}
   )

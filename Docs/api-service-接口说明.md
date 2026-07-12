@@ -71,17 +71,17 @@ user.currentFamilyId
 |E7| api_bookitem_updateBookshelf           | BookItem | 手机端操作：实体书本上下架 | ✅ 已实现 |
 |F1| api_book_search            | Search   | 手机端操作：书本检索 | ✅ 已实现 |
 |F2| api_book_searchRecent            | Search   | 手机端操作：书本检索 | ✅ 已实现 |
-|G1| api_task_createBindRfid | task | 手机端操作：任务创建 | 🚧 脚手架（桩函数，业务逻辑未实现） |
-|G2| api_task_createFindBook | task | 手机端操作：任务创建 | 🚧 脚手架（桩函数，业务逻辑未实现） |
-|H1| api_task_unbindRfid | task | 手机端操作：任务执行 | 🚧 脚手架（桩函数，业务逻辑未实现） |
-|J1| api_task_accept | task | PDA操作：任务执行 | 🚧 脚手架（桩函数，业务逻辑未实现） |
-|J2| api_task_complete | task | PDA操作：任务执行 | 🚧 脚手架（桩函数，业务逻辑未实现） |
-|J3| api_task_getRfidBindingInfo | task | PDA操作：任务执行 | 🚧 脚手架（桩函数，业务逻辑未实现） |
-|J4| api_task_bindRfid | task | PDA操作：任务执行 | 🚧 脚手架（桩函数，业务逻辑未实现） |
+|G1| api_task_createBindRfid | task | 手机端操作：任务创建 | ✅ 已实现 |
+|G2| api_task_createFindBook | task | 手机端操作：任务创建 | ✅ 已实现 |
+|H1| api_task_unbindRfid | task | 手机端操作：任务执行 | ✅ 已实现 |
+|J1| api_task_accept | task | PDA操作：任务执行 | ✅ 已实现 |
+|J2| api_task_complete | task | PDA操作：任务执行 | ✅ 已实现 |
+|J3| api_task_getRfidBindingInfo | task | PDA操作：任务执行 | ✅ 已实现 |
+|J4| api_task_bindRfid | task | PDA操作：任务执行 | ✅ 已实现 |
 
 > 实现状态图例：
 > - ✅ 已实现 = 仓库中存在对应云函数且已实现真实业务逻辑。
-> - 🚧 脚手架 = 仓库中已存在对应云函数文件，但当前仅为**桩函数**（只回显 `event` 与微信上下文，未实现业务逻辑）；下方内容为设计约定，待填充实现。
+> - ✅ 已实现 = 仓库中存在对应云函数且已实现真实业务逻辑。
 > 注：架构表中的接口命名已与代码实际云函数名对齐（如 `api_rfid_bind` → `api_task_bindRfid`、`api_recentbook_search` → `api_book_searchRecent`），以代码为准。
 
 ---
@@ -126,37 +126,37 @@ Cloud Database
 | `bookMetaServices.js` | 书本主数据 | D1–D2 | ✅ 已实现 |
 | `bookItemServices.js` | 实体书上下架 | E1–E7 | ✅ 已实现 |
 | `bookSearchServices.js` | 检索 / 最近 | F1–F2 | ✅ 已实现 |
-| `taskServices.js` | 任务 / RFID | G1 / G2 / H1（手机端）+ J1–J4（PDA） | 🚧 待新增 |
+| `taskServices.js` | 任务 / RFID | G1 / G2 / H1（手机端）+ J1–J4（PDA） | ✅ 已实现 |
 
 > 注：J 系列（PDA 操作）按架构由 Android PDA 直接调用云函数，此处列出仅为「全局 API 视图」统一维护，小程序页面一般不调用。
 
 ## 2.3 通用封装实现
 
-所有模块共享同一封装模式（与现有 `familyServices.js` / `bookshelfServices.js` 一致）：每个 Service 文件内联一份 `callFunction` 公共封装（仓库不依赖额外 `_base.js`，与现有文件保持同构），页面统一经 Service 调用云函数。
+所有模块共享同一封装模式：`services/` 下统一维护一个 `_base.js` 公共封装（导出 `callFunction`），各 Service 模块 `require('./_base')` 后仅声明业务方法，页面统一经 Service 调用云函数。
+
+> **关于 `_base.js`**：它位于 `miniprogram/services/` 单一目录，仅此一份，由所有 Service 直接 `require('./_base')`——**不需要任何同步机制**。文档 0.1 第 7 条的同步脚本（`npm run sync-common`）只针对**云函数** `_shared` → `common`（每个云函数目录各一份），与前端 `services/` 无关。
 
 ```js
-// miniprogram/services/bookItemServices.js
-// 实体书上下架相关 API 封装
-// 页面通过此 Service 调用云函数，不直接调用 wx.cloud.callFunction()
-
+// miniprogram/services/_base.js
+// Service 层公共封装：唯一允许调用 wx.cloud.callFunction() 的位置
 const callFunction = async (name, data = {}) => {
   const res = await wx.cloud.callFunction({ name, data })
   return res.result
 }
+module.exports = { callFunction }
+```
 
-const get             = (itemId)               => callFunction('api_bookitem_get', { itemId })
-const prepareCreate   = (isbn, book)           => callFunction('api_bookitem_prepareCreate', { isbn, book })
-const create          = (isbn, bookshelfId, book, editionType) =>
-                                                  callFunction('api_bookitem_create', { isbn, bookshelfId, book, editionType })
-const updateBookshelf = (itemId, bookshelfId)  => callFunction('api_bookitem_updateBookshelf', { itemId, bookshelfId })
-const restock         = (itemId)               => callFunction('api_bookitem_restock', { itemId })
-const offstock        = (itemId, reason)       => callFunction('api_bookitem_offstock', { itemId, reason })
-const remove          = (itemId)               => callFunction('api_bookitem_delete', { itemId })
+```js
+// miniprogram/services/bookItemServices.js（节选）
+const { callFunction } = require('./_base')
 
+const get = (itemId) => callFunction('api_bookitem_get', { itemId })
+const remove = (itemId) => callFunction('api_bookitem_delete', { itemId })
+// ...
 module.exports = { get, prepareCreate, create, updateBookshelf, restock, offstock, remove }
 ```
 
-> 实现状态为 🚧 的桩函数，Service 方法同样先行声明（签名不变），待云函数业务逻辑补齐后即可直接连通，无需再改页面 / Service 接口。
+> 桩函数（🚧，历史状态）对应的 Service 方法已先行声明并随云函数实现一并转为 ✅ 已实现，无需再改页面 / Service 接口。
 
 ## 2.4 Service 方法总览（33 个 API → 方法映射）
 
@@ -188,13 +188,13 @@ module.exports = { get, prepareCreate, create, updateBookshelf, restock, offstoc
 | E7 | api_bookitem_updateBookshelf | bookItemServices | `updateBookshelf(itemId, bookshelfId)` | itemId, bookshelfId | ✅ |
 | F1 | api_book_search | bookSearchServices | `search(params)` | keyword?, isbn?, bookshelfId?, status?, startDate?, endDate?, page?, pageSize? | ✅ |
 | F2 | api_book_searchRecent | bookSearchServices | `searchRecent()` | — | ✅ |
-| G1 | api_task_createBindRfid | taskServices | `createBindRfid(bookItemId)` | bookItemId | 🚧 |
-| G2 | api_task_createFindBook | taskServices | `createFindBook(bookItemId)` | bookItemId | 🚧 |
-| H1 | api_task_unbindRfid | taskServices | `unbindRfid(bookItemId)` | bookItemId | 🚧 |
-| J1 | api_task_accept | taskServices | `accept(deviceId)` | deviceId | 🚧 |
-| J2 | api_task_complete | taskServices | `complete(taskId, status, result?)` | taskId, status, result? | 🚧 |
-| J3 | api_task_getRfidBindingInfo | taskServices | `getRfidBindingInfo(tid)` | tid | 🚧 |
-| J4 | api_task_bindRfid | taskServices | `bindRfid(bookItemId, tid)` | bookItemId, tid | 🚧 |
+| G1 | api_task_createBindRfid | taskServices | `createBindRfid(bookItemId)` | bookItemId | ✅ |
+| G2 | api_task_createFindBook | taskServices | `createFindBook(bookItemId)` | bookItemId | ✅ |
+| H1 | api_task_unbindRfid | taskServices | `unbindRfid(bookItemId)` | bookItemId | ✅ |
+| J1 | api_task_accept | taskServices | `accept(deviceId)` | deviceId | ✅ |
+| J2 | api_task_complete | taskServices | `complete(taskId, status, result?)` | taskId, status, result? | ✅ |
+| J3 | api_task_getRfidBindingInfo | taskServices | `getRfidBindingInfo(tid)` | tid | ✅ |
+| J4 | api_task_bindRfid | taskServices | `bindRfid(bookItemId, tid, taskId?)` | bookItemId, tid, taskId? | ✅ |
 
 > 入参标注 `?` 的为可选；`familyId` / `operator` / `created_by` 一律服务端解析，不在任何方法签名中出现（B3 / B4 / B6 的"目标家庭" `familyId` 除外，已在方法签名显式列出）。
 
@@ -254,24 +254,25 @@ search({ keyword, isbn, bookshelfId, status, startDate, endDate, page, pageSize 
 searchRecent()                           // → api_book_searchRecent {}
 ```
 
-### 2.5.7 taskServices.js（任务 / RFID）🚧 新增
+### 2.5.7 taskServices.js（任务 / RFID）✅ 已实现
 ```js
 // —— 手机端创建 / 解绑 ——
-createBindRfid(bookItemId)                // → api_task_createBindRfid    { bookItemId }  🚧
-createFindBook(bookItemId)                // → api_task_createFindBook    { bookItemId }  🚧
-unbindRfid(bookItemId)                    // → api_task_unbindRfid        { bookItemId }  🚧
+createBindRfid(bookItemId)                // → api_task_createBindRfid    { bookItemId }
+createFindBook(bookItemId)                // → api_task_createFindBook    { bookItemId }
+unbindRfid(bookItemId)                    // → api_task_unbindRfid        { bookItemId }
 // —— PDA 执行（Android 直连，此处仅作全局视图维护）——
-accept(deviceId)                          // → api_task_accept            { deviceId }   🚧
-complete(taskId, status, result)          // → api_task_complete          { taskId, status, result? }  🚧
-getRfidBindingInfo(tid)                   // → api_task_getRfidBindingInfo { tid }       🚧
-bindRfid(bookItemId, tid)                 // → api_task_bindRfid          { bookItemId, tid }  🚧
+accept(deviceId)                          // → api_task_accept            { deviceId }
+complete(taskId, status, result)          // → api_task_complete          { taskId, status, result? }
+getRfidBindingInfo(tid)                   // → api_task_getRfidBindingInfo { tid }
+bindRfid(bookItemId, tid, taskId)         // → api_task_bindRfid          { bookItemId, tid, taskId? }
 ```
+> `bindRfid` 的 `taskId` 为可选：用于关联 `rfid_bind_log.task_id`；不传时按 `book_item_id` 反查进行中的 `bind_rfid` 任务。
 
 ## 2.6 维护约定
 
 - 任何 `api_*` 云函数的**新增 / 改名 / 下线 / 入参变更**，必须同步更新：第 1 章清单、第 3 章详细定义、本章 2.4 映射表与 2.5 签名。
 - Service 方法命名语义化（动词 + 资源），不暴露云函数名；云函数名变更时只需改 `callFunction(name, ...)` 一处。
-- 桩函数（🚧）对应的 Service 方法先行声明，保持页面 / Service 契约稳定，待云函数实现后零改动连通。
+- 历史桩函数（🚧）对应的 Service 方法已随云函数实现一并转为 ✅ 已实现，页面 / Service 契约保持稳定。
 
 ---
 
@@ -1626,7 +1627,7 @@ app.login() 之后取当前用户档案（getUser）
 
 ## G. 手机端操作：任务创建
 
-### G1. api_task_createBindRfid —— 🚧 脚手架（桩函数）
+### G1. api_task_createBindRfid —— ✅ 已实现
 #### 功能
 创建 RFID 绑定任务。用于：
 ```
@@ -1639,7 +1640,7 @@ app.login() 之后取当前用户档案（getUser）
 PDA 后续轮询获取
 ```
 
-> **实现状态说明**：仓库中 `api_task_createBindRfid` 当前仅为桩函数（回显 event 与微信上下文），未实现真实创建逻辑。下方为设计约定。
+> **实现状态说明**：`api_task_createBindRfid` 已实现真实创建逻辑（写入 `device_task`，状态 `pending`）。
 
 #### 入参（规划）
 ```json
@@ -1649,9 +1650,14 @@ PDA 后续轮询获取
 ```
 > created_by / operator 由服务端从登录态解析，不接收客户端传入。
 
-#### 处理规则（规划）
+#### 处理规则（已实现）
 （暂无）
 
+
+#### 权限
+- 解析当前用户与 `current_family_id`；校验 `RFID_TASK_CREATE_BIND` 权限。
+- 校验 `bookItemId` 对应 `book_item` 存在、`fg_delete=false` 且 `inventory_status=in_stock`（下架书不可发起）。
+- 向 `device_task` 写入 `{ task_type:'bind_rfid', book_item_id, status:'pending', created_by, created_at }`；返回 `{ success:true, task:{ taskId, taskType, bookItemId, status:'pending' } }`。
 
 #### 权限
 - 所需权限：`RFID_TASK_CREATE_BIND`
@@ -1669,7 +1675,7 @@ PDA 后续轮询获取
 
 ---
 
-### G2. api_task_createFindBook —— 🚧 脚手架（桩函数）
+### G2. api_task_createFindBook —— ✅ 已实现
 #### 功能
 创建寻书任务。用于：
 ```
@@ -1682,7 +1688,7 @@ PDA 后续轮询获取
 PDA 后续执行
 ```
 
-> **实现状态说明**：仓库中 `api_task_createFindBook` 当前仅为桩函数（回显 event 与微信上下文），未实现真实创建逻辑。下方为设计约定。
+> **实现状态说明**：`api_task_createFindBook` 已实现真实创建逻辑（写入 `device_task`，`target_tid` 取图书已绑标签；未绑 RFID 拒绝）。
 
 #### 入参（规划）
 ```json
@@ -1692,9 +1698,14 @@ PDA 后续执行
 ```
 > operator 由服务端从登录态解析，不接收客户端传入。
 
-#### 处理规则（规划）
+#### 处理规则（已实现）
 （暂无）
 
+
+#### 权限
+- 解析当前用户与 `current_family_id`；校验 `RFID_TASK_CREATE_FIND` 权限。
+- 校验 `bookItemId` 对应 `book_item` 存在、在架、未删除；**未绑定 RFID（`rfid_tid` 为空）则拒绝**（设计：未绑标签不可寻书）。
+- 向 `device_task` 写入 `{ task_type:'find_book', book_item_id, target_tid: book_item.rfid_tid, status:'pending', created_by, created_at }`；返回 `{ success:true, taskId }`。
 
 #### 权限
 - 所需权限：`RFID_TASK_CREATE_FIND`
@@ -1713,13 +1724,13 @@ PDA 后续执行
 
 ## H. 手机端操作：任务执行
 
-### H1. api_task_unbindRfid —— 🚧 脚手架（桩函数）
+### H1. api_task_unbindRfid —— ✅ 已实现
 #### 功能
 主动解绑 RFID。
 
 当前版本虽然业务中未出现入口，但未来（图书详情 → 解绑 RFID）大概率会需要，建议现在预留。
 
-> **实现状态说明**：仓库中 `api_task_unbindRfid` 当前仅为桩函数（回显 event 与微信上下文），未实现真实解绑逻辑。下方为设计约定。
+> **实现状态说明**：`api_task_unbindRfid` 已实现真实解绑逻辑（事务清空 `rfid_tid` + 写 `rfid_bind_log`）。
 > 注：架构表原用名 `api_rfid_unbind`，已与代码实现名 `api_task_unbindRfid` 对齐。
 
 #### 入参（规划）
@@ -1730,9 +1741,14 @@ PDA 后续执行
 ```
 > operator 由服务端从登录态解析，不接收客户端传入。原文档入参写作 `{ "bookItemId", "operator"" }`（非法 JSON），已修正。
 
-#### 处理规则（规划）
+#### 处理规则（已实现）
 （暂无）
 
+
+#### 权限
+- 解析当前用户与 `current_family_id`；校验 `RFID_UNBIND` 权限（OWNER；MEMBER/GUEST 无）。
+- 校验 `book_item` 存在、未删除；`rfid_tid` 为空则提示未绑定。
+- **事务**：置 `book_item.rfid_tid=null` + `updated_at`；写 `rfid_bind_log`（`action_type:'unbind'`，`old_tid=原标签`，`new_tid`/`task_id` 占位空串，`operator=user._id`）。提交失败回滚。
 
 #### 权限
 - 所需权限：`RFID_UNBIND`
@@ -1748,7 +1764,7 @@ PDA 后续执行
 
 ## J. PDA操作：任务执行
 
-### J1. api_task_accept —— 🚧 脚手架（桩函数）
+### J1. api_task_accept —— ✅ 已实现
 （原 api_task_claim）
 
 #### 功能
@@ -1771,7 +1787,7 @@ api_task_accept
 running
 ```
 
-> **实现状态说明**：仓库中 `api_task_accept` 当前仅为桩函数（回显 event 与微信上下文），未实现真实领取逻辑。下方为设计约定。
+> **实现状态说明**：`api_task_accept` 已实现真实领取逻辑（pending/running 升序取 1 条置 running）。
 
 #### 入参（规划）
 ```json
@@ -1780,9 +1796,13 @@ running
 }
 ```
 
-#### 处理规则（规划）
+#### 处理规则（已实现）
 （暂无）
 
+
+#### 权限
+- 无家庭 / 角色校验（PDA 专用）。
+- 从 `device_task` 取 `status in ['pending','running']` 按 `created_at` 升序 1 条；置 `status:'running'`、`claimed_by_device=deviceId`、`claimed_at`；返回 `{ success:true, task:{ taskId, taskType, bookItemId, targetTid } }`，无任务返回 `{ success:true, task:null }`。
 
 #### 权限
 - 无（PDA 专用；按 deviceId 领取待执行任务，不做家庭角色校验）
@@ -1810,11 +1830,11 @@ running
 
 ---
 
-### J2. api_task_complete —— 🚧 脚手架（桩函数）
+### J2. api_task_complete —— ✅ 已实现
 #### 功能
 提交任务执行结果。适用于：bind_rfid、find_book。
 
-> **实现状态说明**：仓库中 `api_task_complete` 当前仅为桩函数（回显 event 与微信上下文），未实现真实提交逻辑。下方为设计约定。
+> **实现状态说明**：`api_task_complete` 已实现真实提交逻辑（更新任务最终状态 / 结果）。
 
 #### 入参（规划）
 ```json
@@ -1827,9 +1847,14 @@ running
 }
 ```
 
-#### 处理规则（规划）
+#### 处理规则（已实现）
 （暂无）
 
+
+#### 权限
+- 无家庭 / 角色校验（PDA 专用）。
+- `status` 须为 `success`/`failed`，否则拒绝；更新 `device_task` 的 `status`/`result`/`completed_at`。
+- 注：bind_rfid 的实际绑定 / 解绑由 **J4（api_task_bindRfid）** 执行；本接口只记录任务最终状态。
 
 #### 权限
 - 无（PDA 专用；提交任务执行结果）
@@ -1841,7 +1866,7 @@ running
 
 ---
 
-### J3. api_task_getRfidBindingInfo —— 🚧 脚手架（桩函数）
+### J3. api_task_getRfidBindingInfo —— ✅ 已实现
 #### 功能
 绑定流程真正执行业务逻辑的部分。根据 RFID TID 查询当前绑定状态，用于 PDA 扫描标签后确认。流程：
 ```
@@ -1854,7 +1879,7 @@ running
 用户确认是否解绑
 ```
 
-> **实现状态说明**：仓库中 `api_task_getRfidBindingInfo` 当前仅为桩函数（回显 event 与微信上下文），未实现真实查询逻辑。下方为设计约定。
+> **实现状态说明**：`api_task_getRfidBindingInfo` 已实现真实查询逻辑（按 `rfid_tid` 反查占用图书）。
 > 注：架构表原用名 `api_rfid_getBindingInfo`，已与代码实现名 `api_task_getRfidBindingInfo` 对齐。
 
 #### 入参（规划）
@@ -1864,9 +1889,13 @@ running
 }
 ```
 
-#### 处理规则（规划）
+#### 处理规则（已实现）
 （暂无）
 
+
+#### 权限
+- 无家庭 / 角色校验（PDA 专用）。
+- 按 `rfid_tid=tid` 且 `fg_delete=false` 查 `book_item`；命中则关联 `book_meta` 取 `title`/`isbn`，返回 `{ success:true, bound:true, book:{ bookItemId, title, isbn } }`；未命中返回 `{ success:true, bound:false }`。
 
 #### 权限
 - 无（PDA 专用；按 RFID TID 查询绑定状态）
@@ -1894,7 +1923,7 @@ running
 
 ---
 
-### J4. api_task_bindRfid —— 🚧 脚手架（桩函数）
+### J4. api_task_bindRfid —— ✅ 已实现
 #### 功能
 执行 RFID 绑定（核心接口）。
 
@@ -1906,7 +1935,7 @@ running
 
 无需 PDA 自己判断。
 
-> **实现状态说明**：仓库中 `api_task_bindRfid` 当前仅为桩函数（回显 event 与微信上下文），未实现真实绑定逻辑。下方为设计约定。
+> **实现状态说明**：`api_task_bindRfid` 已实现真实绑定逻辑（事务处理 4 种绑定场景 A/B/C/D + 写 `rfid_bind_log`）。
 > 注：架构表原用名 `api_rfid_bind`，已与代码实现名 `api_task_bindRfid` 对齐。
 
 #### 入参（规划）
@@ -1918,9 +1947,14 @@ running
 ```
 > operator 由服务端从登录态解析，不接收客户端传入。
 
-#### 处理规则（规划）
+#### 处理规则（已实现）
 （暂无）
 
+
+#### 权限
+- 无家庭 / 角色校验（PDA 专用）。
+- 解析 `taskId`（未传则按 `book_item_id` 反查进行中 `bind_rfid` 任务），取 `created_by` 作为 `operator`。
+- 查目标 `book1`（须未删除）与占用 `tid` 的其它书 `book2`；**事务**内：必要时解绑 `book2` → 绑定 `book1.rfid_tid=tid` → 写 `rfid_bind_log`（`action_type` 视是否涉及旧书/旧标签取 `rebind` 或 `bind`）。返回 `{ success:true, action:'bind'|'rebind' }`；失败回滚。对应设计 4 场景 A/B/C/D。
 
 #### 权限
 - 无（PDA 专用；执行 RFID 绑定）
@@ -2033,7 +2067,7 @@ running
 
 # 6. 遗留问题
 
-1. **实现状态 / 脚手架**：架构表所列 33 个接口中，26 个已有真实实现（含 A3 `api_user_get`、C5 `api_bookshelf_reorder`），另有 7 个云函数文件仅为**桩函数**（仅回显 `event` 与微信上下文，未实现业务逻辑）：G1/G2（任务创建）、H1 `api_task_unbindRfid`、J1–J4（PDA 任务执行/RFID 绑定）。文档已在架构表与各章节标注 ✅/🚧，避免读者误判为已上线。
+1. **实现状态**：架构表所列 33 个接口全部已有真实实现（含 A3 `api_user_get`、C5 `api_bookshelf_reorder` 与 G1/G2/H1/J1–J4 任务域），无遗留桩函数。文档已在架构表与各章节统一标注 ✅。
 
 2. **通用失败返回 / 错误枚举未系统化（已起草到文档）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 5 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
 
