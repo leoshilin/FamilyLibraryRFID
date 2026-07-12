@@ -73,6 +73,7 @@ user.currentFamilyId
 |F2| api_book_searchRecent            | Search   | 手机端操作：书本检索 | ✅ 已实现 |
 |G1| api_task_createBindRfid | task | 手机端操作：任务创建 | ✅ 已实现 |
 |G2| api_task_createFindBook | task | 手机端操作：任务创建 | ✅ 已实现 |
+|G3| api_task_getBindStatus | task | 手机端操作：绑定状态查询 | ✅ 已实现 |
 |H1| api_task_unbindRfid | task | 手机端操作：任务执行 | ✅ 已实现 |
 |J1| api_task_accept | task | PDA操作：任务执行 | ✅ 已实现 |
 |J2| api_task_complete | task | PDA操作：任务执行 | ✅ 已实现 |
@@ -190,6 +191,7 @@ module.exports = { get, prepareCreate, create, updateBookshelf, restock, offstoc
 | F2 | api_book_searchRecent | bookSearchServices | `searchRecent()` | — | ✅ |
 | G1 | api_task_createBindRfid | taskServices | `createBindRfid(bookItemId)` | bookItemId | ✅ |
 | G2 | api_task_createFindBook | taskServices | `createFindBook(bookItemId)` | bookItemId | ✅ |
+| G3 | api_task_getBindStatus | taskServices | `getBindStatus(params)` | bookItemId? / bookItemIds? | ✅ |
 | H1 | api_task_unbindRfid | taskServices | `unbindRfid(bookItemId)` | bookItemId | ✅ |
 | J1 | api_task_accept | taskServices | `accept(deviceId)` | deviceId | ✅ |
 | J2 | api_task_complete | taskServices | `complete(taskId, status, result?)` | taskId, status, result? | ✅ |
@@ -260,6 +262,7 @@ searchRecent()                           // → api_book_searchRecent {}
 createBindRfid(bookItemId)                // → api_task_createBindRfid    { bookItemId }
 createFindBook(bookItemId)                // → api_task_createFindBook    { bookItemId }
 unbindRfid(bookItemId)                    // → api_task_unbindRfid        { bookItemId }
+getBindStatus(params)                    // → api_task_getBindStatus      { bookItemId? / bookItemIds? }  ✅
 // —— PDA 执行（Android 直连，此处仅作全局视图维护）——
 accept(deviceId)                          // → api_task_accept            { deviceId }
 complete(taskId, status, result)          // → api_task_complete          { taskId, status, result? }
@@ -1722,6 +1725,58 @@ PDA 后续执行
 
 ---
 
+### G3. api_task_getBindStatus —— ✅ 已实现
+#### 功能
+查询图书 RFID 绑定任务状态（轻量读接口）。用于：
+```
+图书详情页 / 检索列表页
+↓
+渲染「绑定中… / 重新绑定中…」状态
+↓
+避免列表逐条发起查询
+```
+
+> **实现状态说明**：`api_task_getBindStatus` 已实现真实查询逻辑（按 `book_item_id` + `task_type='bind_rfid'` + `status ∈ [pending, running]` 判定 `inProgress`，一次批量返回映射）。
+
+#### 入参（规划）
+```json
+{
+  "bookItemId": "bi00001"        // 单查（详情页）
+}
+```
+```json
+{
+  "bookItemIds": ["bi00001", "bi00002"]   // 批量（列表页，一次查询）
+}
+```
+> `bookItemId` 与 `bookItemIds` 二选一；前端不传 `familyId` / `operator`，由服务端按登录态解析当前家庭。
+> 注意：列表页应传 `bookItemIds[]` 批量查询，**严禁列表逐条调用**，以免产生 N 次云函数请求。
+
+#### 处理规则（已实现）
+1. 反查当前用户与 `current_family_id`；未登录 / 未选家庭返回失败。
+2. **归属校验**：先按 `_id in bookItemIds AND family_id = 当前家庭 AND fg_delete=false` 过滤，仅对归属本家庭的 `book_item_id` 继续查询（防止越权探测其它家庭的 RFID 绑定状态；`device_task` 无 `family_id` 字段，故需经 `book_item` 反查）。
+3. 查询 `device_task`：`book_item_id in 允许的 id AND task_type='bind_rfid'`。
+4. 归并状态：该图书存在 `status ∈ [pending, running]` 的任务则 `inProgress=true`，`status` 取进行中任务状态（running 优先于 pending）；无进行中时 `status` 取最新任务状态或 `null`。
+5. 返回 `{ [itemId]: { inProgress, status } }` 映射（包含请求的全部 id，未授权 / 不存在的 id 占位为 `{ inProgress:false, status:null }`，便于前端直接按 id 取用）。
+6. `in` 查询按每批 100 拆分，避免微信云数据库数组长度约束。
+
+#### 权限
+- 仅需登录且已选择当前家庭（本接口为只读查询，不要求 `RFID_TASK_CREATE_BIND` / `RFID_UNBIND`；GUEST 也可读取，用于展示进行中态）。
+- 越权探测通过「归属校验」拦截：非本家庭的 `book_item_id` 一律返回 `{ inProgress:false, status:null }`。
+
+#### 返回（规划）
+```json
+{
+  "success": true,
+  "map": {
+    "bi00001": { "inProgress": true, "status": "pending" },
+    "bi00002": { "inProgress": false, "status": null }
+  }
+}
+```
+
+---
+
 ## H. 手机端操作：任务执行
 
 ### H1. api_task_unbindRfid —— ✅ 已实现
@@ -2067,7 +2122,7 @@ running
 
 # 6. 遗留问题
 
-1. **实现状态**：架构表所列 33 个接口全部已有真实实现（含 A3 `api_user_get`、C5 `api_bookshelf_reorder` 与 G1/G2/H1/J1–J4 任务域），无遗留桩函数。文档已在架构表与各章节统一标注 ✅。
+1. **实现状态**：架构表所列 34 个接口全部已有真实实现（含 A3 `api_user_get`、C5 `api_bookshelf_reorder` 与 G1/G2/G3/H1/J1–J4 任务域），无遗留桩函数。文档已在架构表与各章节统一标注 ✅。
 
 2. **通用失败返回 / 错误枚举未系统化（已起草到文档）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 5 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
 

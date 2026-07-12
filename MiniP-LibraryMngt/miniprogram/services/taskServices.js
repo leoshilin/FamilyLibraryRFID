@@ -22,6 +22,15 @@ const unbindRfid = (bookItemId) => {
   return callFunction('api_task_unbindRfid', { bookItemId })
 }
 
+// 查询 RFID 绑定任务状态（轻量读接口）
+// 详情页传单查 { bookItemId }；列表页传批量 { bookItemIds: [...] }
+// 返回 res.map：{ [itemId]: { inProgress, status } }
+//   inProgress : 是否存在 bind_rfid 任务且 status ∈ [pending, running]
+//   status     : 进行中任务的 status（pending/running）；无进行中时为最新任务的 status 或 null
+const getBindStatus = (params) => {
+  return callFunction('api_task_getBindStatus', params)
+}
+
 // —— PDA：任务执行（Android 直连，此处仅作统一封装） ——
 
 // PDA 领取一个待执行任务
@@ -50,6 +59,7 @@ module.exports = {
   createBindRfid,
   createFindBook,
   unbindRfid,
+  getBindStatus,
   accept,
   complete,
   getRfidBindingInfo,

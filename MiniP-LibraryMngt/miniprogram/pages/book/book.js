@@ -19,7 +19,15 @@ Page({
     error: '',
     book: {},
     metaExists: false,      // book_meta 是否存在
-    canEditMeta: false // 当前是否有权限修改 meta（你现在默认 true）    
+    canEditMeta: false, // 当前是否有权限修改 meta（你现在默认 true）
+
+    // —— RFID 绑定交互状态 ——
+    canBind: false,      // 是否有 RFID_TASK_CREATE_BIND 权限（绑定 / 重新绑定）
+    canUnbind: false,    // 是否有 RFID_UNBIND 权限（解绑）
+    isBound: false,      // 是否已绑定 RFID（rfid_tid 非空）
+    showRfid: false,     // 是否展示 RFID 按钮区（仅 in_stock 展示）
+    bindInProgress: false, // 是否存在进行中的绑定任务（pending/running）
+    busy: false          // 动作乐观锁，防止重复点击
   },
 
   onLoad(options) {
@@ -68,6 +76,19 @@ Page({
           canEditMeta: false
         })
         console.log(`book on page, title=${book.title}, status=${book.status}`)
+
+        // 设置 RFID 权限门控（无 RFID_TASK_CREATE_BIND 隐藏绑定/重绑；无 RFID_UNBIND 隐藏解绑）
+        const perms = (getApp() && getApp().globalData.permissions) || {}
+        this.setData({
+          canBind: !!perms.canCreateBindRfidTask,
+          canUnbind: !!perms.canUnbindRfid
+        })
+
+        // 依据 book 推导 RFID 展示态（isBound / showRfid）
+        this.refreshRfidState()
+
+        // 查询当前绑定任务状态，渲染「绑定中 / 重新绑定中」
+        this.loadBindStatus()
 
         // 查看模式下也加载书架列表，供用户修改书架
         if (book.familyId) {
@@ -782,10 +803,191 @@ Page({
     }
   },
 
-  // 绑定 RFID（TODO：后续进入 RFID 绑定流程）
-  onBindRFID() {
-    console.log('book.onBindRFID: 功能开发中')
-    wx.showToast({ title: 'RFID 绑定功能开发中', icon: 'none' })
+  // ========================
+  // RFID 绑定 / 解绑
+  // ========================
+
+  // 依据 isBound + bindInProgress 推导 RFID 区域是否展示（仅 in_stock 图书展示 RFID 按钮）
+  refreshRfidState() {
+    const book = this.data.book
+    const showRfid = !!(book && book.itemId) && book.status === 'in_stock'
+    this.setData({
+      showRfid,
+      isBound: !!(book && book.rfidTid)
+    })
+  },
+
+  // 查询本书的绑定任务状态（详情页单查）
+  async loadBindStatus() {
+    const itemId = this.data.book && this.data.book.itemId
+    if (!itemId) return
+    try {
+      const res = await taskServices.getBindStatus({ bookItemId: itemId })
+      if (res && res.success && res.map) {
+        const st = res.map[itemId] || { inProgress: false, status: null }
+        this.setData({ bindInProgress: st.inProgress })
+      }
+    } catch (err) {
+      console.error('book.loadBindStatus error:', err)
+    }
+  },
+
+  // 从服务端重载 book_item（刷新 rfid_tid / 在架状态），用于 onShow 自愈
+  async refreshBookFromServer() {
+    const itemId = this.data.book && this.data.book.itemId
+    if (!itemId) return
+    try {
+      const result = await bookItemServices.get(itemId)
+      if (!result || !result.success) return
+      const { bookItem, bookshelf } = result
+      this.setData({
+        'book.rfidTid': bookItem && bookItem.rfidTid ? bookItem.rfidTid : '',
+        'book.status': bookItem && bookItem.inventoryStatus,
+        'book.bookshelfId': (bookItem && bookItem.bookshelfId) || (bookshelf && bookshelf._id) || '',
+        'book.bookshelfName': (bookshelf && bookshelf.name) || ''
+      })
+      this.refreshRfidState()
+      this.loadBindStatus()
+    } catch (err) {
+      console.error('book.refreshBookFromServer error:', err)
+    }
+  },
+
+  // 页面重新展示（从列表返回）时：重载 book + 重查任务状态，实现 PDA 完成后的状态自愈
+  onShow() {
+    if (this.data.book && this.data.book.itemId) {
+      this.refreshBookFromServer()
+    }
+  },
+
+  // 绑定 / 重新绑定 RFID
+  // 绑定：直接创建 bind_rfid 任务；重新绑定：先确认再创建
+  async onBindRFID() {
+    console.log('book.onBindRFID: start')
+
+    // 进行中（B/D 态）禁止重复发起
+    if (this.data.busy || this.data.bindInProgress) {
+      console.log('book.onBindRFID: 存在进行中任务，忽略重复点击')
+      return
+    }
+
+    const book = this.data.book
+    if (!book || !book.itemId) {
+      wx.showToast({ title: '书籍数据异常', icon: 'none' })
+      return
+    }
+
+    // 重新绑定需用户确认
+    if (this.data.isBound) {
+      const { confirm } = await wx.showModal({
+        title: '确认重新绑定',
+        content: '该书已绑定 RFID，确认重新绑定吗？原标签将在 PDA 绑定新标签后被覆盖。'
+      })
+      if (!confirm) return
+    }
+
+    this.setData({ busy: true })
+    wx.showLoading({ title: '发起中...' })
+
+    try {
+      const result = await taskServices.createBindRfid(book.itemId)
+      wx.hideLoading()
+
+      if (result && result.success) {
+        // 乐观置「进行中」：立即切到 B/D 态，防止重复点击，并通知列表页
+        this.setData({ bindInProgress: true, busy: false })
+        eventBus.emit(EVENTS.RFID_TASK_CHANGED, {
+          itemId: book.itemId,
+          inProgress: true
+        })
+        wx.showToast({ title: '已发起绑定任务，等待 PDA 执行', icon: 'none' })
+      } else {
+        this.setData({ busy: false })
+        wx.showToast({ title: (result && result.message) || '发起失败', icon: 'none' })
+      }
+    } catch (err) {
+      wx.hideLoading()
+      this.setData({ busy: false })
+      console.error('book.onBindRFID error:', err)
+      wx.showToast({ title: '发起失败', icon: 'none' })
+    }
+  },
+
+  // 解绑 RFID：先扫码 ISBN 与本书比对，通过后再调 H1 主动解绑（避免误触）
+  async onUnbindRFID() {
+    console.log('book.onUnbindRFID: start')
+
+    // 进行中（D 态）禁止解绑
+    if (this.data.busy || this.data.bindInProgress) {
+      console.log('book.onUnbindRFID: 存在进行中任务，忽略')
+      return
+    }
+
+    const book = this.data.book
+    if (!book || !book.itemId) {
+      wx.showToast({ title: '书籍数据异常', icon: 'none' })
+      return
+    }
+
+    // 调起扫码，扫描实体书 ISBN 做实体确认
+    let scanned = ''
+    try {
+      const scanRes = await new Promise((resolve, reject) => {
+        wx.scanCode({
+          scanType: ['barCode'],
+          success: resolve,
+          fail: reject
+        })
+      })
+      scanned = (scanRes.result || '').trim()
+    } catch (err) {
+      console.log('book.onUnbindRFID: 用户取消扫码')
+      return
+    }
+
+    // ISBN 比对：归一化后比较，防止连字符 / 空格差异导致误判
+    if (!this.compareIsbn(scanned, book.isbn)) {
+      wx.showToast({ title: '扫描的 ISBN 与本书不一致，无法解绑', icon: 'none' })
+      return
+    }
+
+    this.setData({ busy: true })
+    wx.showLoading({ title: '解绑中...' })
+
+    try {
+      const result = await taskServices.unbindRfid(book.itemId)
+      wx.hideLoading()
+
+      if (result && result.success) {
+        // 解绑即时生效：清空本地 rfid_tid，切回 A 态
+        this.setData({
+          'book.rfidTid': '',
+          isBound: false,
+          bindInProgress: false,
+          busy: false
+        })
+        eventBus.emit(EVENTS.RFID_TASK_CHANGED, {
+          itemId: book.itemId,
+          inProgress: false,
+          rfidTid: ''
+        })
+        wx.showToast({ title: '已解绑', icon: 'success' })
+      } else {
+        this.setData({ busy: false })
+        wx.showToast({ title: (result && result.message) || '解绑失败', icon: 'none' })
+      }
+    } catch (err) {
+      wx.hideLoading()
+      this.setData({ busy: false })
+      console.error('book.onUnbindRFID error:', err)
+      wx.showToast({ title: '解绑失败', icon: 'none' })
+    }
+  },
+
+  // 归一化比较 ISBN：去除非数字字母字符（连字符 / 空格）并忽略大小写
+  compareIsbn(a, b) {
+    const norm = (s) => (s || '').replace(/[^0-9Xx]/g, '').toUpperCase()
+    return norm(a) === norm(b)
   }
 
 

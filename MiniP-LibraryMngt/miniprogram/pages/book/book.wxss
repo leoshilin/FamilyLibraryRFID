@@ -231,6 +231,7 @@
   background: #ffffff;
   border-top: 1rpx solid #eee;
   display: flex;
+  flex-wrap: wrap;
   gap: 20rpx;
 }
 
@@ -269,5 +270,13 @@
   font-weight: 600;
   background: #ff4d4f;
   color: #fff;
+}
+
+/* RFID 任务进行中提示语（绑定中… / 重新绑定中…） */
+.rfid-progress-hint {
+  flex-basis: 100%;
+  text-align: center;
+  font-size: 24rpx;
+  color: #fa8c16;
 }
 

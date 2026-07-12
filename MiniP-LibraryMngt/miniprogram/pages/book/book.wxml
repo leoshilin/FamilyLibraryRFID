@@ -173,13 +173,45 @@
         </block>
 
         <!-- 上架中 -->
-        <block wx:elif="{{book.status === 'in_stock'}}">        
+        <block wx:elif="{{book.status === 'in_stock'}}">
           <button class="danger-btn" bindtap="handleOff">
             下架
-          </button>        
-          <button class="secondary-btn" bindtap="onBindRFID">
-            {{ book.rfidTid ? '重新绑定RFID' : '绑定RFID' }}
           </button>
+
+          <!-- RFID 绑定区域：仅 in_stock 且有权限时展示，按 4 态渲染 -->
+          <block wx:if="{{showRfid}}">
+            <!-- 未绑定：绑定按钮（A 可点 / B 禁用并提示进行中） -->
+            <button
+              wx:if="{{canBind && !isBound}}"
+              class="secondary-btn"
+              disabled="{{bindInProgress}}"
+              bindtap="onBindRFID">
+              绑定RFID
+            </button>
+
+            <!-- 已绑定：解绑 + 重新绑定（C 可点 / D 禁用并提示进行中） -->
+            <block wx:if="{{isBound}}">
+              <button
+                wx:if="{{canUnbind}}"
+                class="danger-btn"
+                disabled="{{bindInProgress}}"
+                bindtap="onUnbindRFID">
+                解绑
+              </button>
+              <button
+                wx:if="{{canBind}}"
+                class="secondary-btn"
+                disabled="{{bindInProgress}}"
+                bindtap="onBindRFID">
+                重新绑定
+              </button>
+            </block>
+
+            <!-- 进行中提示语（B：绑定中… / D：重新绑定中…） -->
+            <view wx:if="{{bindInProgress}}" class="rfid-progress-hint">
+              {{ isBound ? '重新绑定中…' : '绑定中…' }}
+            </view>
+          </block>
         </block>
       </block>
 

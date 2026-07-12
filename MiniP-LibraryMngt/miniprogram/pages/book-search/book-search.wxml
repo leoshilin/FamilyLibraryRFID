@@ -271,9 +271,40 @@
               下架
             </view>
 
-            <view class="btn rfid" catchtap="handleRFID" data-index="{{index}}">
-              {{item.rfidTid ? '重新绑定RFID' : '绑定RFID'}}
-            </view>
+            <!-- RFID 区域：按 4 态渲染（仅有权限时显示对应按钮） -->
+            <block wx:if="{{canBind || canUnbind}}">
+              <!-- 未绑定：绑定按钮（A 可点 / B 禁用并提示进行中） -->
+              <view
+                wx:if="{{canBind && !item.rfidTid}}"
+                class="btn rfid {{item.bindInProgress ? 'disabled' : ''}}"
+                catchtap="handleBind"
+                data-index="{{index}}">
+                绑定RFID
+              </view>
+
+              <!-- 已绑定：解绑 + 重新绑定（C 可点 / D 禁用并提示进行中） -->
+              <block wx:if="{{item.rfidTid}}">
+                <view
+                  wx:if="{{canUnbind}}"
+                  class="btn rfid-unbind {{item.bindInProgress ? 'disabled' : ''}}"
+                  catchtap="handleUnbind"
+                  data-index="{{index}}">
+                  解绑
+                </view>
+                <view
+                  wx:if="{{canBind}}"
+                  class="btn rfid {{item.bindInProgress ? 'disabled' : ''}}"
+                  catchtap="handleBind"
+                  data-index="{{index}}">
+                  重新绑定
+                </view>
+              </block>
+
+              <!-- 进行中提示语（B：绑定中… / D：重新绑定中…） -->
+              <view wx:if="{{item.bindInProgress}}" class="rfid-hint">
+                {{ item.rfidTid ? '重新绑定中…' : '绑定中…' }}
+              </view>
+            </block>
 
           </block>
 

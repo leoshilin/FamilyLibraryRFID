@@ -316,6 +316,7 @@
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   padding: 20rpx;
   background: #f8f8f8;
   gap: 20rpx;
@@ -350,6 +351,24 @@
 
 .btn.delete {
   background: #f56c6c;
+}
+
+/* 解绑按钮（危险色，区别于绑定/重绑的绿色） */
+.btn.rfid-unbind {
+  background: #f56c6c;
+}
+
+/* 进行中（B/D 态）按钮置灰，仅作视觉提示，点击已在 handler 中拦截 */
+.btn.disabled {
+  opacity: 0.45;
+}
+
+/* RFID 任务进行中提示语（绑定中… / 重新绑定中…） */
+.rfid-hint {
+  flex-basis: 100%;
+  text-align: center;
+  font-size: 22rpx;
+  color: #fa8c16;
 }
 
 /* ======================== */
