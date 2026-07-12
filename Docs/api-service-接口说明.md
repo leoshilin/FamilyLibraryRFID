@@ -47,7 +47,7 @@ user.currentFamilyId
 |------ | -------------------------- | -------- |-------- |-------- |
 |A1| api_user_login | user | 手机端操作：用户登录与管理 | ✅ 已实现 |
 |A2| api_user_register | user | 手机端操作：用户登录与管理 | ✅ 已实现 |
-|A3| api_user_get | user | 手机端操作：用户登录与管理 | 🚧 脚手架（桩函数，业务逻辑未实现） |
+|A3| api_user_get | user | 手机端操作：用户登录与管理 | ✅ 已实现 |
 |A4| api_user_update | user | 手机端操作：用户登录与管理 | ✅ 已实现 |
 |B1| api_family_getCurrent | family | 手机端操作：家庭主数据 | ✅ 已实现 |
 |B2| api_family_create | family | 手机端操作：家庭主数据 | ✅ 已实现 |
@@ -169,7 +169,7 @@ module.exports = { get, prepareCreate, create, updateBookshelf, restock, offstoc
 |---|---|---|---|---|---|
 | A1 | api_user_login | userServices | `login()` | — | ✅ |
 | A2 | api_user_register | userServices | `register(nickName)` | nickName | ✅ |
-| A3 | api_user_get | userServices | `getUser(userId?)` | userId? | 🚧 |
+| A3 | api_user_get | userServices | `getUser(userId?)` | userId? | ✅ |
 | A4 | api_user_update | userServices | `updateUser(nickName)` | nickName | ✅ |
 | B1 | api_family_getCurrent | familyServices | `getCurrent()` | — | ✅ |
 | B2 | api_family_create | familyServices | `create(name?)` | name? | ✅ |
@@ -209,7 +209,7 @@ module.exports = { get, prepareCreate, create, updateBookshelf, restock, offstoc
 ```js
 login()                                    // → api_user_login        {}
 register(nickName)                         // → api_user_register     { nickName }
-getUser(userId)                            // → api_user_get          { userId? }              🚧
+getUser(userId)                            // → api_user_get          { userId? }              ✅
 updateUser(nickName)                       // → api_user_update       { nickName }
 ```
 > 现有 `userServices.js` 已实现 `login` / `register` / `updateUser`，需补 `getUser`（对应 A3 桩函数）。
@@ -414,13 +414,20 @@ api_user_login
 
 ---
 
-### A3. api_user_get —— 🚧 脚手架（桩函数）
+### A3. api_user_get
 #### 功能
 获取用户信息（按 userId 或当前登录用户）。
 
-> **实现状态说明**：仓库中 `api_user_get` 当前仅为桩函数（回显 event 与微信上下文），未实现真实查询逻辑。下方为设计约定。
+用于：
+```
+我的页
+↓
+app.login() 之后取当前用户档案（getUser）
+↓
+家庭成员查看等场景（getUser(userId)）
+```
 
-#### 入参（规划）
+#### 入参
 ```json
 {
   "userId": "u001"
@@ -430,29 +437,61 @@ api_user_login
 ```json
 {}
 ```
-> 不传 userId 时根据 openid 获取当前登录用户。
+> 不传 `userId` 时根据 openid 获取当前登录用户（并返回当前家庭权限集）。传 `userId` 时按 `_id` 返回该用户基础档案。
 
-#### 处理规则（规划）
-（暂无）
-
+#### 处理规则
+- 获取 openid（`cloud.getWXContext()`）
+- 传 `userId`：按 `_id` 查询 user，仅返回基础档案（**不返回权限集**，避免暴露他人家庭权限）
+- 不传 `userId`：按 openid 解析当前用户（`getCurrentUser`），并构建当前家庭权限集 `buildFamilyPermissions`（与 `api_user_login` 返回语义一致）
 
 #### 权限
 - 无（登录态；查看用户自身或指定用户信息）
 
-#### 返回（规划）
+#### 返回
+**当前登录用户（不传 userId）：**
 ```json
 {
   "success": true,
   "user": {
     "_id": "u001",
+    "openid": "oXXX",
     "nickName": "方大大",
     "currentFamilyId": "f001",
-    "status": "ACTIVE"
+    "role": "USER",
+    "status": "ACTIVE",
+    "createdAt": "datetime",
+    "updatedAt": "datetime"
+  },
+  "permissions": { "...": "..." }
+}
+```
+
+**指定用户（传 userId）：**
+```json
+{
+  "success": true,
+  "user": {
+    "_id": "u001",
+    "openid": "oXXX",
+    "nickName": "方大大",
+    "currentFamilyId": "f001",
+    "role": "USER",
+    "status": "ACTIVE",
+    "createdAt": "datetime",
+    "updatedAt": "datetime"
   }
 }
 ```
 
----
+**失败：**
+```json
+{ "success": false, "message": "用户未注册" }
+```
+```json
+{ "success": false, "message": "用户不存在" }
+```
+
+> 说明：所有字段统一 camelCase（见 0.1 通用约定）。`permissions` 仅在不传 `userId`（当前用户）时返回，结构与 `api_user_login` 一致，前端可直接用于 UI 控制。
 
 ### A4. api_user_update
 #### 功能
@@ -2004,7 +2043,7 @@ running
 
 # 6. 遗留问题
 
-1. **实现状态 / 脚手架**：架构表所列 33 个接口中，25 个已有真实实现（含 F2 `api_book_searchRecent`），另有 9 个云函数文件仅为**桩函数**（仅回显 `event` 与微信上下文，未实现业务逻辑）：A3 `api_user_get`、C5 `api_bookshelf_reorder`、G1/G2（任务创建）、H1 `api_task_unbindRfid`、J1–J4（PDA 任务执行/RFID 绑定）。文档已在架构表与各章节标注 ✅/🚧，避免读者误判为已上线。
+1. **实现状态 / 脚手架**：架构表所列 33 个接口中，26 个已有真实实现（含 F2 `api_book_searchRecent` 与 A3 `api_user_get`），另有 8 个云函数文件仅为**桩函数**（仅回显 `event` 与微信上下文，未实现业务逻辑）：C5 `api_bookshelf_reorder`、G1/G2（任务创建）、H1 `api_task_unbindRfid`、J1–J4（PDA 任务执行/RFID 绑定）。文档已在架构表与各章节标注 ✅/🚧，避免读者误判为已上线。
 
 2. **通用失败返回 / 错误枚举未系统化（已起草到文档）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 5 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
 

@@ -84,13 +84,41 @@ Page({
     }
 
     //
-    // 已注册用户：加载用户信息与权限，然后加载家庭和书架
+    // 已注册用户：优先通过 Service 获取当前登录用户权威信息；
+    // 若云函数尚未部署导致 getUser 失败，则回退到 app.login() 已写入的全局 currentUser，
+    // 保证页面在常态下（云函数就绪）走 Service，异常时仍可用。
     //
-    this.setData({
-      registered: true,
-      user: currentUser,
-      permissions
-    })
+    try {
+
+      const me = await userServices.getUser()
+
+      if (me && me.success) {
+
+        this.setData({
+          registered: true,
+          user: me.user,
+          permissions: me.permissions || permissions
+        })
+
+      } else {
+
+        console.warn('getUser failed, fallback to globalData.currentUser:', me && me.message)
+        this.setData({
+          registered: true,
+          user: currentUser,
+          permissions
+        })
+
+      }
+
+    } catch (err) {
+      console.error('getUser error, fallback to globalData.currentUser:', err)
+      this.setData({
+        registered: true,
+        user: currentUser,
+        permissions
+      })
+    }
 
     await this.loadFamily()
     await this.loadBookshelves()

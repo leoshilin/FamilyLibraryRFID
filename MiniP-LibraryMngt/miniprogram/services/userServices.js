@@ -37,8 +37,19 @@ const updateUser = async (nickName) => {
 
 }
 
+// 获取用户信息：不传 userId 取当前登录用户（含权限集），传 userId 取指定用户基础档案
+const getUser = async (userId) => {
+
+  return callUserApi(
+    'api_user_get',
+    userId ? { userId } : {}
+  )
+
+}
+
 module.exports = {
   login,
   register,
-  updateUser
+  updateUser,
+  getUser
 }
