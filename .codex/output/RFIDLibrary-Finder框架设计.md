@@ -118,7 +118,14 @@ SDK 资源（来自同级 `RFIDTester`）：
 
 - Android Studio（AGP 9.2.1 / Gradle 9.4.1 / Kotlin 2.2.10 / Compose BOM 2026.02.01）
 - 真机：**Android RFID 手持 PDA**（minSdk 24），模拟器无法加载 jniLibs 中的 so。
-- 复制 `local.properties.example` 为 `local.properties`，填入 `wechat.appId / appSecret / envId`。
+- **配置云凭证（务必追加，勿整体替换）**：`local.properties` 由 Android Studio 首次打开工程时自动生成并含 `sdk.dir=...`（指向本机 Android SDK）。在其**末尾追加**以下三行，**保留原有 `sdk.dir`**，否则会报 `SDK location not found`：
+  ```properties
+  sdk.dir=D:/Android/Sdk          # 由 Android Studio 维护，请勿删除
+  wechat.appId=wxYOUR_APPID
+  wechat.appSecret=YOUR_APPSECRET
+  wechat.envId=YOUR_ENV_ID
+  ```
+  （`local.properties.example` 仅为 wechat.* 模板，不要用它整体覆盖自动生成的文件。）
 - 云端需已部署 J 系列云函数，且 `device_task` / `rfid_bind_log` 集合已建（见 Docs §4.5 `script_init_collections`）。
 
 > 说明：当前沙箱环境无 Android SDK，无法在本仓库内编译验证；正确性通过对齐 RFIDTester
