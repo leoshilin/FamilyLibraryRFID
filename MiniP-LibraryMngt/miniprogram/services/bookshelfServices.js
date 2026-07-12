@@ -39,9 +39,17 @@ const remove = (bookshelfId) => {
   })
 }
 
+// 按传入顺序重排当前家庭全部书架（orderedBookshelfIds 须覆盖家庭下所有 ACTIVE 书架）
+const reorder = (orderedBookshelfIds) => {
+  return callFunction('api_bookshelf_reorder', {
+    orderedBookshelfIds
+  })
+}
+
 module.exports = {
   list,
   create,
   update,
-  remove
+  remove,
+  reorder
 }

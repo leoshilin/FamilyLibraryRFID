@@ -70,6 +70,20 @@
           <text
             wx:if="{{permissions.canUpdateBookshelf}}"
             class="action-btn"
+            bindtap="onMoveBookshelfUp"
+            data-index="{{index}}"
+            data-bookshelf-id="{{item._id}}"
+          >↑</text>
+          <text
+            wx:if="{{permissions.canUpdateBookshelf}}"
+            class="action-btn"
+            bindtap="onMoveBookshelfDown"
+            data-index="{{index}}"
+            data-bookshelf-id="{{item._id}}"
+          >↓</text>
+          <text
+            wx:if="{{permissions.canUpdateBookshelf}}"
+            class="action-btn"
             bindtap="onEditBookshelf"
             data-bookshelf-id="{{item._id}}"
             data-name="{{item.name}}"

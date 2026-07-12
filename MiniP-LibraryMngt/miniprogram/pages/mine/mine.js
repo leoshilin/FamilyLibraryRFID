@@ -528,6 +528,75 @@ Page({
 
   },
 
+  // 上移书架（与上一个交换顺序）
+  async onMoveBookshelfUp(e) {
+
+    const { index } = e.currentTarget.dataset
+    const i = Number(index)
+
+    if (i <= 0) return  // 已在最顶部，不处理
+
+    const list = this.data.bookshelves.slice()
+    const tmp = list[i - 1]
+    list[i - 1] = list[i]
+    list[i] = tmp
+
+    // 乐观更新，立即反馈
+    this.setData({ bookshelves: list })
+    await this.persistBookshelfOrder()
+
+  },
+
+  // 下移书架（与下一个交换顺序）
+  async onMoveBookshelfDown(e) {
+
+    const { index } = e.currentTarget.dataset
+    const i = Number(index)
+
+    const len = this.data.bookshelves.length
+    if (i >= len - 1) return  // 已在最底部，不处理
+
+    const list = this.data.bookshelves.slice()
+    const tmp = list[i + 1]
+    list[i + 1] = list[i]
+    list[i] = tmp
+
+    // 乐观更新，立即反馈
+    this.setData({ bookshelves: list })
+    await this.persistBookshelfOrder()
+
+  },
+
+  // 将当前书架顺序持久化到云端（调用 bookshelfServices.reorder）
+  async persistBookshelfOrder() {
+
+    const orderedIds = this.data.bookshelves.map(b => b._id)
+
+    wx.showLoading({ title: '排序中...' })
+
+    try {
+
+      const result = await bookshelfServices.reorder(orderedIds)
+
+      if (!result.success) {
+        wx.showToast({ title: result.message || '排序失败', icon: 'none' })
+        // 回滚：重新拉取权威顺序
+        await this.loadBookshelves()
+        return
+      }
+
+      wx.showToast({ title: '已排序', icon: 'success' })
+
+    } catch (err) {
+      console.error('persistBookshelfOrder error:', err)
+      wx.showToast({ title: '排序失败', icon: 'none' })
+      await this.loadBookshelves()
+    } finally {
+      wx.hideLoading()
+    }
+
+  },
+
   // ========================
   //  用户相关（已有功能保持不变）
   // ========================

@@ -59,7 +59,7 @@ user.currentFamilyId
 |C2| api_bookshelf_update | bookshelf | 手机端操作：书架主数据 | ✅ 已实现 |
 |C3| api_bookshelf_delete | bookshelf | 手机端操作：书架主数据 | ✅ 已实现 |
 |C4| api_bookshelf_list | bookshelf | 手机端操作：书架主数据 | ✅ 已实现 |
-|C5| api_bookshelf_reorder | bookshelf | 手机端操作：书架主数据 | 🚧 脚手架（桩函数，业务逻辑未实现） |
+|C5| api_bookshelf_reorder | bookshelf | 手机端操作：书架主数据 | ✅ 已实现 |
 |D1| api_bookmeta_getByIsbn     | BookMeta | 手机端操作：书本主数据 | ✅ 已实现 |
 |D2| api_bookmeta_fetchExternal | BookMeta | 手机端操作：书本主数据 | ✅ 已实现 |
 |E1| api_bookitem_prepareCreate | BookItem | 手机端操作：实体书本上下架 | ✅ 已实现 |
@@ -120,9 +120,9 @@ Cloud Database
 
 | Service 文件 | 领域 | 封装的 API | 状态 |
 |---|---|---|---|
-| `userServices.js` | 用户 | A1–A4 | 部分已实现（缺 `getUser`） |
+| `userServices.js` | 用户 | A1–A4 | ✅ 已实现 |
 | `familyServices.js` | 家庭 | B1–B6 | ✅ 已实现 |
-| `bookshelfServices.js` | 书架 | C1–C5 | 部分已实现（缺 `reorder`） |
+| `bookshelfServices.js` | 书架 | C1–C5 | ✅ 已实现 |
 | `bookMetaServices.js` | 书本主数据 | D1–D2 | 🚧 待新增 |
 | `bookItemServices.js` | 实体书上下架 | E1–E7 | 🚧 待新增 |
 | `bookSearchServices.js` | 检索 / 最近 | F1–F2 | 🚧 待新增 |
@@ -181,7 +181,7 @@ module.exports = { get, prepareCreate, create, updateBookshelf, restock, offstoc
 | C2 | api_bookshelf_update | bookshelfServices | `update(bookshelfId, name)` | bookshelfId, name | ✅ |
 | C3 | api_bookshelf_delete | bookshelfServices | `remove(bookshelfId)` | bookshelfId | ✅ |
 | C4 | api_bookshelf_list | bookshelfServices | `list()` | — | ✅ |
-| C5 | api_bookshelf_reorder | bookshelfServices | `reorder(orderedBookshelfIds)` | orderedBookshelfIds[] | 🚧 |
+| C5 | api_bookshelf_reorder | bookshelfServices | `reorder(orderedBookshelfIds)` | orderedBookshelfIds[] | ✅ |
 | D1 | api_bookmeta_getByIsbn | bookMetaServices | `getByIsbn(isbn)` | isbn | ✅ |
 | D2 | api_bookmeta_fetchExternal | bookMetaServices | `fetchExternal(isbn)` | isbn | ✅ |
 | E1 | api_bookitem_prepareCreate | bookItemServices | `prepareCreate(isbn, book)` | isbn, book | ✅ |
@@ -231,9 +231,9 @@ list()                                    // → api_bookshelf_list     {}
 create(name)                              // → api_bookshelf_create   { name }
 update(bookshelfId, name)                 // → api_bookshelf_update   { bookshelfId, name }
 remove(bookshelfId)                       // → api_bookshelf_delete   { bookshelfId }
-reorder(orderedBookshelfIds)              // → api_bookshelf_reorder { orderedBookshelfIds }  🚧
+reorder(orderedBookshelfIds)              // → api_bookshelf_reorder { orderedBookshelfIds }  ✅
 ```
-> 已实现 `list` / `create` / `update` / `remove`，需补 `reorder`（对应 C5 桩函数）。
+> 已实现 `list` / `create` / `update` / `remove` / `reorder`；`reorder` 对应 C5，由 mine 页「↑ / ↓」按钮调用以重排书架。
 
 ### 2.5.4 bookMetaServices.js（书本主数据）🚧 新增
 ```js
@@ -989,32 +989,45 @@ app.login() 之后取当前用户档案（getUser）
 
 ---
 
-### C5. api_bookshelf_reorder —— 🚧 脚手架（桩函数）
+### C5. api_bookshelf_reorder —— ✅ 已实现
 #### 功能
-指定家庭下书架的重新排序（sort_order）。
+指定家庭下书架的重新排序（sort_order）。客户端传入有序的书架 ID 数组，服务端按数组顺序对当前家庭下**全部 ACTIVE 书架**重排 `sort_order`（从 1 开始递增）。
 
-> **实现状态说明**：仓库中 `api_bookshelf_reorder` 当前仅为桩函数（回显 event 与微信上下文），未实现真实排序逻辑。下方为设计约定。
+> **实现状态说明**：`api_bookshelf_reorder` 已实现真实排序逻辑（见 `cloudfunctions/api_bookshelf_reorder/index.js`）；`bookshelfServices.reorder()` 已封装；mine 页「↑ / ↓」按钮点击后交换本地顺序并调用 `reorder` 持久化。
 
-#### 入参（规划）
+#### 入参
 ```json
 {
   "orderedBookshelfIds": ["bs001", "bs002", "bs003"]
 }
 ```
-> 参数定义待进一步明确（原文档仅占位）。familyId 由服务端从 `user.currentFamilyId` 解析。
+- `orderedBookshelfIds`：`string[]`，书架 ID 的有序数组。**必须覆盖当前家庭下全部 ACTIVE 书架**，数组顺序即目标排序。
+- `familyId` / `operator` 由服务端从登录态解析（`user.current_family_id` 与 openid），不接收客户端传入。
 
-#### 处理规则（规划）
-- 校验顺序数组归属当前家庭且覆盖全部 ACTIVE 书架
-
+#### 处理规则
+1. **参数校验**：`orderedBookshelfIds` 必须为非空数组，否则返回 `{ success: false, message: 'orderedBookshelfIds不能为空' }`。
+2. **解析操作人**：经 `getCurrentUser(db, openid)` 反查当前用户与 `current_family_id`；未注册返回 `'用户未注册'`，未选择家庭返回 `'未选择当前家庭'`。
+3. **权限校验**：`checkPermission(BOOKSHELF_UPDATE, familyId)`；仅 OWNER / MEMBER 可操作，GUEST 无权限。
+4. **查询集合**：拉取当前家庭下 `status: 'ACTIVE'` 的全部书架。
+5. **覆盖性校验（三道门槛）**：
+   - 数组内不得重复（`inputSet.size !== orderedBookshelfIds.length` → `'书架顺序存在重复'`）；
+   - 数组长度须等于 ACTIVE 书架总数（`inputSet.size !== existingIds.length` → `'书架顺序必须覆盖当前家庭全部书架'`）；
+   - 每个 ACTIVE 书架 ID 都必须出现在数组中（否则 `'书架顺序包含无效或越权书架'`）。
+6. **写入顺序**：按数组顺序逐条 `update`：`sort_order = idx + 1`，并写入 `updated_by`、`updated_at`；以 `Promise.all` 并发写入（云数据库不支持事务批量）。
 
 #### 权限
 - 所需权限：`BOOKSHELF_UPDATE`
 - 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
 - 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
-#### 返回（规划）
+#### 返回
+**成功：**
 ```json
 { "success": true }
+```
+**失败（示例）：**
+```json
+{ "success": false, "message": "书架顺序必须覆盖当前家庭全部书架" }
 ```
 
 ---
@@ -2043,7 +2056,7 @@ running
 
 # 6. 遗留问题
 
-1. **实现状态 / 脚手架**：架构表所列 33 个接口中，26 个已有真实实现（含 F2 `api_book_searchRecent` 与 A3 `api_user_get`），另有 8 个云函数文件仅为**桩函数**（仅回显 `event` 与微信上下文，未实现业务逻辑）：C5 `api_bookshelf_reorder`、G1/G2（任务创建）、H1 `api_task_unbindRfid`、J1–J4（PDA 任务执行/RFID 绑定）。文档已在架构表与各章节标注 ✅/🚧，避免读者误判为已上线。
+1. **实现状态 / 脚手架**：架构表所列 33 个接口中，26 个已有真实实现（含 A3 `api_user_get`、C5 `api_bookshelf_reorder`），另有 7 个云函数文件仅为**桩函数**（仅回显 `event` 与微信上下文，未实现业务逻辑）：G1/G2（任务创建）、H1 `api_task_unbindRfid`、J1–J4（PDA 任务执行/RFID 绑定）。文档已在架构表与各章节标注 ✅/🚧，避免读者误判为已上线。
 
 2. **通用失败返回 / 错误枚举未系统化（已起草到文档）**：权限校验经 `checkPermission` 统一产出 `reason` 错误枚举（见 `_shared/permission.js`），但当前真实云函数仅把 `message` 透传给前端、**未透传 `reason`**（见各接口"返回-失败"示例）。已新增第 5 章《通用错误返回规范（错误枚举）》集中说明推荐结构与枚举表；建议后续统一在失败响应中补充 `reason` 字段，使前端可按错误类型分支。
 
