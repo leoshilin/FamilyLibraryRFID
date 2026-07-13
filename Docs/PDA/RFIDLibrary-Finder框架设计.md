@@ -1,6 +1,6 @@
 # RFIDLibrary-Finder（Android PDA）框架设计
 
-> 本文档为 AI 生成的设计文档（按 AI_PROJECT_GUIDE §11 输出至 `.codex/output/`）。
+> 本文档为 AI 生成的设计文档（原按 AI_PROJECT_GUIDE §11 输出至 `.codex/output/`，现归档为正式设计文档于 `Docs/PDA/`）。
 > 对应代码目录：`RFID_Handheld/RFIDLibrary-Finder/`
 > 上层架构与业务规则以 `Docs/` 为准（Source of Truth）。
 
@@ -137,4 +137,4 @@ SDK 资源（来自同级 `RFIDTester`）：
 
 - F4.3 / F6.2 完整状态机与对应页面
 - ISBN 扫码校验、EPC 回写反馈、任务轮询后台服务
-- 不修改小程序 / 云函数 / `.codex` 既有文档 / 厂家 SDK
+- 不修改小程序 / 云函数 / `Docs` 既有文档 / 厂家 SDK

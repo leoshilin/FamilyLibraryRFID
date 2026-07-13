@@ -50,16 +50,16 @@
 
 **结论（已与用户确认）**：`device_task` 作为任务队列**保持精简，不冗余存储书本主体数据**；展示字段由 **`api_task_accept`（J1）在业务逻辑中联表 `book_item → book_meta` 反查**，随任务一并返回。既不破坏任务表职责单一，又满足 PDA 显示与 ISBN 校验需求。`device_task` 表本身未新增字段。
 
-**API 返回字段（camelCase，J1 已更新 Docs/代码）**：
-- `task.bookTitle`：书名
-- `task.bookAuthor`：作者
-- `task.bookIsbn`：ISBN（绑定流程 PDA 扫码 ISBN 与之校验）
+**API 返回字段（camelCase，与 `api_task_accept` 实际返回一致，J1 已更新 Docs/代码）**：
+- `task.title`：书名（来自 `book_meta.title`）
+- `task.authors`：作者（来自 `book_meta.authors`）
+- `task.isbn`：ISBN（来自 `book_meta.isbn`；绑定流程 PDA 扫码 ISBN 与之校验）
 
 **落地涉及改动**：
-1. 云函数 `api_task_accept`（J1）：领取后置 running，再按 `book_item_id` 联表 `book_item→book_meta` 取 title/author/isbn 返回（**已修改代码与 Docs**）。
-2. `api-service-接口说明.md` §J1：返回示例与处理规则已同步。
-3. PDA 框架：`cloud/model/CloudModels.kt` 的 `TaskPayload` 与 `model/DeviceTask` 增加 `bookTitle/bookAuthor/bookIsbn`；`TaskCloudService.acceptTask` 映射带入（待实现）。
-4. PDA UI：绑定/寻书界面读取展示；绑定流程在 SCAN_ISBN 态与 `bookIsbn` 校验（待实现）。
+1. 云函数 `api_task_accept`（J1）：领取后置 running，再按 `book_item_id` 联表 `book_item→book_meta` 取 `title`/`authors`/`isbn` 返回（**已修改代码与 Docs**）。
+2. `api-service-接口说明.md` §J1：返回示例与处理规则已同步（`isbn` / `title` / `authors`）。
+3. PDA 框架：`cloud/model/CloudModels.kt` 的 `TaskPayload` 与 `model/DeviceTask` 增加 `isbn` / `title` / `authors`；`TaskCloudService.acceptTask` 已映射带入（**已落地**）。
+4. PDA UI：绑定/寻书界面读取展示；绑定流程在 SCAN_ISBN 态与任务返回的 `isbn` 校验（待实现）。
 
 > 注意：`device_task` 表未新增字段（已回退此前误加的展示字段）；展示数据仅在 API 返回时生成，不入任务表。
 
@@ -91,9 +91,9 @@
 ```
 ┌──────────────────────────────────┐
 │ 类型：绑定 RFID / 寻书              │
-│ 书名：<book_title>                 │
-│ 作者：<book_author>                │
-│ ISBN：<book_isbn>                 │
+│ 书名：<title>                     │
+│ 作者：<authors>                   │
+│ ISBN：<isbn>                      │
 │ (寻书) 目标TID：<target_tid>       │
 │                                    │
 │        [ 开始执行 ]   [ 放弃 ]       │
@@ -104,7 +104,7 @@
 
 ## 6. 屏幕二：绑定 / 重绑定（Bind）—— F4.3
 
-**前置**：进入时持有 `DeviceTask`（`book_item_id`、展示字段、`task_id`）。
+**前置**：进入时持有 `DeviceTask`（`book_item_id`、展示字段 `title`/`authors`/`isbn`、`taskId`）。
 **调用链路**：`RfidManager.inventory` → `getRfidBindingInfo(tid)` → `bindRfid(...)` → `RfidManager.writeEpcByTid(tid, book_item_id)` → `completeTask`。
 
 ### 6.1 状态机
@@ -117,7 +117,7 @@ TASK_INFO → SCAN_ISBN → SCAN_TAG → [CONFIRM_UNBIND?] → BINDING → WRITE
 | 状态 | 界面与行为 | 关键调用 / 校验 |
 |---|---|---|
 | **TASK_INFO** | 显示任务书名/作者/ISBN + [开始绑定][取消] | — |
-| **SCAN_ISBN** | 调用相机扫书上 ISBN 条码；与任务 `book_isbn` 比对 | 不一致 → 红字提示，允许重试；一致 → 下一步 |
+| **SCAN_ISBN** | 调用相机扫书上 ISBN 条码；与任务返回的 `isbn` 比对 | 不一致 → 红字提示，允许重试；一致 → 下一步 |
 | **SCAN_TAG** | 触发 `RfidManager.inventory()`，列出可见标签（TID+RSSI），用户点选目标标签 | 取到 TID 后调 `getRfidBindingInfo(tid)` |
 | **CONFIRM_UNBIND**（条件） | 若 `getRfidBindingInfo` 返回 `bound=true`（标签被他书占用）：弹窗“该标签已被《title》(ISBN) 占用，是否解绑后重绑？”[确认][取消] | 确认→BINDING；取消→回到 SCAN_TAG 或 failed |
 | **BINDING** | 进度提示“正在绑定…” | `bindRfid(bookItemId, tid, taskId, deviceId)`；成功(action=bind/rebind)→下一步；失败→重试/取消 |
@@ -224,7 +224,7 @@ TASK_INFO → SEARCHING → DONE
 
 ## 11. 后续实现待办（开发阶段）
 
-1. **（需先确认 §4）云端扩展**：`device_task` 增加 `book_title/book_author/book_isbn`；`api_task_createBindRfid`/`createFindBook` 填充；`api_task_accept` 返回携带。
+1. **（§4 已确认：任务表保持精简）**：展示字段不入 `device_task`；`api_task_accept` 领取时已联表 `book_item → book_meta` 返回 `isbn`/`title`/`authors`（已落地），`api_task_createBindRfid`/`createFindBook` 不填充展示字段（已落地）。
 2. 新增 `HomeViewModel` / `BindViewModel` / `FindViewModel` + 三个 Composable 屏 + NavHost。
 3. 新增相机 ISBN 扫码（ML Kit）+ `BeepPlayer` + `RssiBar` 等组件。
 4. 绑定流程 EPC 回写失败的“完成(绑定已生效)”分支。
