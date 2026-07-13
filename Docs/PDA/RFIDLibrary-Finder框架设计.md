@@ -53,7 +53,7 @@ PDA 无微信登录态，调用 J 系列接口仅用 `deviceId` 校验。采用 
 经 `app/build.gradle.kts` 注入 `BuildConfig.WECHAT_APP_ID / WECHAT_APP_SECRET / WECHAT_ENV_ID`，运行期由 `cloud.WeChatCloudConfig` 读取。
 
 > 安全提示：`appSecret` 会随 APK 打包发布，仅适用于个人/家庭等可信场景。
-> 多租户/商业发布建议改为「经中间代理转发」（计划阶段已评估，本期不做）。
+> 多租户/商业发布建议改为「经中间代理转发」（计划阶段评估，本期不做）。
 
 ---
 
@@ -103,14 +103,14 @@ SDK 资源（来自同级 `RFIDTester`）：
 
 ## 6. 与业务流（F4.3 / F6.2）的对应
 
-框架已为两大业务流预留能力，后续实现时直接复用本层：
+框架为两大业务流预留能力，后续实现时直接复用本层 <font color="red">（待实现）</font>：
 
 - **F4.3 绑定**：`RfidManager.inventory` 读标签 → `getRfidBindingInfo(tid)` 查占用 →
   用户确认 → `bindRfid(bookItemId,tid,taskId,deviceId)` → `RfidManager.writeEpcByTid(tid, bookItemId)` 回写 EPC → `completeTask`。
 - **F6.2 寻书**：`acceptTask` 取 `targetTid` → `RfidManager.findTagByTid(tid)` 连续扫描 →
   `RssiLocator.nextPower/locate` 估算距离与蜂鸣等级 → 用户结束 → `completeTask`。
 
-`RssiLocator` 已把 RFIDTester 的跟踪循环逻辑提取为纯函数（功率 30/20/10 三档自动调节 + 距离文案 + beep 等级）。
+`RssiLocator` 把 RFIDTester 的跟踪循环逻辑提取为纯函数（功率 30/20/10 三档自动调节 + 距离文案 + beep 等级）。
 
 ---
 
@@ -126,14 +126,14 @@ SDK 资源（来自同级 `RFIDTester`）：
   wechat.envId=YOUR_ENV_ID
   ```
   （`local.properties.example` 仅为 wechat.* 模板，不要用它整体覆盖自动生成的文件。）
-- 云端需已部署 J 系列云函数，且 `device_task` / `rfid_bind_log` 集合已建（见 Docs §4.5 `script_init_collections`）。
+- 云端需部署 J 系列云函数，且 `device_task` / `rfid_bind_log` 集合需创建（见 Docs §4.5 `script_init_collections`）。
 
 > 说明：当前沙箱环境无 Android SDK，无法在本仓库内编译验证；正确性通过对齐 RFIDTester
-> 工程与 SDK 真实方法签名（已用 `javap` 反编译确认）保证，请在 Android Studio 真机验证。
+> 工程与 SDK 真实方法签名（以 `javap` 反编译核对）保证，请在 Android Studio 真机验证。
 
 ---
 
-## 8. 本次范围外（后续实现）
+## 8. 本次范围外（后续实现） <font color="red">（待实现）</font>
 
 - F4.3 / F6.2 完整状态机与对应页面
 - ISBN 扫码校验、EPC 回写反馈、任务轮询后台服务

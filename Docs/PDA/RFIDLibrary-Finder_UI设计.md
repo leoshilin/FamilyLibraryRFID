@@ -44,24 +44,24 @@
 - 领取到的 `DeviceTask` 以 **JSON 字符串**经 `kotlinx.serialization` 序列化后作为 NavArgument 传递（`DeviceTask` 需加 `@Serializable`）。
 - 每个流程一个 `ViewModel`（`HomeViewModel` / `BindViewModel` / `FindViewModel`），用 `StateFlow<UiState>` 表达状态机，Composable 只渲染、发事件。
 
-## 4. 设计冲突与结论（已确认）
+## 4. 设计冲突与结论
 
 **现象**：F4.3（343 行）与 F6.2（520 行）要求 PDA 显示书名/作者/ISBN 并与任务 ISBN 校验；但 `device_task`（Docs §3.9）只存 `book_item_id` 与 `target_tid`，无书本主体字段。
 
-**结论（已与用户确认）**：`device_task` 作为任务队列**保持精简，不冗余存储书本主体数据**；展示字段由 **`api_task_accept`（J1）在业务逻辑中联表 `book_item → book_meta` 反查**，随任务一并返回。既不破坏任务表职责单一，又满足 PDA 显示与 ISBN 校验需求。`device_task` 表本身未新增字段。
+**结论**：`device_task` 作为任务队列**保持精简，不冗余存储书本主体数据**；展示字段由 **`api_task_accept`（J1）在业务逻辑中联表 `book_item → book_meta` 反查**，随任务一并返回。既不破坏任务表职责单一，又满足 PDA 显示与 ISBN 校验需求。`device_task` 表本身未新增字段。
 
-**API 返回字段（camelCase，与 `api_task_accept` 实际返回一致，J1 已更新 Docs/代码）**：
+**API 返回字段（camelCase，与 `api_task_accept` 实际返回一致）**：
 - `task.title`：书名（来自 `book_meta.title`）
 - `task.authors`：作者（来自 `book_meta.authors`）
 - `task.isbn`：ISBN（来自 `book_meta.isbn`；绑定流程 PDA 扫码 ISBN 与之校验）
 
 **落地涉及改动**：
-1. 云函数 `api_task_accept`（J1）：领取后置 running，再按 `book_item_id` 联表 `book_item→book_meta` 取 `title`/`authors`/`isbn` 返回（**已修改代码与 Docs**）。
-2. `api-service-接口说明.md` §J1：返回示例与处理规则已同步（`isbn` / `title` / `authors`）。
-3. PDA 框架：`cloud/model/CloudModels.kt` 的 `TaskPayload` 与 `model/DeviceTask` 增加 `isbn` / `title` / `authors`；`TaskCloudService.acceptTask` 已映射带入（**已落地**）。
-4. PDA UI：绑定/寻书界面读取展示；绑定流程在 SCAN_ISBN 态与任务返回的 `isbn` 校验（待实现）。
+1. 云函数 `api_task_accept`（J1）：领取后置 running，再按 `book_item_id` 联表 `book_item→book_meta` 取 `title`/`authors`/`isbn` 返回。
+2. `api-service-接口说明.md` §J1：返回示例与处理规则覆盖 `isbn` / `title` / `authors`。
+3. PDA 框架：`cloud/model/CloudModels.kt` 的 `TaskPayload` 与 `model/DeviceTask` 增加 `isbn` / `title` / `authors`；`TaskCloudService.acceptTask` 映射带入。
+4. PDA UI：绑定/寻书界面读取展示；绑定流程在 SCAN_ISBN 态与任务返回的 `isbn` 校验 <font color="red">（待实现）</font>。
 
-> 注意：`device_task` 表未新增字段（已回退此前误加的展示字段）；展示数据仅在 API 返回时生成，不入任务表。
+> 注意：`device_task` 表不新增字段；展示数据仅在 API 返回时生成，不入任务表。
 
 ---
 
@@ -84,7 +84,7 @@
 [TASK_CARD] ──(开始)──▶ 路由到 bind / find
 [TASK_CARD] ──(放弃)──▶ completeTask(failed, {reason:"user_abort"}) → [IDLE]
 ```
-- **轮询策略**（遵守设计文档 §2.3）：仅当当前**无活动任务**时轮询；每次只取一个；`acceptTask` 已将任务置 `running`，避免重复执行。
+- **轮询策略**（遵守设计文档 §2.3）：仅当当前**无活动任务**时轮询；每次只取一个；`acceptTask` 将任务置 `running`，避免重复执行。
 - 也提供手动「领取任务」按钮（便于调试与无轮询场景）。
 
 ### 5.3 任务卡片（TASK_CARD）布局
@@ -126,7 +126,7 @@ TASK_INFO → SCAN_ISBN → SCAN_TAG → [CONFIRM_UNBIND?] → BINDING → WRITE
 
 ### 6.2 EPC 回写失败的处理（设计权衡）
 设计文档 F4.3：「等待成功后再次扫描写入 EPC… 否则更新队列中任务状态为 success（失败则提交云端回退）」。
-- 云端 `book_item.rfid_tid` 已在 `bindRfid` 成功时写入（绑定已生效）。
+- 云端 `book_item.rfid_tid` 在 `bindRfid` 成功时写入（绑定已生效）。
 - EPC 区写入失败属“标签物理写入”问题，不影响云端绑定，但会影响后续寻书（寻书靠读 EPC/TID 定位）。
 - **建议 UI**：WRITE_EPC 失败时弹窗 `[重试写入] [完成(绑定已生效)]`。选“完成”则仍 `completeTask(success)`（绑定有效，EPC 可日后重补）；选“重试”再试。若坚持严格一致，可在重试 N 次后仍失败则 `completeTask(failed)` 触发云端回退——但会撤销已生效绑定，需谨慎。**默认采用“完成(绑定已生效)”**。
 
@@ -205,11 +205,11 @@ TASK_INFO → SEARCHING → DONE
 
 | 项 | 说明 |
 |---|---|
-| 相机 `CAMERA` | 已在 Manifest 声明；用于 ISBN 扫码 |
+| 相机 `CAMERA` | 在 Manifest 声明；用于 ISBN 扫码 |
 | 条码识别 | 新增 `com.google.mlkit:barcode-scanning`（或 CameraX + ML Kit） |
 | 蜂鸣/音频 | `BeepPlayer`：`ToneGenerator` 或 SDK 蜂鸣 API |
 | 振动（可选） | `VIBRATE` 权限 + `Vibrator`，作为寻书近距的额外反馈 |
-| 协程/StateFlow | 已有 `kotlinx-coroutines-android`；ViewModel 用 `lifecycle-viewmodel-compose` |
+| 协程/StateFlow | 含 `kotlinx-coroutines-android`；ViewModel 用 `lifecycle-viewmodel-compose` |
 
 ## 10. 与现有框架代码的映射
 
@@ -222,9 +222,9 @@ TASK_INFO → SEARCHING → DONE
 | 设备标识 | `DeviceIdProvider.deviceId` |
 | 依赖装配 | `di.AppContainer` |
 
-## 11. 后续实现待办（开发阶段）
+## 11. 后续实现待办（开发阶段） <font color="red">（待实现）</font>
 
-1. **（§4 已确认：任务表保持精简）**：展示字段不入 `device_task`；`api_task_accept` 领取时已联表 `book_item → book_meta` 返回 `isbn`/`title`/`authors`（已落地），`api_task_createBindRfid`/`createFindBook` 不填充展示字段（已落地）。
+1. **（§4：任务表保持精简）**：展示字段不入 `device_task`；`api_task_accept` 领取时联表 `book_item → book_meta` 返回 `isbn`/`title`/`authors`，`api_task_createBindRfid`/`createFindBook` 不填充展示字段。
 2. 新增 `HomeViewModel` / `BindViewModel` / `FindViewModel` + 三个 Composable 屏 + NavHost。
 3. 新增相机 ISBN 扫码（ML Kit）+ `BeepPlayer` + `RssiBar` 等组件。
 4. 绑定流程 EPC 回写失败的“完成(绑定已生效)”分支。
@@ -232,4 +232,4 @@ TASK_INFO → SEARCHING → DONE
 
 ---
 
-> 本设计为阶段一产出，待 §4 冲突确认后即可进入阶段二实现。
+> 本设计为阶段一产出，§4 冲突结论明确，可进入阶段二实现。
