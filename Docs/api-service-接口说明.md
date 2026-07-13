@@ -1829,7 +1829,7 @@ PDA 领取待执行任务。
 
 规则：
 - 仅 PDA 调用
-- 只从 `pending` 中按创建时间排序（领取任务时只看 pending，不取 running/success/failed/cancel）
+- 从 pending / running 中按创建时间排序
 - 返回一个任务
 - 返回后立即更新状态为 running
 
@@ -1844,7 +1844,7 @@ api_task_accept
 running
 ```
 
-> **实现状态说明**：`api_task_accept` 已实现真实领取逻辑（**仅 `pending`** 升序取 1 条置 running，不取 running 任务，避免重复执行）；并在领取时经 `book_item → book_meta` 关联返回 `isbn` / `title` / `authors` 展示字段（`device_task` 不冗余存储展示字段，见数据库表结构设计 §3.9）。
+> **实现状态说明**：`api_task_accept` 已实现真实领取逻辑（pending/running 升序取 1 条置 running）；并在领取时经 `book_item → book_meta` 关联返回 `isbn` / `title` / `authors` 展示字段（`device_task` 不冗余存储展示字段，见数据库表结构设计 §3.9）。
 
 #### 入参（规划）
 ```json
@@ -1859,7 +1859,7 @@ running
 
 #### 权限
 - 无家庭 / 角色校验（PDA 专用）。
-- 从 `device_task` 取 `status='pending'` 按 `created_at` 升序 1 条；置 `status:'running'`、`claimed_by_device=deviceId`、`claimed_at`；`running`/`success`/`failed`/`cancel` 任务不参与领取，避免同一任务被重复执行。
+- 从 `device_task` 取 `status in ['pending','running']` 按 `created_at` 升序 1 条；置 `status:'running'`、`claimed_by_device=deviceId`、`claimed_at`。
 - **展示字段实时关联**：`device_task` 仅存调度字段（`book_item_id` / `target_tid`），不冗余保存 ISBN / 书名 / 作者。领取后由本接口经 `book_item.book_meta_id → book_meta` 反查拼装 `isbn` / `title` / `authors`，随任务一并返回（供 PDA 直接显示并校验 ISBN）。任一关联缺失或异常均降级为空字符串，不影响领取主流程。
 - 返回 `{ success:true, task:{ taskId, taskType, bookItemId, targetTid, isbn, title, authors } }`，无任务返回 `{ success:true, task:null }`。
 
