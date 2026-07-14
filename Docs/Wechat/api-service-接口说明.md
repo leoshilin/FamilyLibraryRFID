@@ -80,6 +80,7 @@ J2| api_task_complete | task | PDA操作：任务执行|
 J3| api_task_getRfidBindingInfo | task | PDA操作：任务执行|
 J4| api_task_bindRfid | task | PDA操作：任务执行|
 J5| api_task_listRecentCompleted | task | PDA操作：最近完成任务查询|
+J6| api_task_abort | task | PDA操作：放弃任务执行，回退 pending|
 
 > 注：架构表中的接口命名与代码实际云函数名对齐（如 `api_rfid_bind` → `api_task_bindRfid`、`api_recentbook_search` → `api_book_searchRecent`），以代码为准。
 
@@ -196,6 +197,7 @@ module.exports = { get, prepareCreate, create, updateBookshelf, restock, offstoc
  J3 | api_task_getRfidBindingInfo | taskServices | `getRfidBindingInfo(tid)` | tid |
  J4 | api_task_bindRfid | taskServices | `bindRfid(bookItemId, tid, taskId?)` | bookItemId, tid, taskId? |
  J5 | api_task_listRecentCompleted | taskServices | `listRecentCompleted(deviceId, withinDays?)` | deviceId, withinDays? |
+ J6 | api_task_abort | taskServices | `abort(taskId)` | taskId |
 
 > 入参标注 `?` 的为可选；`familyId` / `operator` / `created_by` 一律服务端解析，不在任何方法签名中出现（B3 / B4 / B6 的"目标家庭" `familyId` 除外，在方法签名显式列出）。
 
@@ -268,6 +270,7 @@ complete(taskId, status, result)          // → api_task_complete          { ta
 getRfidBindingInfo(tid)                   // → api_task_getRfidBindingInfo { tid }
 bindRfid(bookItemId, tid, taskId)         // → api_task_bindRfid          { bookItemId, tid, taskId? }
 listRecentCompleted(deviceId, withinDays = 3) // → api_task_listRecentCompleted { deviceId, withinDays? }  // 最近完成任务（近 withinDays 天）
+abort(taskId)                               // → api_task_abort             { taskId }                   // 放弃寻书执行，任务回退 pending
 ```
 > `bindRfid` 的 `taskId` 为可选：用于关联 `rfid_bind_log.task_id`；不传时按 `book_item_id` 反查进行中的 `bind_rfid` 任务。`deviceId` 为可选：作为 `rfid_bind_log.operator`（PDA 设备ID），不传时回退到任务领取设备，再回退到固定串 `"PDA"`。
 
@@ -1951,6 +1954,34 @@ running
 - 无（PDA 专用；提交任务执行结果）
 
 #### 返回（规划）
+```json
+{ "success": true }
+```
+
+---
+
+### J6. api_task_abort
+#### 功能
+放弃寻书任务执行，将任务状态从 `running` 回退为 `pending`，清空设备占用信息。仅 PDA 调用。
+
+> **说明**：`api_task_abort` 用于用户在寻书过程中因无法找到 RFID 信号（距离过远、不在同一房间等）而暂时退出。与 `api_task_complete(failed)` 不同，本接口**不**将任务标记为 `failed`，任务可被再次轮询领取。
+
+#### 入参
+```json
+{
+  "taskId": "task00001"
+}
+```
+
+#### 处理规则
+- 仅允许 `status = running` 的任务执行 abort（`pending` 或已结束的任务拒绝）。
+- 更新 `device_task`：`status` → `pending`，`claimed_by_device` → `null`，`claimed_at` → `null`。
+- **不**写入 `result` 字段，**不**设置 `completed_at`。
+
+#### 权限
+- 无家庭 / 角色校验（PDA 专用）。
+
+#### 返回
 ```json
 { "success": true }
 ```

@@ -29,7 +29,7 @@ private val BgGray = Color(0xFFF5F5F5)
  *
  * 盖革计数器模式：
  * - TASK_INFO：显示任务信息 + 开始寻书按钮
- * - SCANNING：RSSI 实时信号指示 + 距离提示
+ * - SCANNING：RSSI 实时信号指示 + 距离提示 + [结束寻书] [退出任务]
  * - DONE：结果展示
  */
 @Composable
@@ -55,6 +55,11 @@ fun FindScreen(
             title = state.bookTitle.ifBlank { "寻书" },
             onBack = {
                 if (state.phase == FindPhase.DONE) {
+                    onNavigateBack()
+                } else if (state.phase == FindPhase.SCANNING) {
+                    // SCANNING 阶段：弹出确认对话框
+                    // 此处的 showBackDialog 状态定义在 FindScanningContent 中，
+                    // 但为了让顶部栏也能触发，使用一个提升到 FindScreen 级别的状态
                     onNavigateBack()
                 } else if (!state.busy) {
                     viewModel.onCancel()
@@ -199,6 +204,72 @@ private fun FindTaskInfoContent(state: FindUiState, viewModel: FindViewModel) {
 @Composable
 private fun FindScanningContent(state: FindUiState, viewModel: FindViewModel) {
     val rssi = state.currentRssi
+    // 退出确认对话框状态
+    var showAbortDialog by remember { mutableStateOf(false) }
+    // 返回确认对话框状态
+    var showBackDialog by remember { mutableStateOf(false) }
+
+    // 退出确认对话框
+    if (showAbortDialog) {
+        AlertDialog(
+            onDismissRequest = { showAbortDialog = false },
+            title = { Text("退出寻书任务") },
+            text = {
+                Text("退出后任务将回到待领取状态，可稍后重新寻书。\n\n确定要退出吗？")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showAbortDialog = false
+                        viewModel.onAbortFind()
+                    }
+                ) {
+                    Text("确认退出", color = StatusOrange)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAbortDialog = false }) {
+                    Text("继续寻书")
+                }
+            }
+        )
+    }
+
+    // 返回键确认对话框（SEARCHING 阶段系统返回键弹出）
+    if (showBackDialog) {
+        AlertDialog(
+            onDismissRequest = { showBackDialog = false },
+            title = { Text("结束当前寻书？") },
+            text = {
+                Text("请选择操作：\n• 结束寻书：提交寻书结果（找到/未找到）\n• 退出任务：任务回到待领取状态，稍后重试")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBackDialog = false
+                        viewModel.onAbortFind()
+                    }
+                ) {
+                    Text("退出任务", color = StatusOrange)
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { showBackDialog = false }) {
+                        Text("继续寻书")
+                    }
+                    TextButton(
+                        onClick = {
+                            showBackDialog = false
+                            viewModel.onEndFind()
+                        }
+                    ) {
+                        Text("结束寻书", color = StatusBlue)
+                    }
+                }
+            }
+        )
+    }
     // RSSI 典型范围 -80（远）到 -30（近），映射到 0-100% 的强度指示
     val signalStrength = if (rssi != null) {
         ((rssi + 80).coerceIn(0, 50) / 50f) // 归一化
@@ -316,22 +387,35 @@ private fun FindScanningContent(state: FindUiState, viewModel: FindViewModel) {
 
         Spacer(Modifier.weight(1f))
 
-        // 结束寻书按钮
-        Button(
-            onClick = { viewModel.onEndFind() },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            enabled = !state.busy,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (state.found) StatusGreen else StatusBlue
-            )
+        // 操作按钮行：[结束寻书] [退出任务]
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = if (state.found) "已找到，结束寻书" else "结束寻书",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
+            // 退出任务按钮
+            OutlinedButton(
+                onClick = { showAbortDialog = true },
+                modifier = Modifier.weight(1f),
+                enabled = !state.busy,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = StatusOrange)
+            ) {
+                Text("退出任务", fontSize = 16.sp)
+            }
+            // 结束寻书按钮
+            Button(
+                onClick = { viewModel.onEndFind() },
+                modifier = Modifier.weight(1f).height(56.dp),
+                enabled = !state.busy,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (state.found) StatusGreen else StatusBlue
+                )
+            ) {
+                Text(
+                    text = if (state.found) "已找到，结束寻书" else "结束寻书",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }

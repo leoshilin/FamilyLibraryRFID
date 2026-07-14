@@ -109,3 +109,18 @@ data class BindResponse(
     val action: String? = null,
     val message: String? = null
 )
+
+// ───────────── J6（PDA 放弃任务执行）─────────────
+
+/** J6 api_task_abort 入参。 */
+@Serializable
+data class AbortRequest(
+    val taskId: String
+)
+
+/** J6 api_task_abort 返回。 */
+@Serializable
+data class AbortResponse(
+    val success: Boolean = true,
+    val message: String? = null
+)

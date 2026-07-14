@@ -216,24 +216,27 @@ TASK_INFO → SCAN_ISBN → SCAN_TAG → [CONFIRM_UNBIND?] → BINDING → WRITE
 ### 7.1 状态机
 ```
 TASK_INFO → SEARCHING → DONE
-   │           │  (停止)
-   │           ├─(本次会话已读到目标标签连续结果)─▶ completeTask(success, {durationMs, foundRssi, readCount})
-   │           └─(停止时从未读到任何RFID结果)────▶ completeTask(failed, {reason:'no_rfid_read', durationMs, readCount:0})
+   │           │  ├─(「结束寻书」：本次会话已读到目标标签连续结果)─▶ completeTask(success, {durationMs, foundRssi, readCount})
+   │           │  ├─(「结束寻书」：从未读到任何RFID结果)─────────▶ completeTask(failed, {reason:'no_rfid_read', durationMs, readCount:0})
+   │           │  └─(「退出任务」：无法找到RFID信号，暂时退出)──▶ abortTask() → 任务回退 pending
+   │           │
    └─(取消)────────────────▶ completeTask(failed, {reason:'user_abort'})
 ```
 
 | 状态 | 界面与行为 |
 |---|---|
 | **TASK_INFO** | 显示目标书名/作者/ISBN/TID + [开始寻书][取消] |
-| **SEARCHING** | “盖革计数器”模式：全屏大号可视化。每 ~300ms 调 `findTagByTid`；用 `RssiLocator.locate()` 得距离文案+beep 等级，`RssiLocator.nextPower()` 得下一档功率并 `setPower`；RSSI 条随信号增强由红→绿，配蜂鸣（越近越急）。底部 [停止寻书]。界面持续累计目标标签**连续读取次数**（`readCount`），达到阈值（默认 3）时亮起「已定位✅」指示（防误判）。 |
-| **DONE** | “已结束寻书”+ 结果：成功（本次耗时 / 最后 RSSI / 连续读取次数）或失败（理由：`no_rfid_read` / `user_abort`）+ [返回任务台] |
+| **SEARCHING** | "盖革计数器"模式：全屏大号可视化。每 ~300ms 调 `findTagByTid`；用 `RssiLocator.locate()` 得距离文案+beep 等级，`RssiLocator.nextPower()` 得下一档功率并 `setPower`；RSSI 条随信号增强由红→绿，配蜂鸣（越近越急）。底部 **[结束寻书] [退出任务]**。界面持续累计目标标签**连续读取次数**（`readCount`），达到阈值（默认 3）时亮起「已定位✅」指示（防误判）。 |
+| **DONE** | "已结束寻书"+ 结果：成功（本次耗时 / 最后 RSSI / 连续读取次数）或失败（理由：`no_rfid_read` / `user_abort`）+ [返回任务台] |
 
 > **操作禁用（防并发 / 防误触）**：寻书为连续 RFID 扫描循环，需严格控制：
 > - **TASK_INFO**：`[开始寻书]` `[取消]` 可点；`[取消]` → `completeTask(failed,{reason:"user_abort"})`。
-> - **SEARCHING**（RFID 循环进行中）：**仅 `[停止寻书]` 可点**，禁用 `[开始寻书]` 及一切导航/返回；系统返回键等同 `[停止寻书]`，按“结束判定（防误判）”落 `success`/`failed`。`LoadingOverlay` 不可取消（扫描循环由停止键终止）。
+> - **SEARCHING**（RFID 循环进行中）：**仅 `[结束寻书]` 和 `[退出任务]` 可点**，禁用 `[开始寻书]` 及一切导航/返回。系统返回键弹出确认对话框，由用户选择「结束寻书」「退出任务」或「继续寻书」。
 > - **DONE**：`completeTask` 已在进入 DONE 前调用；仅 `[返回任务台]` 可点 → 返回 home 触发 POLLING。
 
-> **结束判定（防误判）**：用户点击「停止寻书」时，若本次会话已取得目标标签**连续稳定读取结果**（`readCount ≥ 阈值`）→ `completeTask(success, …)`；若**从未读到任何 RFID 结果**（`readCount = 0`）→ `completeTask(failed, {reason:'no_rfid_read', …})`，任务作为失败关闭。判定规则见需求流程定义书 F6.2。
+> **结束判定（防误判）**：用户点击「结束寻书」时，若本次会话已取得目标标签**连续稳定读取结果**（`readCount ≥ 阈值`）→ `completeTask(success, …)`；若**从未读到任何 RFID 结果**（`readCount = 0`）→ `completeTask(failed, {reason:'no_rfid_read', …})`，任务作为失败关闭。判定规则见需求流程定义书 F6.2。
+
+> **退出任务（新增）**：用户点击「退出任务」时，弹出确认对话框提示"退出后任务将回到待领取状态，可稍后重新寻书"，用户确认后调用 `api_task_abort`（J6）将任务从 `running` 回退为 `pending` 并清空设备占用信息。此操作**不**标记任务为 `failed`，不写入 `result`。适用场景：RFID 读取失败、距离过远、不在同一房间等暂时无法定位的情况。
 
 ### 7.2 寻书可视化（SEARCHING 态）
 - **中心指示**：大圆形/进度环，半径或颜色随 RSSI 强度变化（近=绿大，远=红小）。
@@ -252,7 +255,7 @@ TASK_INFO → SEARCHING → DONE
 │         RSSI：-28   功率：10dBm    │
 │         Beep: Lv4                 │
 │                                    │
-│        [   停止寻书   ]             │
+│     [   结束寻书   ] [ 退出任务 ]   │
 └──────────────────────────────────┘
 ```
 
@@ -502,7 +505,7 @@ IDLE → PLAYING（播放中） → IDLE（播放完成/停止）
 | Bind | BINDING / WRITE_EPC（异步） | 导航 / 返回 | 失败弹窗 `[重试写入]` `[完成(绑定已生效)]` | `LoadingOverlay` |
 | Bind | DONE | 无 | `[返回任务台]` | 返回 home 触发 POLLING |
 | Find | TASK_INFO | 无 | `[开始寻书]` `[取消]` | 取消 → abort |
-| Find | SEARCHING（RFID 循环） | `[开始寻书]`、导航 / 返回、系统返回键 | `[停止寻书]` | 返回键等同停止；`LoadingOverlay` 不可取消 |
+| Find | SEARCHING（RFID 循环） | `[开始寻书]`、导航 / 返回 | `[结束寻书]` `[退出任务]` | 系统返回键弹出确认对话框（结束/退出/继续）；`[退出任务]` 需二次确认 |
 | Find | DONE | 无 | `[返回任务台]` | `completeTask` 已前置调用 |
 | RECENT | 列表加载中 | 无（空态不展示） | `[返回]` | 进入前已取消首页轮询；返回 → POLLING 无冲突 |
 | Debug Menu | — | 无 | `[按键测试]` `[RFID标签读写]` `[Beep蜂鸣测试]` `[返回]` | 纯导航页，无异步操作 |

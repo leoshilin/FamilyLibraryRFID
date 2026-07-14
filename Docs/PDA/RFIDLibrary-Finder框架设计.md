@@ -112,6 +112,7 @@ SDK 资源（来自同级 `RFIDTester`）：
 | api_task_getRfidBindingInfo (J3) | getRfidBindingInfo(tid) | {tid} | BookBindingInfo | 绑定前确认解绑 |
 | api_task_bindRfid (J4) | bindRfid(bookItemId,tid,taskId?,deviceId?) | 见上 | BindResponse(action) | 执行绑定 |
 | api_task_listRecentCompleted (J5) | listRecentCompleted(deviceId, withinDays=3) | {deviceId, withinDays?} | RecentTask[]（最多 50 条） | 任务台查询最近完成任务 <font color="red">（待实现）</font> |
+| api_task_abort (J6) | abortTask(taskId) | {taskId} | {success:true} | 放弃寻书执行，任务回退 pending 状态 |
 
 字段命名：入参/返回全链路 camelCase（deviceId / bookItemId / taskId / targetTid），与云函数一致（见 AI_DEVELOPMENT_HISTORY「命名统一专项」）。
 
@@ -125,8 +126,9 @@ SDK 资源（来自同级 `RFIDTester`）：
   用户确认 → `bindRfid(bookItemId,tid,taskId,deviceId)` → `RfidManager.writeEpcByTid(tid, bookItemId)` 回写 EPC → `completeTask`。
 - **F6.2 寻书**：`acceptTask` 取清单中一条 `targetTid` → `RfidManager.findTagByTid(tid)` 连续扫描 →
   `RssiLocator.nextPower/locate` 估算距离与蜂鸣等级 → `BeepPlayer.beepByLevel(level)` 播放盖革计数器音效 →
-  累计目标标签**连续读取次数**（达到阈值判「已找到」，防误判）→ 用户结束 →
-  若本次会话有连续读取结果则 `completeTask(success, {durationMs, foundRssi, readCount})`；若**从未读到 RFID 结果**则 `completeTask(failed, {reason:'no_rfid_read', durationMs, readCount:0})`（任务作为失败关闭）。详见需求流程定义书 F6.2。
+  累计目标标签**连续读取次数**（达到阈值判「已找到」，防误判）→ 用户可选择：
+  - **「结束寻书」**：若本次会话有连续读取结果则 `completeTask(success, {durationMs, foundRssi, readCount})`；若**从未读到 RFID 结果**则 `completeTask(failed, {reason:'no_rfid_read', durationMs, readCount:0})`（任务作为失败关闭）。
+  - **「退出任务」**：若用户无法找到 RFID 信号（距离过远、不在同一房间等），调用 `abortTask(taskId)`（J6）将任务状态从 `running` 回退为 `pending`，清空 `claimed_by_device` / `claimed_at`，任务可被再次领取。此操作**不**标记任务为 `failed`。
 
 `RssiLocator` 把 RFIDTester 的跟踪循环逻辑提取为纯函数（功率 30/20/10 三档自动调节 + 距离文案 + beep 等级）。
 

@@ -34,16 +34,18 @@ private const val LOST_THRESHOLD = 5
 /**
  * 寻书流程 UI 状态机。
  *
- * TASK_INFO → SCANNING → [用户点击结束] → DONE
+ * TASK_INFO → SCANNING → [用户操作] → DONE / CANCELLED
+ *   - 结束寻书 → completeTask(success/failed) → DONE
+ *   - 退出任务 → abortTask() → CANCELLED（任务回退 pending）
  */
 enum class FindPhase {
     /** 显示任务信息，等待用户确认开始 */
     TASK_INFO,
     /** 正在扫描（盖革计数器模式） */
     SCANNING,
-    /** 寻书完成 */
+    /** 寻书完成（已提交 completeTask 结果） */
     DONE,
-    /** 已取消/失败 */
+    /** 已取消/退出（任务已回退 pending 或用户放弃） */
     CANCELLED
 }
 
@@ -400,7 +402,7 @@ class FindViewModel : ViewModel() {
 
     // ───────── 取消 ─────────
 
-    /** 用户放弃寻书任务。 */
+    /** 用户放弃寻书任务（在 TASK_INFO 阶段）。 */
     fun onCancel() {
         cancelScan()
         val task = _uiState.value.task ?: return
@@ -423,6 +425,52 @@ class FindViewModel : ViewModel() {
                 busy = false,
                 statusMessage = "已取消"
             )
+        }
+    }
+
+    // ───────── 退出寻书（abort，不回退为 failed）─────────
+
+    /**
+     * 用户退出寻书任务（在 SCANNING 阶段）。
+     *
+     * 适用场景：用户无法找到 RFID 信号（距离过远、不在同一房间等），希望暂时退出，
+     * 稍后再试。调用 api_task_abort（J6）将任务状态从 running 回退为 pending，
+     * 任务可被再次轮询领取。
+     *
+     * 与 [onEndFind] 不同：不标记任务为 failed，任务可重新领取。
+     */
+    fun onAbortFind() {
+        cancelScan()
+        val state = _uiState.value
+        val task = state.task ?: return
+
+        _uiState.update { it.copy(busy = true, scanning = false) }
+
+        viewModelScope.launch {
+            try {
+                AppContainer.taskCloudService.abortTask(taskId = task.taskId)
+
+                Log.i(TAG, "寻书任务 ${task.taskId} 已退出，回退 pending")
+
+                _uiState.update {
+                    it.copy(
+                        phase = FindPhase.CANCELLED,
+                        busy = false,
+                        statusMessage = "已退出寻书，任务回到待领取状态",
+                        resultMessage = "已退出寻书（任务未标记失败，可稍后重新寻书）"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "退出寻书任务失败：${e.message}", e)
+                _uiState.update {
+                    it.copy(
+                        phase = FindPhase.DONE,
+                        busy = false,
+                        resultMessage = "退出任务失败：${e.message}",
+                        statusMessage = "请检查网络连接，建议结束寻书"
+                    )
+                }
+            }
         }
     }
 }

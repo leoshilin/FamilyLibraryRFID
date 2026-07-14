@@ -3,6 +3,8 @@ package com.familylibrary.rfidfinder.cloud
 import android.util.Log
 import com.familylibrary.rfidfinder.cloud.model.AcceptRequest
 import com.familylibrary.rfidfinder.cloud.model.AcceptResponse
+import com.familylibrary.rfidfinder.cloud.model.AbortRequest
+import com.familylibrary.rfidfinder.cloud.model.AbortResponse
 import com.familylibrary.rfidfinder.cloud.model.ApiResult
 import com.familylibrary.rfidfinder.cloud.model.BindRequest
 import com.familylibrary.rfidfinder.cloud.model.BindResponse
@@ -29,6 +31,7 @@ private const val TAG = "TaskCloudService"
  * - J2 api_task_complete    → [completeTask]
  * - J3 api_task_getRfidBindingInfo → [getRfidBindingInfo]
  * - J4 api_task_bindRfid    → [bindRfid]
+ * - J6 api_task_abort       → [abortTask]
  */
 class TaskCloudService(
     private val config: WeChatCloudConfig,
@@ -121,6 +124,19 @@ class TaskCloudService(
         client.invoke(
             "api_task_bindRfid",
             json.encodeToString(BindRequest(bookItemId, tid, taskId, deviceId))
+        )
+    }
+
+    /**
+     * J6 放弃寻书任务执行，回退 pending 状态。
+     * 适用场景：用户无法找到 RFID 信号（距离过远、不在同一房间等），暂时退出，稍后再试。
+     * 与 [completeTask](failed) 不同：不标记任务为 failed，任务可被再次轮询领取。
+     * @param taskId 任务 ID
+     */
+    suspend fun abortTask(taskId: String): ApiResult<AbortResponse> = safeCall {
+        client.invoke(
+            "api_task_abort",
+            json.encodeToString(AbortRequest(taskId))
         )
     }
 }
