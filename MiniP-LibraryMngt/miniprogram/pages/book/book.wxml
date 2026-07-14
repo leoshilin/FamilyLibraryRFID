@@ -224,6 +224,7 @@
               <button class="danger-btn" bindtap="handleOff">下架</button>
             </view>
           </block>
+        </block>
       </block>
 
       </view>
