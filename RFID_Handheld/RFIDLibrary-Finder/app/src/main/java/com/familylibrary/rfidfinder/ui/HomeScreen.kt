@@ -53,7 +53,7 @@ private val TaskCardFind = Color(0xFFFFF3E0) // 寻书任务淡橙
 fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
     onExecuteTask: (DeviceTask) -> Unit = {},
-    onNavigateToKeyTest: () -> Unit = {}
+    onNavigateToDebug: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -96,7 +96,7 @@ fun HomeScreen(
         }
 
         // 版本号（底部固定，方便 debug）
-        VersionFooter(onNavigateToKeyTest = onNavigateToKeyTest)
+        VersionFooter(onNavigateToDebug = onNavigateToDebug)
     }
 }
 
@@ -552,10 +552,11 @@ private fun RecentTaskEntry(onClick: () -> Unit) {
  * 版本号来自 build.gradle.kts 的 versionName，通过 BuildConfig 注入。
  * 开发者修改 versionName 后重新编译即可在 App 中看到更新。
  *
- * 同时提供「按键测试」入口，帮助开发者诊断 PDA 侧键/扫码事件。
+ * 提供「调试」入口，替代原先单独的「按键测试」入口，
+ * 统一收敛调试工具集（按键测试、RFID 标签读写等）。
  */
 @Composable
-private fun VersionFooter(onNavigateToKeyTest: () -> Unit) {
+private fun VersionFooter(onNavigateToDebug: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -563,14 +564,14 @@ private fun VersionFooter(onNavigateToKeyTest: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 按键测试入口（仅调试用，小字低调显示）
+        // 调试入口（仅调试用，小字低调显示）
         TextButton(
-            onClick = onNavigateToKeyTest,
+            onClick = onNavigateToDebug,
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
             modifier = Modifier.height(28.dp)
         ) {
             Text(
-                text = "🔧 按键测试",
+                text = "🔧 调试",
                 style = MaterialTheme.typography.labelSmall,
                 color = Color(0xFF90A4AE)
             )

@@ -27,6 +27,10 @@ import com.familylibrary.rfidfinder.ui.bind.BindScreen
 import com.familylibrary.rfidfinder.ui.bind.BindViewModel
 import com.familylibrary.rfidfinder.ui.find.FindScreen
 import com.familylibrary.rfidfinder.ui.find.FindViewModel
+import com.familylibrary.rfidfinder.ui.debug.DebugMenuScreen
+import com.familylibrary.rfidfinder.ui.debug.DebugMenuViewModel
+import com.familylibrary.rfidfinder.ui.debug.RfidTestScreen
+import com.familylibrary.rfidfinder.ui.debug.RfidTestViewModel
 import com.familylibrary.rfidfinder.ui.keytest.KeyTestScreen
 import com.familylibrary.rfidfinder.ui.keytest.KeyTestViewModel
 import com.familylibrary.rfidfinder.ui.theme.RFIDLibraryFinderTheme
@@ -40,7 +44,10 @@ private const val TAG = "MainActivity"
  * 使用 Jetpack Navigation Compose 管理路由：
  * - home：任务台首页（HomeScreen）
  * - bind：绑定 RFID 页面（BindScreen）
+ * - find：寻书定位页面（FindScreen）
+ * - debug：调试菜单（DebugMenuScreen）
  * - keytest：按键/扫码测试页面（KeyTestScreen）
+ * - rfidtest：RFID 标签读写调试页面（RfidTestScreen）
  *
  * DeviceTask 通过 kotlinx.serialization JSON 序列化后作为 NavArgument 传递。
  */
@@ -169,7 +176,9 @@ private object Routes {
     const val HOME = "home"
     const val BIND = "bind/{taskJson}"
     const val FIND = "find/{taskJson}"
+    const val DEBUG = "debug"
     const val KEY_TEST = "keytest"
+    const val RFID_TEST = "rfidtest"
 
     fun bindRoute(taskJson: String) = "bind/$taskJson"
     fun findRoute(taskJson: String) = "find/$taskJson"
@@ -181,7 +190,10 @@ private object Routes {
  * 路由：
  * - home：任务台首页
  * - bind/{taskJson}：绑定 RFID 页面
+ * - find/{taskJson}：寻书定位页面
+ * - debug：调试菜单（按键测试 / RFID 标签读写）
  * - keytest：按键/扫码测试页面
+ * - rfidtest：RFID 标签读写调试页面
  */
 @Composable
 private fun FinderNavHost(
@@ -219,8 +231,8 @@ private fun FinderNavHost(
                     }
                     navController.navigate(route)
                 },
-                onNavigateToKeyTest = {
-                    navController.navigate(Routes.KEY_TEST)
+                onNavigateToDebug = {
+                    navController.navigate(Routes.DEBUG)
                 }
             )
         }
@@ -283,6 +295,34 @@ private fun FinderNavHost(
                     }
                 )
             }
+        }
+
+        // 调试菜单页面
+        composable(Routes.DEBUG) {
+            val debugMenuViewModel: DebugMenuViewModel = viewModel()
+            DebugMenuScreen(
+                viewModel = debugMenuViewModel,
+                onNavigateBack = {
+                    navController.popBackStack(Routes.HOME, inclusive = false)
+                },
+                onNavigateToKeyTest = {
+                    navController.navigate(Routes.KEY_TEST)
+                },
+                onNavigateToRfidTest = {
+                    navController.navigate(Routes.RFID_TEST)
+                }
+            )
+        }
+
+        // RFID 标签读写调试页面
+        composable(Routes.RFID_TEST) {
+            val rfidTestViewModel: RfidTestViewModel = viewModel()
+            RfidTestScreen(
+                viewModel = rfidTestViewModel,
+                onNavigateBack = {
+                    navController.popBackStack(Routes.DEBUG, inclusive = false)
+                }
+            )
         }
 
         // 按键/扫码测试页面

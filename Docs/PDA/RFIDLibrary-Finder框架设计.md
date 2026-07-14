@@ -77,9 +77,21 @@ app/src/main/java/com/familylibrary/rfidfinder/
 │  ├─ CloudException.kt            # 配置缺失/网络/微信错误/云函数错误/解析错误
 │  └─ model/                       # ApiResult / DeviceTask(TaskType,TaskStatus) / BookBindingInfo / 请求响应模型
 ├─ device/DeviceIdProvider.kt      # 持久化设备 ID（SharedPreferences）
-└─ ui/                             # 最小演示（验证集成，非业务流）
-   ├─ MainActivity.kt              # 初始化RFID / 显示设备ID / 领取任务 演示
-   └─ theme/                       # Color / Type / Theme（移植自 RFIDTester 并改名）
+├─ ui/                             # Compose UI 层
+│  ├─ MainActivity.kt              # 入口 Activity：导航路由 / 扫码广播 / 按键分发
+│  ├─ HomeScreen.kt                # 首页（任务台）
+│  ├─ HomeViewModel.kt             # 首页 ViewModel（状态机 + 轮询）
+│  ├─ bind/                        # 绑定 RFID 页面
+│  ├─ find/                        # 寻书定位页面
+│  ├─ keytest/                     # 按键/扫码测试（调试工具）
+│  │  ├─ KeyTestScreen.kt          # 按键/扫码事件实时展示
+│  │  └─ KeyTestViewModel.kt       # 按键/扫码事件收集
+│  ├─ debug/                       # 调试工具集
+│  │  ├─ DebugMenuScreen.kt        # 调试菜单页（入口汇总）
+│  │  ├─ DebugMenuViewModel.kt     # 调试菜单 ViewModel
+│  │  ├─ RfidTestScreen.kt         # RFID 标签读写调试页
+│  │  └─ RfidTestViewModel.kt      # RFID 测试 ViewModel（功率/连续读取/EPC写入）
+│  └─ theme/                       # Color / Type / Theme（移植自 RFIDTester 并改名）
 ```
 
 SDK 资源（来自同级 `RFIDTester`）：
@@ -144,3 +156,38 @@ SDK 资源（来自同级 `RFIDTester`）：
 - 不修改小程序 / 云函数 / `Docs` 既有文档 / 厂家 SDK
 
 > 注：本文档已同步上述设计变更（J1 改为批量返回、新增 J5、F6.2 成功/失败判定），代码实现仍属后续阶段。
+
+---
+
+## 9. 调试功能（面向开发人员）
+
+### 9.1 入口
+
+首页底部版本号上方提供「🔧 调试」入口，点击进入调试菜单页。该入口替代原先单独的「按键测试」入口，统一收敛调试工具集。
+
+### 9.2 调试菜单
+
+调试菜单页列出所有可用的调试工具入口：
+
+| 工具 | 说明 |
+|---|---|
+| 按键测试 | 实时显示 PDA 上所有 KeyEvent 和扫码广播结果，帮助确认侧键/枪柄按钮 keyCode |
+| RFID 标签读写 | 功率调节（5-30 dBm，±1/±5）、连续读取（RSSI/EPC/TID/读取次数）、EPC 写入（多标签选择、成功/失败反馈） |
+
+### 9.3 RFID 标签读写调试
+
+直接调用 `RfidManager`（object 单例）的底层能力，不经过云函数和任务系统：
+
+- **功率**：通过 `getPower()` 读取当前读写功率，通过 `setPower(read, write)` 实时调节
+- **连续读取**：协程循环（~200ms）调用 `inventory(timeoutMs)`，按 TID 去重并保留最新 RSSI
+- **EPC 写入**：用户在已发现标签中选择目标 TID，输入 EPC 值（十六进制），调用 `writeEpcByTid(tid, epc)` 执行写入并回读校验
+
+### 9.4 导航路由
+
+```
+Home → debug（调试菜单）
+       ├── keytest（按键测试，复用现有 KeyTestScreen）
+       └── rfidtest（RFID 标签读写，RfidTestScreen）
+```
+
+路由定义在 `MainActivity.kt` 的 `Routes` 对象中，使用 Jetpack Navigation Compose 管理。
