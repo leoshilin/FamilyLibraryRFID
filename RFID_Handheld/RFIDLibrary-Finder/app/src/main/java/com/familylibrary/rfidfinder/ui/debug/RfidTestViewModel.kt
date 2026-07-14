@@ -38,6 +38,11 @@ sealed class WriteResult {
  * RFID 测试 UI 状态。
  */
 data class RfidTestUiState(
+    /** RFID 是否已初始化。 */
+    val rfidReady: Boolean = false,
+    /** RFID 是否正在初始化中。 */
+    val rfidInitializing: Boolean = false,
+
     /** 当前读功率（dBm）。 */
     val readPower: Int = 26,
     /** 当前写功率（dBm）。 */
@@ -85,7 +90,55 @@ class RfidTestViewModel : ViewModel() {
     private var readJob: Job? = null
 
     init {
-        loadPower()
+        // 检查 RFID 是否已初始化（可能在首页或其他地方已初始化过）
+        val ready = RfidManager.isReady()
+        _uiState.update { it.copy(rfidReady = ready) }
+        if (ready) {
+            loadPower()
+        } else {
+            _uiState.update { it.copy(powerLoaded = true, powerError = "RFID 未初始化，请先初始化设备") }
+        }
+    }
+
+    // ───────── RFID 初始化 ─────────
+
+    /** 初始化 RFID 设备。 */
+    fun initRfid() {
+        if (_uiState.value.rfidInitializing) return
+        _uiState.update { it.copy(rfidInitializing = true, powerError = "") }
+
+        viewModelScope.launch {
+            try {
+                val success = RfidManager.init()
+                if (success) {
+                    _uiState.update { it.copy(rfidReady = true, rfidInitializing = false) }
+                    Log.i(TAG, "RFID 初始化成功")
+                    // 初始化成功后自动加载功率
+                    loadPower()
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            rfidReady = false,
+                            rfidInitializing = false,
+                            powerLoaded = true,
+                            powerError = "RFID 初始化失败（需 PDA 真机）"
+                        )
+                    }
+                    Log.w(TAG, "RFID 初始化失败")
+                }
+            } catch (e: Exception) {
+                val msg = e.message ?: "未知错误"
+                Log.w(TAG, "RFID 初始化异常: $msg")
+                _uiState.update {
+                    it.copy(
+                        rfidReady = false,
+                        rfidInitializing = false,
+                        powerLoaded = true,
+                        powerError = "RFID 初始化异常: $msg"
+                    )
+                }
+            }
+        }
     }
 
     // ───────── 功率 ─────────
@@ -118,6 +171,10 @@ class RfidTestViewModel : ViewModel() {
      * @param delta 变化量（+1/+5/-1/-5）
      */
     fun adjustReadPower(delta: Int) {
+        if (!_uiState.value.rfidReady) {
+            _uiState.update { it.copy(powerError = "RFID 未初始化，请先初始化设备") }
+            return
+        }
         val current = _uiState.value.readPower
         val newPower = (current + delta).coerceIn(MIN_POWER, MAX_POWER)
         if (newPower == current) return
@@ -131,6 +188,10 @@ class RfidTestViewModel : ViewModel() {
      * @param delta 变化量（+1/+5/-1/-5）
      */
     fun adjustWritePower(delta: Int) {
+        if (!_uiState.value.rfidReady) {
+            _uiState.update { it.copy(powerError = "RFID 未初始化，请先初始化设备") }
+            return
+        }
         val current = _uiState.value.writePower
         val newPower = (current + delta).coerceIn(MIN_POWER, MAX_POWER)
         if (newPower == current) return
@@ -163,6 +224,10 @@ class RfidTestViewModel : ViewModel() {
     /** 开始连续读取。 */
     fun startReading() {
         if (_uiState.value.isReading) return
+        if (!_uiState.value.rfidReady) {
+            _uiState.update { it.copy(readError = "RFID 未初始化，请先初始化设备") }
+            return
+        }
         _uiState.update { it.copy(isReading = true, readCount = 0, tags = emptyList(), readError = "", writeResult = null) }
 
         readJob = viewModelScope.launch {
@@ -234,6 +299,12 @@ class RfidTestViewModel : ViewModel() {
         val state = _uiState.value
         val tid = state.selectedTid
         val epc = state.epcInput.trim()
+
+        // 检查 RFID 状态
+        if (!state.rfidReady) {
+            _uiState.update { it.copy(writeResult = WriteResult.Failure("RFID 未初始化，请先初始化设备")) }
+            return
+        }
 
         // 校验
         if (tid.isBlank()) {

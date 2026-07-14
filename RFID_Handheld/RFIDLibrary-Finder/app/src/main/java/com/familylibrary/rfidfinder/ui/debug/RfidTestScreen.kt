@@ -66,11 +66,14 @@ fun RfidTestScreen(
             // 功率面板
             item {
                 PowerPanel(
+                    rfidReady = state.rfidReady,
+                    rfidInitializing = state.rfidInitializing,
                     readPower = state.readPower,
                     writePower = state.writePower,
                     powerLoaded = state.powerLoaded,
                     powerError = state.powerError,
                     isReading = state.isReading,
+                    onInitRfid = viewModel::initRfid,
                     onAdjustRead = viewModel::adjustReadPower,
                     onAdjustWrite = viewModel::adjustWritePower,
                     onReloadPower = viewModel::loadPower
@@ -80,6 +83,7 @@ fun RfidTestScreen(
             // 连续读取面板
             item {
                 ReadingPanel(
+                    rfidReady = state.rfidReady,
                     isReading = state.isReading,
                     readCount = state.readCount,
                     tags = state.tags,
@@ -92,6 +96,7 @@ fun RfidTestScreen(
             // EPC 写入面板
             item {
                 WritePanel(
+                    rfidReady = state.rfidReady,
                     tags = state.tags,
                     selectedTid = state.selectedTid,
                     epcInput = state.epcInput,
@@ -155,11 +160,14 @@ private fun PanelTitle(title: String) {
 
 @Composable
 private fun PowerPanel(
+    rfidReady: Boolean,
+    rfidInitializing: Boolean,
     readPower: Int,
     writePower: Int,
     powerLoaded: Boolean,
     powerError: String,
     isReading: Boolean,
+    onInitRfid: () -> Unit,
     onAdjustRead: (Int) -> Unit,
     onAdjustWrite: (Int) -> Unit,
     onReloadPower: () -> Unit
@@ -173,6 +181,64 @@ private fun PowerPanel(
         Column(Modifier.padding(14.dp)) {
             PanelTitle("读写功率")
 
+            // RFID 未初始化时显示提示和初始化按钮
+            if (!rfidReady) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xFFFFF3E0),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "⚠ RFID 未初始化",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = StatusOrange
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "需先初始化 RFID 设备才能使用功率调节、连续读取和 EPC 写入功能",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.DarkGray
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Button(
+                            onClick = onInitRfid,
+                            enabled = !rfidInitializing,
+                            colors = ButtonDefaults.buttonColors(containerColor = StatusOrange),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            if (rfidInitializing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("初始化中…", fontWeight = FontWeight.Bold)
+                            } else {
+                                Text("初始化 RFID", fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        // 初始化失败的错误信息
+                        if (powerError.isNotBlank()) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = powerError,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = StatusRed
+                            )
+                        }
+                    }
+                }
+                return@Column
+            }
+
+            // RFID 已初始化，正常显示功率面板
             if (!powerLoaded) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
@@ -309,6 +375,7 @@ private fun PowerButton(label: String, enabled: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun ReadingPanel(
+    rfidReady: Boolean,
     isReading: Boolean,
     readCount: Int,
     tags: List<RfidTag>,
@@ -415,7 +482,7 @@ private fun ReadingPanel(
             ) {
                 Button(
                     onClick = onStart,
-                    enabled = !isReading,
+                    enabled = rfidReady && !isReading,
                     colors = ButtonDefaults.buttonColors(containerColor = StatusGreen),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
@@ -480,6 +547,7 @@ private fun TagInfoRow(tag: RfidTag) {
 
 @Composable
 private fun WritePanel(
+    rfidReady: Boolean,
     tags: List<RfidTag>,
     selectedTid: String,
     epcInput: String,
@@ -505,7 +573,7 @@ private fun WritePanel(
                 onValueChange = onEpcInput,
                 label = { Text("EPC 写入值（十六进制）") },
                 singleLine = true,
-                enabled = !isWriting,
+                enabled = rfidReady && !isWriting,
                 modifier = Modifier.fillMaxWidth(),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                     fontFamily = FontFamily.Monospace
@@ -518,7 +586,7 @@ private fun WritePanel(
             // 选择目标标签
             if (tags.isEmpty()) {
                 Text(
-                    text = "请先开始读取以发现标签",
+                    text = if (rfidReady) "请先开始读取以发现标签" else "需先初始化 RFID 才能读取标签",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.LightGray
                 )
@@ -540,7 +608,7 @@ private fun WritePanel(
                         TagSelectionRow(
                             tag = tag,
                             isSelected = selectedTid == tag.tid,
-                            enabled = !isWriting && !isReading,
+                            enabled = rfidReady && !isWriting && !isReading,
                             onSelect = { onSelectTid(tag.tid) }
                         )
                     }
@@ -552,7 +620,7 @@ private fun WritePanel(
             // 写入按钮
             Button(
                 onClick = onWrite,
-                enabled = !isWriting && selectedTid.isNotBlank() && epcInput.isNotBlank(),
+                enabled = rfidReady && !isWriting && selectedTid.isNotBlank() && epcInput.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = StatusBlue),
                 shape = RoundedCornerShape(8.dp),
