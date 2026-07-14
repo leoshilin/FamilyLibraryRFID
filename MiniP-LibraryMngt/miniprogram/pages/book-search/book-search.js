@@ -49,6 +49,14 @@ Page({
     ],
     bookshelfIndex: 0,
 
+    // RFID 绑定筛选
+    rfidBindOptions: [
+      '全部',
+      '仅搜索已绑定',
+      '仅搜索未绑定'
+    ],
+    rfidBindIndex: 0,
+
     // 查询结果
     books: [],
 
@@ -223,6 +231,7 @@ Page({
         endDate: '',
         bookshelfIndex: 0,
         statusIndex: 0,
+        rfidBindIndex: 0,
         conditionCollapsed: false
       })
 
@@ -284,6 +293,14 @@ Page({
 
     this.setData({
       statusIndex: Number(e.detail.value)
+    })
+
+  },
+
+  onRfidBindChange(e) {
+
+    this.setData({
+      rfidBindIndex: Number(e.detail.value)
     })
 
   },
@@ -396,6 +413,13 @@ Page({
             ].name
         })
       }
+
+      if (this.data.rfidBindIndex !== 0) {
+        summary.push({
+          label: 'RFID绑定',
+          value: this.data.rfidBindOptions[this.data.rfidBindIndex]
+        })
+      }
     
       if (this.data.startDate || this.data.endDate) {
     
@@ -485,7 +509,11 @@ Page({
   
           data.status =
             STATUS_MAP[this.data.statusIndex]
-  
+
+          // RFID 绑定筛选
+          const RFID_BIND_MAP = ['', 'bound', 'unbound']
+          data.rfidBind = RFID_BIND_MAP[this.data.rfidBindIndex]
+
           data.startDate = this.data.startDate
   
           data.endDate = this.data.endDate

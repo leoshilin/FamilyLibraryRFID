@@ -207,6 +207,28 @@
   </view>
 
 
+  <!-- RFID 绑定 -->
+  <view class="form-row">
+
+    <text class="form-label">
+      RFID绑定
+    </text>
+
+    <picker
+      mode="selector"
+      range="{{rfidBindOptions}}"
+      value="{{rfidBindIndex}}"
+      bindchange="onRfidBindChange">
+
+      <view class="form-picker">
+        {{rfidBindOptions[rfidBindIndex]}}
+      </view>
+
+    </picker>
+
+  </view>
+
+
   <button
     class="confirm-btn"
     bindtap="doSearch">

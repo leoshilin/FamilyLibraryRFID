@@ -1507,6 +1507,7 @@ app.login() 之后取当前用户档案（getUser）
   - 作者模糊
 - bookshelfId：书架筛选
 - 状态筛选：上架、下架
+- RFID绑定筛选：已绑定(bound)、未绑定(unbound)、全部(空)
 - 时间筛选：上架期间
 - 分页
 
@@ -1517,6 +1518,7 @@ app.login() 之后取当前用户档案（getUser）
   "isbn": "9787111122334",
   "bookshelfId": "bs001",
   "status": "in_stock",
+  "rfidBind": "bound",
   "startDate": "2026-01-01",
   "endDate": "2026-06-30",
   "page": 1,

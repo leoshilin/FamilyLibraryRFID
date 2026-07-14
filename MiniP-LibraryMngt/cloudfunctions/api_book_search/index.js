@@ -16,6 +16,7 @@ exports.main = async (event) => {
     isbn = '',
     bookshelfId = '',
     status = 'in_stock',
+    rfidBind = '',    // 'bound' | 'unbound' | ''（全部）
     startDate,
     endDate,
     page = 1,
@@ -67,6 +68,16 @@ exports.main = async (event) => {
     // ---- 书架筛选 ----
     if (bookshelfId) {
       itemMatch.bookshelf_id = bookshelfId
+    }
+
+    // ---- RFID 绑定筛选 ----
+    // 'bound'：rfid_tid 不为 null 且不为空字符串
+    // 'unbound'：rfid_tid 为 null 或为空字符串
+    // ''（默认）：不筛选
+    if (rfidBind === 'bound') {
+      itemMatch.rfid_tid = _.and(_.neq(null), _.neq(''))
+    } else if (rfidBind === 'unbound') {
+      itemMatch.rfid_tid = _.or(_.eq(null), _.eq(''))
     }
 
     // ---- 上架时间筛选（基于 on_shelf_at，而非记录创建时间 created_at）----
