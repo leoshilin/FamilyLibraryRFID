@@ -232,11 +232,17 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 20rpx 30rpx 40rpx;
+  padding: 16rpx 30rpx 40rpx;
   background: #ffffff;
   border-top: 1rpx solid #eee;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+/* 按钮行（每行最多两个按钮） */
+.btn-row {
+  display: flex;
   gap: 20rpx;
 }
 

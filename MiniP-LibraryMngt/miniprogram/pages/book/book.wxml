@@ -155,42 +155,43 @@
     <view class="bottom-bar">
       <!-- 扫码模式 -->
       <block wx:if="{{mode === 'scan'}}">
-        <button class="primary-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="onConfirmInStock">
-          上架
-        </button>
+        <view class="btn-row">
+          <button class="primary-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="onConfirmInStock">上架</button>
+        </view>
       </block>
 
       <!-- 查看模式 -->
       <block wx:elif="{{mode === 'view'}}">
         <!-- 已下架图书 -->
-        <block wx:if="{{book.status === 'off_stock'}}">        
-          <button class="primary-btn" bindtap="handleOn">
-            重新上架
-          </button>        
-          <button class="danger-btn" bindtap="onDelete">
-            彻底删除
-          </button>        
+        <block wx:if="{{book.status === 'off_stock'}}">
+          <view class="btn-row">
+            <button class="primary-btn" bindtap="handleOn">重新上架</button>
+            <button class="danger-btn" bindtap="onDelete">彻底删除</button>
+          </view>
         </block>
 
         <!-- 上架中 -->
         <block wx:elif="{{book.status === 'in_stock'}}">
-          <button class="danger-btn" bindtap="handleOff">
-            下架
-          </button>
 
-          <!-- RFID 绑定区域：仅 in_stock 且有权限时展示，按 4 态渲染 -->
-          <block wx:if="{{showRfid}}">
-            <!-- 未绑定：绑定按钮（A 可点 / B 禁用并提示进行中） -->
-            <button
-              wx:if="{{canBind && !isBound}}"
-              class="secondary-btn"
-              disabled="{{bindInProgress || bindStatusLoading}}"
-              bindtap="onBindRFID">
-              绑定RFID
-            </button>
+          <!-- 未绑定 RFID：单行 [下架] [绑定RFID] -->
+          <block wx:if="{{showRfid && !isBound && canBind}}">
+            <view class="btn-row">
+              <button class="danger-btn" bindtap="handleOff">下架</button>
+              <button
+                class="secondary-btn"
+                disabled="{{bindInProgress || bindStatusLoading}}"
+                bindtap="onBindRFID">
+                绑定RFID
+              </button>
+            </view>
+          </block>
 
-            <!-- 已绑定：解绑 + 重新绑定（C 可点 / D 禁用并提示进行中） -->
-            <block wx:if="{{isBound}}">
+          <!-- 已绑定 RFID：两行布局 -->
+          <!-- 第一行：[下架] [解绑] -->
+          <!-- 第二行：[重新绑定] [寻书] -->
+          <block wx:elif="{{showRfid && isBound}}">
+            <view class="btn-row">
+              <button class="danger-btn" bindtap="handleOff">下架</button>
               <button
                 wx:if="{{canUnbind}}"
                 class="danger-btn"
@@ -198,6 +199,8 @@
                 bindtap="onUnbindRFID">
                 解绑
               </button>
+            </view>
+            <view class="btn-row">
               <button
                 wx:if="{{canBind}}"
                 class="secondary-btn"
@@ -205,7 +208,6 @@
                 bindtap="onBindRFID">
                 重新绑定
               </button>
-              <!-- 寻书按钮：仅已绑定 RFID 且有权限时显示；进行中（findInProgress）或状态加载中时置灰 -->
               <button
                 wx:if="{{canFindBook}}"
                 class="primary-btn"
@@ -213,10 +215,15 @@
                 bindtap="onFindBook">
                 寻书
               </button>
-            </block>
-
+            </view>
           </block>
-        </block>
+
+          <!-- 无 RFID 权限或无绑定状态：仅 [下架] -->
+          <block wx:else>
+            <view class="btn-row">
+              <button class="danger-btn" bindtap="handleOff">下架</button>
+            </view>
+          </block>
       </block>
 
       </view>
