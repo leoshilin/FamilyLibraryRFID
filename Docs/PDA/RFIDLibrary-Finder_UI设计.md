@@ -1,7 +1,5 @@
 # RFIDLibrary-Finder（Android PDA）UI 设计
 
-> AI 生成的设计文档（按 AI_PROJECT_GUIDE §11 输出至 `.codex/output/`）。
-> 对应代码目录：`RFID_Handheld/RFIDLibrary-Finder/`。
 > 前置框架设计见同目录 `RFIDLibrary-Finder框架设计.md`；业务流程以 `Docs/` 为准（Source of Truth）。
 > 本文仅设计 UI 与交互状态机，**不含实现代码**。
 
