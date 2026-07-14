@@ -95,4 +95,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     // JSON 解析：云函数返回体
     implementation(libs.kotlinx.serialization.json)
+    // 导航：Jetpack Navigation Compose（页面路由）
+    implementation(libs.androidx.navigation.compose)
 }

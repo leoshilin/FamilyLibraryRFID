@@ -1,9 +1,12 @@
 package com.familylibrary.rfidfinder.cloud.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * device_task 设备任务队列的领域模型（镜像 Docs/家庭图书管理系统数据库表结构设计.md §3.9）。
  * PDA 不直接访问数据库，此处仅用于业务层在本地的任务表达与状态判断。
  */
+@Serializable
 enum class TaskType {
     /** 绑定 RFID（F4.3） */
     BIND_RFID,
@@ -21,6 +24,7 @@ enum class TaskType {
 }
 
 /** 任务状态机（设计文档 F4.3 §任务的状态机变化）。 */
+@Serializable
 enum class TaskStatus {
     PENDING,    // 待执行（手机创建）
     RUNNING,    // 执行中（PDA 领取后置位）
@@ -41,7 +45,8 @@ enum class TaskStatus {
 }
 
 /**
- * 本地任务表达。
+ * 本地任务表达（可序列化，用于 Navigation 参数传递）。
+ *
  * @param taskId 任务 ID（_id）
  * @param taskType 任务类型
  * @param bookItemId 目标书籍（绑定任务 / 寻书任务），用于关联 book_item
@@ -50,6 +55,7 @@ enum class TaskStatus {
  * @param title 展示字段（书名）：由 api_task_accept 关联返回，PDA 直接显示
  * @param authors 展示字段（作者）：由 api_task_accept 关联返回，PDA 直接显示
  */
+@Serializable
 data class DeviceTask(
     val taskId: String,
     val taskType: TaskType,

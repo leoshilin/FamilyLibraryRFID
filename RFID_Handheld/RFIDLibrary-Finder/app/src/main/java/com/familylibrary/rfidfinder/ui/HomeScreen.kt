@@ -51,7 +51,8 @@ private val TaskCardFind = Color(0xFFFFF3E0) // 寻书任务淡橙
  */
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
+    onExecuteTask: (DeviceTask) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -86,7 +87,7 @@ fun HomeScreen(
                     tasks = state.tasks,
                     statusMessage = state.statusMessage,
                     busy = state.busy,
-                    onExecute = { /* 待实现：导航至 bind/find */ },
+                    onExecute = onExecuteTask,
                     onAbandon = viewModel::abandonTask,
                     onRecentClick = { /* 待实现：导航至 recent */ }
                 )
