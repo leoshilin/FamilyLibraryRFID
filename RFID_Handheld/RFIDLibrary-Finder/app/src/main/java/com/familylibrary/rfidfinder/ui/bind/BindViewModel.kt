@@ -377,7 +377,9 @@ class BindViewModel : ViewModel() {
 
     /** 跳过 EPC 写入，以"绑定已生效"完成。 */
     fun onSkipWriteEpc() {
-        completeTask(success = true, epcWritten = false)
+        viewModelScope.launch {
+            completeTask(success = true, epcWritten = false)
+        }
         val task = _uiState.value.task ?: return
         val tag = _uiState.value.selectedTag ?: return
         _uiState.update {
