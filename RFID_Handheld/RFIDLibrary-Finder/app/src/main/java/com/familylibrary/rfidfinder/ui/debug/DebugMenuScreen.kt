@@ -26,12 +26,14 @@ private val SectionBg = Color(0xFFFFFFFF)
  * 汇总所有调试工具入口：
  * - 按键测试：跳转 KeyTestScreen，测试 PDA 侧键/扫码事件
  * - RFID 标签读写：跳转 RfidTestScreen，功率调节/连续读取/EPC 写入
+ * - Beep 蜂鸣测试：跳转 BeepTestScreen，测试短音/滴滴连续音/急促嘀嘀嘀
  */
 @Composable
 fun DebugMenuScreen(
     onNavigateBack: () -> Unit,
     onNavigateToKeyTest: () -> Unit,
     onNavigateToRfidTest: () -> Unit,
+    onNavigateToBeepTest: () -> Unit,
     viewModel: DebugMenuViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -69,6 +71,15 @@ fun DebugMenuScreen(
                 subtitle = "功率调节 / 连续读取 / 写入 EPC",
                 subtitle2 = if (state.rfidReady) "RFID 已初始化" else "⚠ RFID 未初始化，需先初始化",
                 onClick = onNavigateToRfidTest
+            )
+
+            // Beep 蜂鸣测试入口
+            MenuEntryCard(
+                emoji = "🔊",
+                title = "Beep 蜂鸣测试",
+                subtitle = "短音 / 滴滴连续音 / 急促嘀嘀嘀",
+                subtitle2 = "测试 PDA 蜂鸣器，模拟寻书盖革计数器音效",
+                onClick = onNavigateToBeepTest
             )
         }
     }

@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.familylibrary.rfidfinder.cloud.model.DeviceTask
 import com.familylibrary.rfidfinder.di.AppContainer
+import com.familylibrary.rfidfinder.rfid.BeepPlayer
 import com.familylibrary.rfidfinder.rfid.RfidManager
+import com.familylibrary.rfidfinder.rfid.RssiLocator
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,6 +71,14 @@ data class FindUiState(
     /** 寻书开始时间（用于计算耗时） */
     val startTimeMs: Long = 0L,
 
+    // 寻书信号状态（来自 RssiLocator）
+    /** 当前功率档位（dBm），由 RssiLocator 自动调节 */
+    val currentPower: Int = RssiLocator.POWER_LEVELS.first(),
+    /** 距离文案（来自 RssiLocator.locate） */
+    val distanceHint: String = "",
+    /** 当前 beep 等级 1~4（来自 RssiLocator.locate），0 表示无信号 */
+    val beepLevel: Int = 0,
+
     // 状态消息
     val statusMessage: String = "",
     val busy: Boolean = false,
@@ -81,6 +91,11 @@ data class FindUiState(
  * 盖革计数器模式：持续扫描目标 TID，根据 RSSI 变化提示用户靠近/远离。
  * 连续 N 次稳定读到目标标签 → 判定为"已找到"。
  * 用户点击"结束寻书"时提交任务结果。
+ *
+ * 蜂鸣控制（来自设计文档 F6.2）：
+ * - 每次扫描读到目标标签时，根据 [RssiLocator.locate] 返回的 beep 等级
+ *   调用 [BeepPlayer.beepByLevel] 播放对应急促度的蜂鸣。
+ * - beep 等级越高（越近）蜂鸣越急促，实现"盖革计数器"音效反馈。
  */
 class FindViewModel : ViewModel() {
 
@@ -88,6 +103,9 @@ class FindViewModel : ViewModel() {
     val uiState: StateFlow<FindUiState> = _uiState.asStateFlow()
 
     private var scanJob: Job? = null
+
+    /** 上次 beep 等级，用于避免重复播放相同等级的蜂鸣 */
+    private var lastBeepLevel: Int = 0
 
     // ───────── 初始化 ─────────
 
@@ -119,6 +137,17 @@ class FindViewModel : ViewModel() {
             return
         }
 
+        // 初始化 BeepPlayer（如果尚未初始化）
+        BeepPlayer.init()
+
+        // 寻书开始功率设为最高档（30dBm），扩大初始搜索范围
+        val startPower = RssiLocator.POWER_LEVELS.first()
+        try {
+            RfidManager.setPower(startPower, RfidManager.MIN_WRITE_POWER)
+        } catch (e: Exception) {
+            Log.w(TAG, "设置初始功率失败: ${e.message}")
+        }
+
         _uiState.update {
             it.copy(
                 phase = FindPhase.SCANNING,
@@ -128,11 +157,15 @@ class FindViewModel : ViewModel() {
                 consecutiveReads = 0,
                 consecutiveMisses = 0,
                 totalReadCount = 0,
+                currentPower = startPower,
+                distanceHint = "",
+                beepLevel = 0,
                 startTimeMs = System.currentTimeMillis(),
                 statusMessage = "正在搜索目标标签…请将 PDA 靠近书架"
             )
         }
 
+        lastBeepLevel = 0
         startScanLoop()
     }
 
@@ -155,7 +188,34 @@ class FindViewModel : ViewModel() {
                         val newTotalReads = current.totalReadCount + 1
                         val found = newConsecutiveReads >= FOUND_CONFIRM_COUNT
 
-                        Log.i(TAG, "读到目标标签 TID=$targetTid RSSI=${tag.rssi} 连续=$newConsecutiveReads found=$found")
+                        // 使用 RssiLocator 计算下一档功率和距离/beep 等级
+                        val nextPower = RssiLocator.nextPower(current.currentPower, tag.rssi)
+                        val (distance, beepLevel) = RssiLocator.locate(current.currentPower, tag.rssi)
+
+                        Log.i(TAG, "读到目标标签 TID=$targetTid RSSI=${tag.rssi} " +
+                                "功率=${current.currentPower}→$nextPower " +
+                                "距离=$distance beep=$beepLevel " +
+                                "连续=$newConsecutiveReads found=$found")
+
+                        // 调节功率（盖革计数器自动功率切换）
+                        if (nextPower != current.currentPower) {
+                            try {
+                                RfidManager.setPower(nextPower, RfidManager.MIN_WRITE_POWER)
+                                Log.d(TAG, "功率已切换: ${current.currentPower}→$nextPower dBm")
+                            } catch (e: Exception) {
+                                Log.w(TAG, "功率切换失败: ${e.message}")
+                            }
+                        }
+
+                        // 蜂鸣反馈：beep 等级变化时触发（避免重复播放同等级）
+                        if (beepLevel > 0 && beepLevel != lastBeepLevel) {
+                            try {
+                                BeepPlayer.beepByLevel(beepLevel)
+                                lastBeepLevel = beepLevel
+                            } catch (e: Exception) {
+                                Log.w(TAG, "beep 播放失败: ${e.message}")
+                            }
+                        }
 
                         _uiState.update {
                             it.copy(
@@ -164,6 +224,9 @@ class FindViewModel : ViewModel() {
                                 consecutiveMisses = 0,
                                 totalReadCount = newTotalReads,
                                 found = found,
+                                currentPower = nextPower,
+                                distanceHint = distance,
+                                beepLevel = beepLevel,
                                 statusMessage = if (found) {
                                     "已找到目标图书！RSSI=${tag.rssi}"
                                 } else {
@@ -172,7 +235,8 @@ class FindViewModel : ViewModel() {
                             )
                         }
                     } else {
-                        // 未读到目标标签
+                        // 未读到目标标签 → 重置 beep 状态
+                        lastBeepLevel = 0
                         val newMisses = current.consecutiveMisses + 1
                         // 之前连续读到过但中断了 → 重置连续读数
                         if (current.consecutiveReads > 0 && !current.found) {
@@ -181,6 +245,7 @@ class FindViewModel : ViewModel() {
                                     consecutiveReads = 0,
                                     consecutiveMisses = newMisses,
                                     currentRssi = null,
+                                    beepLevel = 0,
                                     statusMessage = "信号丢失，继续搜索中…"
                                 )
                             }
@@ -189,6 +254,7 @@ class FindViewModel : ViewModel() {
                                 it.copy(
                                     consecutiveMisses = newMisses,
                                     currentRssi = null,
+                                    beepLevel = 0,
                                     statusMessage = "未检测到目标标签，请移动 PDA…"
                                 )
                             }

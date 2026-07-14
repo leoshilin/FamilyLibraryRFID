@@ -31,6 +31,8 @@ import com.familylibrary.rfidfinder.ui.debug.DebugMenuScreen
 import com.familylibrary.rfidfinder.ui.debug.DebugMenuViewModel
 import com.familylibrary.rfidfinder.ui.debug.RfidTestScreen
 import com.familylibrary.rfidfinder.ui.debug.RfidTestViewModel
+import com.familylibrary.rfidfinder.ui.debug.BeepTestScreen
+import com.familylibrary.rfidfinder.ui.debug.BeepTestViewModel
 import com.familylibrary.rfidfinder.ui.keytest.KeyTestScreen
 import com.familylibrary.rfidfinder.ui.keytest.KeyTestViewModel
 import com.familylibrary.rfidfinder.ui.theme.RFIDLibraryFinderTheme
@@ -48,6 +50,7 @@ private const val TAG = "MainActivity"
  * - debug：调试菜单（DebugMenuScreen）
  * - keytest：按键/扫码测试页面（KeyTestScreen）
  * - rfidtest：RFID 标签读写调试页面（RfidTestScreen）
+ * - beeptest：Beep 蜂鸣测试页面（BeepTestScreen）
  *
  * DeviceTask 通过 kotlinx.serialization JSON 序列化后作为 NavArgument 传递。
  */
@@ -179,6 +182,7 @@ private object Routes {
     const val DEBUG = "debug"
     const val KEY_TEST = "keytest"
     const val RFID_TEST = "rfidtest"
+    const val BEEP_TEST = "beeptest"
 
     fun bindRoute(taskJson: String) = "bind/$taskJson"
     fun findRoute(taskJson: String) = "find/$taskJson"
@@ -310,6 +314,9 @@ private fun FinderNavHost(
                 },
                 onNavigateToRfidTest = {
                     navController.navigate(Routes.RFID_TEST)
+                },
+                onNavigateToBeepTest = {
+                    navController.navigate(Routes.BEEP_TEST)
                 }
             )
         }
@@ -332,6 +339,17 @@ private fun FinderNavHost(
                 onKeyEvent = { /* dispatchKeyEvent 已全局转发 */ },
                 onNavigateBack = {
                     navController.popBackStack(Routes.HOME, inclusive = false)
+                }
+            )
+        }
+
+        // Beep 蜂鸣测试页面
+        composable(Routes.BEEP_TEST) {
+            val beepTestViewModel: BeepTestViewModel = viewModel()
+            BeepTestScreen(
+                viewModel = beepTestViewModel,
+                onNavigateBack = {
+                    navController.popBackStack(Routes.DEBUG, inclusive = false)
                 }
             )
         }

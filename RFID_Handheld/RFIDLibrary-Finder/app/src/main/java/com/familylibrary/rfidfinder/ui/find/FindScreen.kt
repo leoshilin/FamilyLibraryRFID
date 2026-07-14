@@ -277,9 +277,10 @@ private fun FindScanningContent(state: FindUiState, viewModel: FindViewModel) {
 
         Spacer(Modifier.height(16.dp))
 
-        // 距离提示
+        // 距离提示（优先使用 RssiLocator 的计算结果）
         val distanceHint = when {
             state.found -> "目标已锁定！"
+            state.distanceHint.isNotBlank() -> state.distanceHint
             rssi != null && rssi > -45 -> "非常接近！"
             rssi != null && rssi > -55 -> "很接近了"
             rssi != null && rssi > -65 -> "正在靠近"
@@ -294,6 +295,17 @@ private fun FindScanningContent(state: FindUiState, viewModel: FindViewModel) {
         )
 
         Spacer(Modifier.height(8.dp))
+
+        // 功率和 beep 等级（盖革计数器状态）
+        if (state.currentPower > 0) {
+            Text(
+                text = "功率: ${state.currentPower}dBm | Beep: Lv${state.beepLevel}",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+        }
+
+        Spacer(Modifier.height(4.dp))
 
         // 统计
         Text(

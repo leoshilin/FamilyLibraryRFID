@@ -68,6 +68,7 @@ app/src/main/java/com/familylibrary/rfidfinder/
 │  ├─ RfidTag.kt                   # 标签内部模型（epc/tid/rssi），与 SDK 解耦
 │  ├─ HexUtils.kt                  # 字节<->十六进制（EPC/TID 传输用）
 │  ├─ RssiLocator.kt               # 盖革模式功率自动调节 + 距离估算（纯函数，供 F6.2 复用）
+│  ├─ BeepPlayer.kt                # PDA 蜂鸣音播放器（ToneGenerator），寻书盖革音效与调试 beep 测试
 │  └─ RfidException.kt             # 未初始化/读取失败/写入失败
 ├─ cloud/                          # 云端客户端与 J 系列封装
 │  ├─ WeChatCloudConfig.kt         # 配置（读 BuildConfig）
@@ -90,7 +91,9 @@ app/src/main/java/com/familylibrary/rfidfinder/
 │  │  ├─ DebugMenuScreen.kt        # 调试菜单页（入口汇总）
 │  │  ├─ DebugMenuViewModel.kt     # 调试菜单 ViewModel
 │  │  ├─ RfidTestScreen.kt         # RFID 标签读写调试页
-│  │  └─ RfidTestViewModel.kt      # RFID 测试 ViewModel（功率/连续读取/EPC写入）
+│  │  ├─ RfidTestViewModel.kt      # RFID 测试 ViewModel（功率/连续读取/EPC写入）
+│  │  ├─ BeepTestScreen.kt         # Beep 蜂鸣测试页（短音/滴滴连续音/急促嘀嘀嘀/等级测试）
+│  │  └─ BeepTestViewModel.kt      # Beep 测试 ViewModel
 │  └─ theme/                       # Color / Type / Theme（移植自 RFIDTester 并改名）
 ```
 
@@ -121,7 +124,8 @@ SDK 资源（来自同级 `RFIDTester`）：
 - **F4.3 绑定**：`RfidManager.inventory` 读标签 → `getRfidBindingInfo(tid)` 查占用 →
   用户确认 → `bindRfid(bookItemId,tid,taskId,deviceId)` → `RfidManager.writeEpcByTid(tid, bookItemId)` 回写 EPC → `completeTask`。
 - **F6.2 寻书**：`acceptTask` 取清单中一条 `targetTid` → `RfidManager.findTagByTid(tid)` 连续扫描 →
-  `RssiLocator.nextPower/locate` 估算距离与蜂鸣等级 → 累计目标标签**连续读取次数**（达到阈值判「已找到」，防误判）→ 用户结束 →
+  `RssiLocator.nextPower/locate` 估算距离与蜂鸣等级 → `BeepPlayer.beepByLevel(level)` 播放盖革计数器音效 →
+  累计目标标签**连续读取次数**（达到阈值判「已找到」，防误判）→ 用户结束 →
   若本次会话有连续读取结果则 `completeTask(success, {durationMs, foundRssi, readCount})`；若**从未读到 RFID 结果**则 `completeTask(failed, {reason:'no_rfid_read', durationMs, readCount:0})`（任务作为失败关闭）。详见需求流程定义书 F6.2。
 
 `RssiLocator` 把 RFIDTester 的跟踪循环逻辑提取为纯函数（功率 30/20/10 三档自动调节 + 距离文案 + beep 等级）。
@@ -173,6 +177,7 @@ SDK 资源（来自同级 `RFIDTester`）：
 |---|---|
 | 按键测试 | 实时显示 PDA 上所有 KeyEvent 和扫码广播结果，帮助确认侧键/枪柄按钮 keyCode |
 | RFID 标签读写 | 功率调节（5-30 dBm，±1/±5）、连续读取（RSSI/EPC/TID/读取次数）、EPC 写入（多标签选择、成功/失败反馈） |
+| Beep 蜂鸣测试 | 短音（单次 ~50ms）、滴滴连续音（4 组双短音）、急促嘀嘀嘀（12 连音）、按 beep 等级（1~4）测试盖革计数器音效 |
 
 ### 9.3 RFID 标签读写调试
 
@@ -182,12 +187,24 @@ SDK 资源（来自同级 `RFIDTester`）：
 - **连续读取**：协程循环（~200ms）调用 `inventory(timeoutMs)`，按 TID 去重并保留最新 RSSI
 - **EPC 写入**：用户在已发现标签中选择目标 TID，输入 EPC 值（十六进制），调用 `writeEpcByTid(tid, epc)` 执行写入并回读校验
 
-### 9.4 导航路由
+### 9.4 Beep 蜂鸣调试
+
+直接调用 `BeepPlayer`（object 单例），使用 Android `ToneGenerator` 产生系统标准蜂鸣音，无需额外音频资源文件：
+
+- **短音**：单次 ~50ms DTMF 确认音（`ToneGenerator.TONE_PROP_ACK`），模拟寻书扫描中每次读到标签的确认音
+- **滴滴连续音**：4 组双短音（滴滴…滴滴…），间隔约 400ms，模拟中距离寻书反馈（beep Lv2）
+- **急促嘀嘀嘀**：12 连音，间隔约 60ms，模拟极近距离寻书反馈（beep Lv4）
+- **等级测试**：按 beep 等级 1~4 单独播放，对应 RssiLocator 的四种距离（>2m / 1-2m / 0.5-1m / <0.5m）
+
+`BeepPlayer` 同样被寻书模式（F6.2）的 `FindViewModel` 使用：每次扫描读到目标标签时，根据 `RssiLocator.locate()` 返回的 beep 等级调用 `BeepPlayer.beepByLevel(level)` 播放对应急促度的蜂鸣，实现"盖革计数器"音效反馈。
+
+### 9.5 导航路由
 
 ```
 Home → debug（调试菜单）
        ├── keytest（按键测试，复用现有 KeyTestScreen）
-       └── rfidtest（RFID 标签读写，RfidTestScreen）
+       ├── rfidtest（RFID 标签读写，RfidTestScreen）
+       └── beeptest（Beep 蜂鸣测试，BeepTestScreen）
 ```
 
 路由定义在 `MainActivity.kt` 的 `Routes` 对象中，使用 Jetpack Navigation Compose 管理。
