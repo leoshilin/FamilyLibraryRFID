@@ -104,8 +104,11 @@ class FindViewModel : ViewModel() {
 
     private var scanJob: Job? = null
 
-    /** 上次 beep 等级，用于避免重复播放相同等级的蜂鸣 */
+    /** 上次 beep 等级，用于在功率档位切换时播放等级音效 */
     private var lastBeepLevel: Int = 0
+
+    /** beep 等级防抖计数器：同等级连续 N 次后才再次播放，避免过于频繁 */
+    private var beepDebounceCount: Int = 0
 
     // ───────── 初始化 ─────────
 
@@ -182,6 +185,7 @@ class FindViewModel : ViewModel() {
         }
 
         lastBeepLevel = 0
+        beepDebounceCount = 0
         startScanLoop()
     }
 
@@ -223,13 +227,24 @@ class FindViewModel : ViewModel() {
                             }
                         }
 
-                        // 蜂鸣反馈：beep 等级变化时触发（避免重复播放同等级）
+                        // ───────── 蜂鸣反馈 ─────────
+                        // 策略：
+                        // 1. 每次读到目标标签 → 播放短确认音（shortBeep），建立"滴-滴-滴"的实时反馈
+                        // 2. 功率档位切换时 → 播放等级音效（beepByLevelAsync），强化"靠近了"的感知
+                        // 3. 防抖：同等级连续 8 次后才允许再次播放等级音效
+                        BeepPlayer.shortBeep()
+
                         if (beepLevel > 0 && beepLevel != lastBeepLevel) {
-                            try {
-                                BeepPlayer.beepByLevel(beepLevel)
-                                lastBeepLevel = beepLevel
-                            } catch (e: Exception) {
-                                Log.w(TAG, "beep 播放失败: ${e.message}")
+                            // 功率档位变化 → 立即播放新等级音效
+                            BeepPlayer.beepByLevelAsync(beepLevel)
+                            lastBeepLevel = beepLevel
+                            beepDebounceCount = 0
+                        } else if (beepLevel > 0) {
+                            // 同等级持续中 → 防抖后周期性播放
+                            beepDebounceCount++
+                            if (beepDebounceCount >= 8) {
+                                BeepPlayer.beepByLevelAsync(beepLevel)
+                                beepDebounceCount = 0
                             }
                         }
 

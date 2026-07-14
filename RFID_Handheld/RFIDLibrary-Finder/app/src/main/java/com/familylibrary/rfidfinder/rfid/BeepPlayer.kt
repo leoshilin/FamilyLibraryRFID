@@ -2,6 +2,7 @@ package com.familylibrary.rfidfinder.rfid
 
 import android.media.ToneGenerator
 import android.util.Log
+import kotlinx.coroutines.delay
 
 /**
  * PDA 蜂鸣音播放器（封装 Android [ToneGenerator]）。
@@ -12,7 +13,7 @@ import android.util.Log
  * 设计原则：
  * - 使用 Android 系统 [ToneGenerator] 产生标准蜂鸣音，无需额外音频资源文件
  * - 不依赖厂家 SDK 的蜂鸣 API（UHFRManager 不提供内置蜂鸣方法）
- * - 所有 beep 调用均为非阻塞（ToneGenerator 异步播放）
+ * - 异步方法使用协程 `delay` 替代 `Thread.sleep`，不阻塞调用线程
  *
  * 使用前需调用 [init] 初始化；[release] 释放资源。
  */
@@ -68,6 +69,7 @@ object BeepPlayer {
     /**
      * 播放一次短促蜂鸣（~50ms）。
      * 用于寻书扫描中每次读到目标标签时的确认音。
+     * 非阻塞：ToneGenerator.startTone 异步播放，立即返回。
      */
     fun shortBeep() {
         ensureInit()
@@ -79,40 +81,72 @@ object BeepPlayer {
     }
 
     /**
-     * 按寻书 beep 等级播放相应频率/急促度的蜂鸣。
+     * 按寻书 beep 等级播放相应频率/急促度的蜂鸣（suspend 版本，用于寻书协程）。
+     *
+     * 使用协程 `delay` 替代 `Thread.sleep`，避免阻塞扫描线程。
      *
      * | 等级 | 含义       | 效果                        |
      * |------|-----------|----------------------------|
-     * | 1    | 远 (>2m)  | 单短音，间隔 ~800ms         |
-     * | 2    | 中 (1-2m) | 双短音（滴滴），间隔 ~500ms  |
-     * | 3    | 近 (0.5-1m)| 三短音（滴滴滴），间隔 ~300ms|
-     * | 4    | 极近 (<0.5m)| 急促连音（嘀嘀嘀嘀），间隔~120ms|
+     * | 1    | 远 (>2m)  | 单短音                      |
+     * | 2    | 中 (1-2m) | 双短音（滴滴）               |
+     * | 3    | 近 (0.5-1m)| 三短音（滴滴滴）            |
+     * | 4    | 极近 (<0.5m)| 急促连音（嘀嘀嘀嘀嘀嘀）     |
      *
      * @param level beep 等级 1~4
+     */
+    suspend fun beepByLevelAsync(level: Int) {
+        ensureInit()
+        try {
+            when (level) {
+                1 -> {
+                    toneGenerator?.startTone(TONE_TYPE, 40)
+                }
+                2 -> {
+                    toneGenerator?.startTone(TONE_TYPE, 40)
+                    delay(60)
+                    toneGenerator?.startTone(TONE_TYPE, 40)
+                }
+                3 -> {
+                    repeat(3) {
+                        toneGenerator?.startTone(TONE_TYPE, 40)
+                        delay(40)
+                    }
+                }
+                4 -> {
+                    repeat(6) {
+                        toneGenerator?.startTone(TONE_TYPE, 30)
+                        delay(25)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "beepByLevelAsync($level) 失败: ${e.message}")
+        }
+    }
+
+    /**
+     * 同步版 beepByLevel（用于调试页面，在 viewModelScope 中调用）。
+     *
+     * 注意：内部使用 Thread.sleep，仅适用于调试按钮等非性能敏感场景。
+     * 寻书扫描循环中请使用 [beepByLevelAsync]。
      */
     fun beepByLevel(level: Int) {
         ensureInit()
         try {
             when (level) {
-                1 -> {
-                    // 远距离：单短音
-                    toneGenerator?.startTone(TONE_TYPE, 40)
-                }
+                1 -> toneGenerator?.startTone(TONE_TYPE, 40)
                 2 -> {
-                    // 中距离：双短音
                     toneGenerator?.startTone(TONE_TYPE, 40)
                     Thread.sleep(60)
                     toneGenerator?.startTone(TONE_TYPE, 40)
                 }
                 3 -> {
-                    // 近距离：三短音
                     repeat(3) {
                         toneGenerator?.startTone(TONE_TYPE, 40)
                         Thread.sleep(40)
                     }
                 }
                 4 -> {
-                    // 极近：急促多连音
                     repeat(6) {
                         toneGenerator?.startTone(TONE_TYPE, 30)
                         Thread.sleep(25)
