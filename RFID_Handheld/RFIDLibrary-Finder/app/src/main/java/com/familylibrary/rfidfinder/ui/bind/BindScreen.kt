@@ -210,28 +210,33 @@ private fun TaskInfoContent(state: BindUiState, viewModel: BindViewModel) {
  * ISBN 扫码校验（UI 设计 §6.1 SCAN_ISBN）。
  *
  * PDA 扫码模块通过模拟键盘输入将条码数据注入焦点控件。
- * 本阶段使用一个不可见的输入框自动获取焦点，扫码数据填充后自动与任务 ISBN 比对。
- * 比对正确自动进入 SCAN_TAG 阶段；不一致红字提示，允许重新扫码。
- *
- * 用户操作：按下 PDA 枪柄/侧键触发扫码 → 自动比对 → 无需手动点击任何按钮。
+ * 可见输入框自动获取焦点，扫码数据填入后自动与任务 ISBN 比对。
+ * 比对正确自动进入 SCAN_TAG 阶段；不一致红字提示，焦点自动回到输入框，用户可直接重新扫码。
  */
 @Composable
 private fun ScanIsbnContent(state: BindUiState, viewModel: BindViewModel) {
-    // 扫码数据通过隐藏输入框捕获（PDA 扫码模块模拟键盘注入）
     var scanBuffer by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
 
-    // 自动获取焦点，确保扫码数据能注入
+    // 自动获取焦点
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
     }
 
+    // ISBN 不匹配时：清除 buffer + 焦点回到输入框，用户可直接重新扫码
+    LaunchedEffect(state.isbnMatched, state.scannedIsbn) {
+        if (!state.isbnMatched && state.scannedIsbn.isNotBlank()) {
+            // 短暂延迟让错误信息先渲染，然后清空 buffer 并返回焦点
+            kotlinx.coroutines.delay(100)
+            scanBuffer = ""
+            focusRequester.requestFocus()
+        }
+    }
+
     // 扫码数据变化时自动处理
     // PDA 扫码模块将条码数据作为键盘输入注入，通常以回车(\n)结尾
-    // 检测到回车或 buffer 稳定后自动比对
     LaunchedEffect(scanBuffer) {
         val buf = scanBuffer
-        // 检测到回车符 → 扫码完成
         if (buf.contains("\n") || buf.contains("\r")) {
             val clean = buf.replace("\n", "").replace("\r", "").trim()
             if (clean.length >= 10) {
@@ -242,7 +247,6 @@ private fun ScanIsbnContent(state: BindUiState, viewModel: BindViewModel) {
         // 没有回车但长度已够 → 延迟 debounce 等待输入完成
         if (buf.length >= 10) {
             kotlinx.coroutines.delay(300)
-            // 300ms 后 buffer 没变 → 认为扫码完成
             if (scanBuffer == buf && buf.length >= 10) {
                 viewModel.onIsbnScanned(buf.trim())
             }
@@ -283,35 +287,28 @@ private fun ScanIsbnContent(state: BindUiState, viewModel: BindViewModel) {
 
         Spacer(Modifier.height(24.dp))
 
-        // 隐藏输入框：捕获 PDA 扫码键盘注入
-        // 尺寸极小但保持焦点以接收硬件扫码输入
+        // 可见输入框：捕获 PDA 扫码键盘注入，自动获取焦点
         OutlinedTextField(
             value = scanBuffer,
             onValueChange = { scanBuffer = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(1.dp)
                 .focusRequester(focusRequester),
-            textStyle = MaterialTheme.typography.bodySmall.copy(
-                color = Color.Transparent,
-                fontSize = 1.sp
-            ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                cursorColor = Color.Transparent
-            ),
+            label = { Text("请扫描 ISBN 条码") },
+            placeholder = { Text("按下 PDA 枪柄/侧键扫码…") },
             singleLine = true,
             enabled = true,
             readOnly = false,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Ascii
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = StatusBlue,
+                unfocusedBorderColor = Color(0xFFBDBDBD)
             )
         )
 
-        // 扫码结果显示
+        Spacer(Modifier.height(16.dp))
+
+        // 扫码结果反馈
         if (state.scannedIsbn.isNotBlank()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -345,6 +342,14 @@ private fun ScanIsbnContent(state: BindUiState, viewModel: BindViewModel) {
                             textAlign = TextAlign.Center
                         )
                     }
+                    if (!state.isbnMatched) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "输入框已就绪，请直接重新扫码",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = StatusOrange
+                        )
+                    }
                 }
             }
         } else {
@@ -353,55 +358,18 @@ private fun ScanIsbnContent(state: BindUiState, viewModel: BindViewModel) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Spacer(Modifier.height(24.dp))
-                CircularProgressIndicator(
-                    modifier = Modifier.size(40.dp),
-                    color = StatusBlue,
-                    strokeWidth = 4.dp
-                )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "等待 PDA 扫码…",
-                    style = MaterialTheme.typography.bodyLarge,
+                    text = "等待 PDA 扫码…按下枪柄或侧键触发扫码",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = Color.Gray
                 )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "按下枪柄或侧键触发扫码，条码数据将自动填入",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.LightGray
-                )
-                // 显示捕获缓冲区（调试用，确认输入正在到达）
-                if (scanBuffer.isNotBlank()) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "缓冲区: $scanBuffer",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.LightGray
-                    )
-                }
             }
         }
 
         Spacer(Modifier.weight(1f))
 
-        // 底部操作
-        if (state.scannedIsbn.isNotBlank() && !state.isbnMatched) {
-            // 不匹配时提供重新扫码
-            Button(
-                onClick = {
-                    scanBuffer = ""
-                    viewModel.onRetryScanIsbn()
-                    focusRequester.requestFocus()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = StatusOrange)
-            ) {
-                Text("重新扫码", fontSize = 16.sp)
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-
+        // 底部只有取消按钮（重新扫码通过焦点自动返回实现）
         OutlinedButton(
             onClick = { viewModel.onCancel() },
             modifier = Modifier.fillMaxWidth(),
