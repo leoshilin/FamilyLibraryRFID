@@ -332,10 +332,10 @@
 
             </block>
 
-            <!-- 寻书按钮：仅已绑定 RFID 且有权限时显示 -->
+            <!-- 寻书按钮：仅已绑定 RFID 且有权限时显示；进行中（findInProgress）时置灰 -->
             <block wx:if="{{canFindBook && item.rfidTid}}">
               <view
-                class="btn find-book"
+                class="btn find-book {{item.findInProgress || bindStatusLoading ? 'disabled' : ''}}"
                 catchtap="handleFindBook"
                 data-index="{{index}}">
                 寻书

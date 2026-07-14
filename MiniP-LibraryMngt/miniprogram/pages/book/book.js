@@ -29,6 +29,7 @@ Page({
     isBound: false,      // 是否已绑定 RFID（rfid_tid 非空）
     showRfid: false,     // 是否展示 RFID 按钮区（仅 in_stock 展示）
     bindInProgress: false, // 是否存在进行中的绑定任务（pending/running）
+    findInProgress: false, // 是否存在进行中的寻书任务（pending/running）
     bindStatusLoading: true, // 读取绑定任务状态期间禁用 RFID 按钮，防止「置灰前抢点」竞态
     busy: false          // 动作乐观锁，防止重复点击
   },
@@ -816,7 +817,7 @@ Page({
     })
   },
 
-  // 查询本书的绑定任务状态（详情页单查）
+  // 查询本书的绑定任务及寻书任务状态（详情页单查）
   async loadBindStatus() {
     const itemId = this.data.book && this.data.book.itemId
     if (!itemId) return
@@ -825,8 +826,12 @@ Page({
     try {
       const res = await taskServices.getBindStatus({ bookItemId: itemId })
       if (res && res.success && res.map) {
-        const st = res.map[itemId] || { inProgress: false, status: null }
-        this.setData({ bindInProgress: st.inProgress, bindStatusLoading: false })
+        const st = res.map[itemId] || { inProgress: false, status: null, findInProgress: false, findStatus: null }
+        this.setData({
+          bindInProgress: st.inProgress,
+          findInProgress: st.findInProgress,
+          bindStatusLoading: false
+        })
       } else {
         this.setData({ bindStatusLoading: false })
       }
@@ -1022,6 +1027,12 @@ Page({
   async onFindBook() {
     console.log('book.onFindBook: start')
 
+    // 进行中（findInProgress）禁止重复发起
+    if (this.data.busy || this.data.findInProgress) {
+      console.log('book.onFindBook: 存在进行中寻书任务，忽略重复点击')
+      return
+    }
+
     const book = this.data.book
     if (!book || !book.itemId) {
       wx.showToast({ title: '书籍数据异常', icon: 'none' })
@@ -1043,9 +1054,17 @@ Page({
       this.setData({ busy: false })
 
       if (result && result.success) {
+        // 乐观置「进行中」，防止重复点击
+        this.setData({ findInProgress: true })
         wx.showToast({ title: '已发起寻书任务，请使用PDA寻书', icon: 'none' })
       } else {
-        wx.showToast({ title: (result && result.message) || '发起失败', icon: 'none' })
+        // 服务端可能因「已有进行中任务」而拒绝（防重复），刷新状态让按钮置灰
+        if (result && result.code === 'TASK_IN_PROGRESS') {
+          this.setData({ findInProgress: true })
+          wx.showToast({ title: '已有进行中的寻书任务', icon: 'none' })
+        } else {
+          wx.showToast({ title: (result && result.message) || '发起失败', icon: 'none' })
+        }
       }
     } catch (err) {
       wx.hideLoading()

@@ -68,6 +68,32 @@ exports.main = async (event) => {
     return { success: false, message: '未绑定RFID的图书无法发起寻书任务' }
   }
 
+  // 防重复：若该书已存在进行中（pending/running）的寻书任务，则拒绝新建。
+  // 这是防止手机端在「读取任务状态 → 置灰按钮」的间隙抢点导致重复建任务的
+  // 权威拦截（前端置灰只是体验优化，无法彻底杜绝竞态）。
+  let hasInProgress = false
+  try {
+    const inProgressRes = await db.collection('device_task')
+      .where({
+        book_item_id: bookItemId,
+        task_type: 'find_book',
+        status: _.in(['pending', 'running'])
+      })
+      .limit(1)
+      .get()
+    hasInProgress = inProgressRes.data.length > 0
+  } catch (e) {
+    // device_task 集合尚未创建等异常：降级放行（无任务可重复）
+    console.error('api_task_createFindBook: 查询进行中任务失败，已降级放行:', e)
+  }
+  if (hasInProgress) {
+    return {
+      success: false,
+      code: 'TASK_IN_PROGRESS',
+      message: '该书已有进行中的寻书任务，请勿重复发起'
+    }
+  }
+
   // 创建 device_task（find_book），target_tid 写入当前图书已绑定的标签
   const taskRes = await db.collection('device_task').add({
     data: {

@@ -1,17 +1,19 @@
-// 查询 RFID 绑定任务状态（轻量读接口）
-// 手机端详情页 / 检索列表页用于渲染「绑定中 / 重新绑定中」状态，
-// 避免列表逐条发起查询。
+// 查询 RFID 绑定任务及寻书任务状态（轻量读接口）
+// 手机端详情页 / 检索列表页用于渲染「绑定中 / 重新绑定中」状态以及
+// 「寻书任务进行中」状态，避免列表逐条发起查询。
 //
 // 入参（二选一）：
 //   bookItemId  : 单查，字符串
 //   bookItemIds : 批量，字符串数组
 // 返回：
-//   { success, map: { [bookItemId]: { inProgress, status } } }
-//   inProgress : 是否存在 bind_rfid 任务且 status ∈ [pending, running]
-//   status     : 进行中任务的 status（pending/running）；无进行中时为最新任务的 status 或 null
+//   { success, map: { [bookItemId]: { inProgress, status, findInProgress, findStatus } } }
+//   inProgress     : 是否存在 bind_rfid 任务且 status ∈ [pending, running]
+//   status         : 进行中绑定任务的 status（pending/running）；无进行中时为最新任务的 status 或 null
+//   findInProgress : 是否存在 find_book 任务且 status ∈ [pending, running]
+//   findStatus     : 进行中寻书任务的 status（pending/running）；无进行中时为 null
 //
 // 说明：device_task 无 family_id 字段，故先按当前家庭校验 book_item_id 归属，
-//       再查询绑定任务，防止越权探测其它家庭的 RFID 绑定状态。
+//       再查询任务，防止越权探测其它家庭的任务状态。
 
 const cloud = require('wx-server-sdk')
 
@@ -88,26 +90,32 @@ exports.main = async (event) => {
     res.data.forEach(d => allowedSet.add(d._id))
   }
 
-  // 2️⃣ 查询绑定任务（仅查询归属本家庭的 item；device_task 无 family_id 字段）
+  // 2️⃣ 查询绑定任务及寻书任务（仅查询归属本家庭的 item；device_task 无 family_id 字段）
   //    容错：若 device_task 集合尚未创建（-502005 资源不存在），则视为「无进行中任务」
   //          降级返回，不让查询失败阻断详情页 / 列表页渲染（前端本就按 rfid_tid 判断
   //          已绑定 / 未绑定，仅 inProgress 来自本接口）。
-  const taskMap = {} // itemId -> tasks[]
+  const taskMap = {} // itemId -> { bind: [], find: [] }
   const allowedIds = [...allowedSet]
   try {
     for (let i = 0; i < allowedIds.length; i += BATCH_SIZE) {
       const batch = allowedIds.slice(i, i + BATCH_SIZE)
+      // 一次查询同时获取 bind_rfid 和 find_book 两种类型的任务
       const res = await db.collection('device_task')
         .where({
           book_item_id: _.in(batch),
-          task_type: 'bind_rfid'
+          task_type: _.in(['bind_rfid', 'find_book'])
         })
-        .field({ book_item_id: true, status: true, created_at: true })
+        .field({ book_item_id: true, task_type: true, status: true, created_at: true })
         .limit(1000)
         .get()
       res.data.forEach(t => {
-        if (!taskMap[t.book_item_id]) taskMap[t.book_item_id] = []
-        taskMap[t.book_item_id].push(t)
+        const id = t.book_item_id
+        if (!taskMap[id]) taskMap[id] = { bind: [], find: [] }
+        if (t.task_type === 'bind_rfid') {
+          taskMap[id].bind.push(t)
+        } else if (t.task_type === 'find_book') {
+          taskMap[id].find.push(t)
+        }
       })
     }
   } catch (err) {
@@ -119,13 +127,24 @@ exports.main = async (event) => {
   const map = {}
   idList.forEach(id => {
     if (!allowedSet.has(id)) {
-      map[id] = { inProgress: false, status: null }
+      map[id] = { inProgress: false, status: null, findInProgress: false, findStatus: null }
       return
     }
-    const tasks = (taskMap[id] || []).slice().sort(
+    const group = taskMap[id] || { bind: [], find: [] }
+    const bindTasks = group.bind.slice().sort(
       (a, b) => new Date(b.created_at) - new Date(a.created_at)
     )
-    map[id] = buildBindStatus(tasks)
+    const findTasks = group.find.slice().sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    )
+    const bindStatus = buildBindStatus(bindTasks)
+    const findStatus = buildBindStatus(findTasks) // 复用同一归并逻辑
+    map[id] = {
+      inProgress: bindStatus.inProgress,
+      status: bindStatus.status,
+      findInProgress: findStatus.inProgress,
+      findStatus: findStatus.status
+    }
   })
 
   return { success: true, map }

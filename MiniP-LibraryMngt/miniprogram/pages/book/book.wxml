@@ -205,11 +205,11 @@
                 bindtap="onBindRFID">
                 重新绑定
               </button>
-              <!-- 寻书按钮：仅已绑定 RFID 且有权限时显示 -->
+              <!-- 寻书按钮：仅已绑定 RFID 且有权限时显示；进行中（findInProgress）时置灰 -->
               <button
                 wx:if="{{canFindBook}}"
                 class="primary-btn"
-                disabled="{{busy}}"
+                disabled="{{busy || findInProgress}}"
                 bindtap="onFindBook">
                 寻书
               </button>

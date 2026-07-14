@@ -760,7 +760,7 @@ Page({
   // RFID
   // ========================
 
-  // 批量查询在架图书的绑定任务状态，合并到列表项（一次查询，避免 N 次调用）
+  // 批量查询在架图书的绑定任务及寻书任务状态，合并到列表项（一次查询，避免 N 次调用）
   async loadBindStatuses() {
     const books = this.data.books
     if (!books || !books.length) return
@@ -785,8 +785,9 @@ Page({
       const updates = {}
       books.forEach((b, i) => {
         if (b.inventoryStatus === 'in_stock') {
-          const st = map[b.itemId] || { inProgress: false, status: null }
+          const st = map[b.itemId] || { inProgress: false, status: null, findInProgress: false, findStatus: null }
           updates[`books[${i}].bindInProgress`] = st.inProgress
+          updates[`books[${i}].findInProgress`] = st.findInProgress
         }
       })
       updates.bindStatusLoading = false
@@ -934,6 +935,12 @@ Page({
       return
     }
 
+    // 进行中（findInProgress）禁止重复发起
+    if (book.findInProgress || this.data.bindStatusLoading) {
+      console.log('handleFindBook: 存在进行中寻书任务或状态加载中，忽略点击')
+      return
+    }
+
     this.setData({ currentExpandedId: null })
     wx.showLoading({ title: '发起中...' })
 
@@ -942,9 +949,17 @@ Page({
       wx.hideLoading()
 
       if (result && result.success) {
+        // 乐观置「进行中」，防止重复点击
+        this.setData({ [`books[${index}].findInProgress`]: true })
         wx.showToast({ title: '已发起寻书任务，请使用PDA寻书', icon: 'none' })
       } else {
-        wx.showToast({ title: (result && result.message) || '发起失败', icon: 'none' })
+        // 服务端可能因「已有进行中任务」而拒绝（防重复），刷新状态让按钮置灰
+        if (result && result.code === 'TASK_IN_PROGRESS') {
+          this.setData({ [`books[${index}].findInProgress`]: true })
+          wx.showToast({ title: '已有进行中的寻书任务', icon: 'none' })
+        } else {
+          wx.showToast({ title: (result && result.message) || '发起失败', icon: 'none' })
+        }
       }
     } catch (err) {
       wx.hideLoading()

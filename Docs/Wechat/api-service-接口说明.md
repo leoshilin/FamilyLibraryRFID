@@ -1704,24 +1704,31 @@ PDA 后续执行
 > operator 由服务端从登录态解析，不接收客户端传入。
 
 #### 处理规则
-（暂无）
+1. 解析当前用户与 `current_family_id`；校验 `RFID_TASK_CREATE_FIND` 权限
+2. 校验 `book_item` 存在、在架（`inventory_status === 'in_stock'`）、未删除
+3. **未绑定 RFID（`rfid_tid` 为空）则拒绝**，返回 `"未绑定RFID的图书无法发起寻书任务"`
+4. **防重复**：检查 `device_task` 中是否已存在同一 `book_item_id` 的 `find_book` 任务且 `status ∈ [pending, running]`，有则拒绝返回 `{ success: false, code: "TASK_IN_PROGRESS", message: "该书已有进行中的寻书任务，请勿重复发起" }`
+5. 写入 `device_task`：`{ task_type: 'find_book', book_item_id, target_tid: book_item.rfid_tid, status: 'pending', created_by, created_at }`；返回 `{ success: true, taskId }`
 
-
-#### 权限
-- 解析当前用户与 `current_family_id`；校验 `RFID_TASK_CREATE_FIND` 权限。
-- 校验 `bookItemId` 对应 `book_item` 存在、在架、未删除；**未绑定 RFID（`rfid_tid` 为空）则拒绝**（设计：未绑标签不可寻书）。
-- 向 `device_task` 写入 `{ task_type:'find_book', book_item_id, target_tid: book_item.rfid_tid, status:'pending', created_by, created_at }`；返回 `{ success:true, taskId }`。
 
 #### 权限
 - 所需权限：`RFID_TASK_CREATE_FIND`
 - 允许角色：ADMIN（系统管理员，拥有全部）、OWNER、MEMBER（GUEST 无此权限）
 - 校验方式：服务端经 `checkPermission` 校验；未授权返回 `{ "success": false, "message": "无权限操作" }`
 
-#### 返回（规划）
+#### 返回
 ```json
+// 成功
 {
   "success": true,
   "taskId": "task00002"
+}
+
+// 重复发起（已有进行中任务）
+{
+  "success": false,
+  "code": "TASK_IN_PROGRESS",
+  "message": "该书已有进行中的寻书任务，请勿重复发起"
 }
 ```
 
@@ -1729,16 +1736,16 @@ PDA 后续执行
 
 ### G3. api_task_getBindStatus
 #### 功能
-查询图书 RFID 绑定任务状态（轻量读接口）。用于：
+查询图书 RFID 绑定任务及寻书任务状态（轻量读接口）。用于：
 ```
 图书详情页 / 检索列表页
 ↓
-渲染「绑定中… / 重新绑定中…」状态
+渲染「绑定中… / 重新绑定中…」状态 + 「寻书任务进行中」状态
 ↓
 避免列表逐条发起查询
 ```
 
-> **说明**：`api_task_getBindStatus` 实现真实查询逻辑（按 `book_item_id` + `task_type='bind_rfid'` + `status ∈ [pending, running]` 判定 `inProgress`，一次批量返回映射）。
+> **说明**：`api_task_getBindStatus` 实现真实查询逻辑（按 `book_item_id` + `task_type ∈ ['bind_rfid', 'find_book']` + `status ∈ [pending, running]` 判定 `inProgress` 和 `findInProgress`，一次批量返回映射）。
 
 #### 入参（规划）
 ```json
@@ -1757,9 +1764,11 @@ PDA 后续执行
 #### 处理规则
 1. 反查当前用户与 `current_family_id`；未登录 / 未选家庭返回失败。
 2. **归属校验**：先按 `_id in bookItemIds AND family_id = 当前家庭 AND fg_delete=false` 过滤，仅对归属本家庭的 `book_item_id` 继续查询（防止越权探测其它家庭的 RFID 绑定状态；`device_task` 无 `family_id` 字段，故需经 `book_item` 反查）。
-3. 查询 `device_task`：`book_item_id in 允许的 id AND task_type='bind_rfid'`。
-4. 归并状态：该图书存在 `status ∈ [pending, running]` 的任务则 `inProgress=true`，`status` 取进行中任务状态（running 优先于 pending）；无进行中时 `status` 取最新任务状态或 `null`。
-5. 返回 `{ [itemId]: { inProgress, status } }` 映射（包含请求的全部 id，未授权 / 不存在的 id 占位为 `{ inProgress:false, status:null }`，便于前端直接按 id 取用）。
+3. 查询 `device_task`：`book_item_id in 允许的 id AND task_type in ['bind_rfid', 'find_book']`。
+4. 归并状态：
+   - 绑定任务：存在 `status ∈ [pending, running]` 的 `bind_rfid` 任务则 `inProgress=true`
+   - 寻书任务：存在 `status ∈ [pending, running]` 的 `find_book` 任务则 `findInProgress=true`
+5. 返回 `{ [itemId]: { inProgress, status, findInProgress, findStatus } }` 映射（包含请求的全部 id，未授权 / 不存在的 id 占位为 `{ inProgress:false, status:null, findInProgress:false, findStatus:null }`，便于前端直接按 id 取用）。
 6. `in` 查询按每批 100 拆分，避免微信云数据库数组长度约束。
 
 > **容错说明（健壮性）**：本接口对 `device_task` 的查询包裹了 `try/catch`。若 `device_task` 集合尚未创建（云端报 `-502005 database collection not exists`），接口**不抛错**、降级为「全部 `inProgress:false`」并返回 `success:true`，使详情页 / 列表页仍能按 `rfid_tid` 正常渲染「已绑定 / 未绑定」按钮，仅「绑定中…」态暂不显示。请见 §4.5 用 `script_init_collections` 补齐缺失集合。
@@ -1768,13 +1777,13 @@ PDA 后续执行
 - 仅需登录且已选择当前家庭（本接口为只读查询，不要求 `RFID_TASK_CREATE_BIND` / `RFID_UNBIND`；GUEST 也可读取，用于展示进行中态）。
 - 越权探测通过「归属校验」拦截：非本家庭的 `book_item_id` 一律返回 `{ inProgress:false, status:null }`。
 
-#### 返回（规划）
+#### 返回
 ```json
 {
   "success": true,
   "map": {
-    "bi00001": { "inProgress": true, "status": "pending" },
-    "bi00002": { "inProgress": false, "status": null }
+    "bi00001": { "inProgress": true, "status": "pending", "findInProgress": false, "findStatus": null },
+    "bi00002": { "inProgress": false, "status": null, "findInProgress": true, "findStatus": "pending" }
   }
 }
 ```
