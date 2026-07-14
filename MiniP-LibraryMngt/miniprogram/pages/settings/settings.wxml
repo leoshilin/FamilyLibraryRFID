@@ -1,7 +1,9 @@
 <view class="page">
   <!-- 顶部导航栏 -->
   <view class="nav-bar">
-    <view class="back-btn" bindtap="onBack">← 返回</view>
+    <view class="back-btn" bindtap="onBack">
+      <view class="back-arrow"></view>
+    </view>
     <view class="nav-title">设置</view>
     <view class="nav-right"></view>
   </view>

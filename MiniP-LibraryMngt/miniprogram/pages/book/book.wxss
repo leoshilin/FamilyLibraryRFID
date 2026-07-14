@@ -22,10 +22,27 @@
 
 /* 返回按钮 */
 .back-btn {
-  font-size: 30rpx;
-  color: #1677ff;
-  font-weight: 500;
-  min-width: 120rpx;
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.back-btn:active {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* 微信风格返回箭头（CSS border 绘制） */
+.back-arrow {
+  width: 18rpx;
+  height: 18rpx;
+  border-left: 4rpx solid #333;
+  border-bottom: 4rpx solid #333;
+  transform: rotate(45deg);
+  margin-left: 6rpx;
 }
 
 /* 标题 */
