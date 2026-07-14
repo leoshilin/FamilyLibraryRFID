@@ -33,9 +33,9 @@ const getBindStatus = (params) => {
 
 // —— PDA：任务执行（Android 直连，此处仅作统一封装） ——
 
-// PDA 领取一个待执行任务
-const accept = (deviceId) => {
-  return callFunction('api_task_accept', { deviceId })
+// PDA 批量领取待执行任务（最多 limit 条，默认 10）
+const accept = (deviceId, limit = 10) => {
+  return callFunction('api_task_accept', { deviceId, limit })
 }
 
 // PDA 提交任务执行结果

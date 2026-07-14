@@ -1,5 +1,6 @@
 package com.familylibrary.rfidfinder.cloud
 
+import android.util.Log
 import com.familylibrary.rfidfinder.cloud.model.AcceptRequest
 import com.familylibrary.rfidfinder.cloud.model.AcceptResponse
 import com.familylibrary.rfidfinder.cloud.model.ApiResult
@@ -14,6 +15,8 @@ import com.familylibrary.rfidfinder.cloud.model.DeviceTask
 import com.familylibrary.rfidfinder.cloud.model.TaskType
 import com.familylibrary.rfidfinder.cloud.model.safeCall
 import kotlinx.serialization.json.Json
+
+private const val TAG = "TaskCloudService"
 
 /**
  * PDA 云端任务服务：封装 J 系列（PDA 专用）云函数调用。
@@ -37,18 +40,24 @@ class TaskCloudService(
         get() = config.isConfigured
 
     /**
-     * J1 领取一个待执行任务。
-     * 云端从 pending/running 取创建时间最早的一条，置为 running 避免重复执行。
-     * @return 任务对象；无任务时返回 ApiResult.Success(null)。
+     * J1 批量领取待执行任务（最多 [limit] 条，默认 10）。
+     * 云端从 pending / 本设备已领取的 running 中按创建时间升序取最多 limit 条，
+     * 统一置 running 避免重复执行；返回任务清单由用户选择其中一条执行（不在 PDA 做任务队列）。
+     * @param limit 单次领取上限（默认 10，云端夹在 [1,10]）
+     * @return 任务清单（可能为空列表，表示无待执行任务）
      */
-    suspend fun acceptTask(deviceId: String): ApiResult<DeviceTask?> = safeCall {
+    suspend fun acceptTask(deviceId: String, limit: Int = 10): ApiResult<List<DeviceTask>> = safeCall {
         val resp: AcceptResponse = client.invoke(
             "api_task_accept",
-            json.encodeToString(AcceptRequest(deviceId))
+            json.encodeToString(AcceptRequest(deviceId, limit))
         )
-        resp.task?.let { payload ->
+        resp.tasks.mapNotNull { payload ->
             val type = TaskType.from(payload.taskType)
-                ?: throw IllegalArgumentException("未知任务类型：${payload.taskType}")
+            if (type == null) {
+                // 未知类型跳过，不阻塞整批领取
+                Log.w(TAG, "acceptTask: 跳过未知任务类型 ${payload.taskType} (taskId=${payload.taskId})")
+                return@mapNotNull null
+            }
             DeviceTask(
                 taskId = payload.taskId,
                 taskType = type,

@@ -29,10 +29,11 @@ data class WxInvokeResponse(
 
 // ───────────── J 系列（PDA）请求/响应 ─────────────
 
-/** J1 api_task_accept 入参。 */
+/** J1 api_task_accept 入参。limit 默认 10，云端夹在 [1,10]。 */
 @Serializable
 data class AcceptRequest(
-    val deviceId: String
+    val deviceId: String,
+    val limit: Int = 10
 )
 
 /** J1 返回中的任务负载。 */
@@ -49,11 +50,11 @@ data class TaskPayload(
     val authors: String = ""
 )
 
-/** J1 api_task_accept 返回：{ success, task }，无任务时 task 为 null。 */
+/** J1 api_task_accept 返回：{ success, tasks }，tasks 为任务数组（最多 limit 条），无任务时为空数组。 */
 @Serializable
 data class AcceptResponse(
     val success: Boolean = true,
-    val task: TaskPayload? = null
+    val tasks: List<TaskPayload> = emptyList()
 )
 
 /** J2 api_task_complete 入参。result 为执行结果（JSON 对象，可空）。 */

@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -46,7 +48,8 @@ fun FinderHomeScreen() {
     val configured = remember { AppContainer.cloudConfig.isConfigured }
 
     var rfidStatus by remember { mutableStateOf("未初始化") }
-    var taskText by remember { mutableStateOf("尚未领取任务") }
+    var taskText by remember { mutableStateOf("尚未领取任务（一次最多领取 10 条）") }
+    var tasks by remember { mutableStateOf<List<DeviceTask>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
@@ -86,29 +89,17 @@ fun FinderHomeScreen() {
                 busy = true
                 taskText = "领取中…"
                 scope.launch {
-                    when (val res = AppContainer.taskCloudService.acceptTask(deviceId)) {
+                    when (val res = AppContainer.taskCloudService.acceptTask(deviceId, 10)) {
                         is ApiResult.Success -> {
-                            val task: DeviceTask? = res.data
-                            taskText = if (task == null) {
+                            tasks = res.data
+                            taskText = if (tasks.isEmpty()) {
                                 "无待执行任务"
                             } else {
-                                buildString {
-                                    append("领取到任务：\n")
-                                    append("taskId=").append(task.taskId).append("\n")
-                                    append("类型=").append(
-                                        when (task.taskType) {
-                                            TaskType.BIND_RFID -> "绑定RFID"
-                                            TaskType.FIND_BOOK -> "寻书"
-                                        }
-                                    ).append("\n")
-                                    if (task.bookItemId.isNotBlank())
-                                        append("bookItemId=").append(task.bookItemId).append("\n")
-                                    if (task.targetTid.isNotBlank())
-                                        append("targetTid=").append(task.targetTid)
-                                }
+                                "领取到 ${tasks.size} 个任务"
                             }
                         }
                         is ApiResult.Failure -> {
+                            tasks = emptyList()
                             val e = res.exception
                             // 异常 message 可能为 null（如 NetworkOnMainThreadException），
                             // 用异常类型兜底，确保总能看到可读信息。
@@ -128,5 +119,38 @@ fun FinderHomeScreen() {
 
         Spacer(Modifier.height(16.dp))
         Text(taskText)
+
+        if (tasks.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp)
+            ) {
+                items(tasks) { task ->
+                    TaskItemCard(task)
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+/** 单个任务卡片（演示用：展示任务类型与关联字段，供用户选择执行）。 */
+@Composable
+private fun TaskItemCard(task: DeviceTask) {
+    val typeLabel = when (task.taskType) {
+        TaskType.BIND_RFID -> "绑定RFID"
+        TaskType.FIND_BOOK -> "寻书"
+    }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp)) {
+            Text(typeLabel, style = MaterialTheme.typography.titleMedium)
+            if (task.title.isNotBlank()) Text("书名：${task.title}")
+            if (task.authors.isNotBlank()) Text("作者：${task.authors}")
+            if (task.isbn.isNotBlank()) Text("ISBN：${task.isbn}")
+            if (task.bookItemId.isNotBlank()) Text("bookItemId：${task.bookItemId}")
+            if (task.targetTid.isNotBlank()) Text("targetTid：${task.targetTid}")
+        }
     }
 }
