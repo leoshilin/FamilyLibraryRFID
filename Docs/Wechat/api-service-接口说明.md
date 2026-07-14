@@ -79,6 +79,7 @@
 |J2| api_task_complete | task | PDA操作：任务执行|
 |J3| api_task_getRfidBindingInfo | task | PDA操作：任务执行|
 |J4| api_task_bindRfid | task | PDA操作：任务执行|
+|J5| api_task_listRecentCompleted | task | PDA操作：最近完成任务查询|
 |
 |> 注：架构表中的接口命名与代码实际云函数名对齐（如 `api_rfid_bind` → `api_task_bindRfid`、`api_recentbook_search` → `api_book_searchRecent`），以代码为准。
 |
@@ -190,10 +191,11 @@
 | G2 | api_task_createFindBook | taskServices | `createFindBook(bookItemId)` | bookItemId |
 | G3 | api_task_getBindStatus | taskServices | `getBindStatus(params)` | bookItemId? / bookItemIds? |
 | H1 | api_task_unbindRfid | taskServices | `unbindRfid(bookItemId)` | bookItemId |
-| J1 | api_task_accept | taskServices | `accept(deviceId)` | deviceId |
+| J1 | api_task_accept | taskServices | `accept(deviceId, limit?)` | deviceId, limit? |
 | J2 | api_task_complete | taskServices | `complete(taskId, status, result?)` | taskId, status, result? |
 | J3 | api_task_getRfidBindingInfo | taskServices | `getRfidBindingInfo(tid)` | tid |
 | J4 | api_task_bindRfid | taskServices | `bindRfid(bookItemId, tid, taskId?)` | bookItemId, tid, taskId? |
+| J5 | api_task_listRecentCompleted | taskServices | `listRecentCompleted(deviceId, withinDays?)` | deviceId, withinDays? |
 |
 |> 入参标注 `?` 的为可选；`familyId` / `operator` / `created_by` 一律服务端解析，不在任何方法签名中出现（B3 / B4 / B6 的"目标家庭" `familyId` 除外，在方法签名显式列出）。
 |
@@ -261,10 +263,11 @@
 |unbindRfid(bookItemId)                    // → api_task_unbindRfid        { bookItemId }
 |getBindStatus(params)                    // → api_task_getBindStatus      { bookItemId? / bookItemIds? } 
 |// —— PDA 执行（Android 直连，此处仅作全局视图维护）——
-|accept(deviceId)                          // → api_task_accept            { deviceId }
+|accept(deviceId, limit = 10)              // → api_task_accept            { deviceId, limit? }  // 批量轮询，返回 ≤limit 条任务清单
 |complete(taskId, status, result)          // → api_task_complete          { taskId, status, result? }
 |getRfidBindingInfo(tid)                   // → api_task_getRfidBindingInfo { tid }
 |bindRfid(bookItemId, tid, taskId)         // → api_task_bindRfid          { bookItemId, tid, taskId? }
+|listRecentCompleted(deviceId, withinDays = 3) // → api_task_listRecentCompleted { deviceId, withinDays? }  // 最近完成任务（近 withinDays 天）
 |```
 |> `bindRfid` 的 `taskId` 为可选：用于关联 `rfid_bind_log.task_id`；不传时按 `book_item_id` 反查进行中的 `bind_rfid` 任务。`deviceId` 为可选：作为 `rfid_bind_log.operator`（PDA 设备ID），不传时回退到任务领取设备，再回退到固定串 `"PDA"`。
 |
@@ -1827,7 +1830,7 @@
 |规则：
 |- 仅 PDA 调用
 |- 从 pending / running 中按创建时间排序
-|- 返回一个任务
+|- 返回最多 10 个任务的清单（数组，由入参 `limit` 控制，默认 10），供 PDA 任务台展示并由用户选择其中一条执行（不在 PDA 做任务队列）
 |- 返回后立即更新状态为 running
 |
 |对应设计文档：
@@ -1841,7 +1844,7 @@
 |running
 |```
 |
-|> **说明**：`api_task_accept` 实现真实领取逻辑（pending/running 升序取 1 条置 running）；并在领取时经 `book_item → book_meta` 关联返回 `isbn` / `title` / `authors` 展示字段（`device_task` 不冗余存储展示字段，见数据库表结构设计 §3.9）。
+|> **说明**：`api_task_accept` 实现真实批量领取逻辑（pending/running 升序取最多 `limit` 条置 running，默认 10 条）；并在领取时经 `book_item → book_meta` 关联返回 `isbn` / `title` / `authors` 展示字段（`device_task` 不冗余存储展示字段，见数据库表结构设计 §3.9）。用户从返回的清单中选择一条进入执行，其余候选任务在用户返回任务台再次轮询时随新任务一并刷新。
 |
 |#### 入参（规划）
 |```json
@@ -1856,35 +1859,46 @@
 |
 |#### 权限
 |- 无家庭 / 角色校验（PDA 专用）。
-|- 从 `device_task` 取 `status in ['pending','running']` 按 `created_at` 升序 1 条；置 `status:'running'`、`claimed_by_device=deviceId`、`claimed_at`。
+|- 从 `device_task` 取 `status in ['pending','running']` 按 `created_at` 升序取最多 `limit` 条；仅**本设备已领取**（`claimed_by_device=deviceId`）的 `running` 任务与 `pending` 任务进入候选（不抢占其它设备正在执行的任务）；逐条置 `status:'running'`、`claimed_by_device=deviceId`、`claimed_at`。
 |- **展示字段实时关联**：`device_task` 仅存调度字段（`book_item_id` / `target_tid`），不冗余保存 ISBN / 书名 / 作者。领取后由本接口经 `book_item.book_meta_id → book_meta` 反查拼装 `isbn` / `title` / `authors`，随任务一并返回（供 PDA 直接显示并校验 ISBN）。任一关联缺失或异常均降级为空字符串，不影响领取主流程。
-|- 返回 `{ success:true, task:{ taskId, taskType, bookItemId, targetTid, isbn, title, authors } }`，无任务返回 `{ success:true, task:null }`。
+|- 返回 `{ success:true, tasks:[{ taskId, taskType, bookItemId, targetTid, isbn, title, authors }, ...] }`（`tasks` 为数组，最多 `limit` 条；无任务返回 `{ success:true, tasks:[] }`）。
 |
 |#### 权限
 |- 无（PDA 专用；按 deviceId 领取待执行任务，不做家庭角色校验）
 |
 |#### 返回（规划）
-|**有任务：**
+|**有任务（清单，最多 `limit` 条）：**
 |```json
 |{
 |  "success": true,
-|  "task": {
-|    "taskId": "task00001",
-|    "taskType": "bind_rfid",
-|    "bookItemId": "bi00001",
-|    "targetTid": "",
-|    "isbn": "9787111122334",
-|    "title": "三体",
-|    "authors": "刘慈欣"
-|  }
+|  "tasks": [
+|    {
+|      "taskId": "task00001",
+|      "taskType": "bind_rfid",
+|      "bookItemId": "bi00001",
+|      "targetTid": "",
+|      "isbn": "9787111122334",
+|      "title": "三体",
+|      "authors": "刘慈欣"
+|    },
+|    {
+|      "taskId": "task00002",
+|      "taskType": "find_book",
+|      "bookItemId": "bi00002",
+|      "targetTid": "E20000172211018018903333",
+|      "isbn": "9787536692930",
+|      "title": "活着",
+|      "authors": "余华"
+|    }
+|  ]
 |}
 |```
-|
+
 |**无任务：**
 |```json
 |{
 |  "success": true,
-|  "task": null
+|  "tasks": []
 |}
 |```
 |
@@ -1915,6 +1929,12 @@
 |- 无家庭 / 角色校验（PDA 专用）。
 |- `status` 须为 `success`/`failed`，否则拒绝；更新 `device_task` 的 `status`/`result`/`completed_at`。
 |- 注：bind_rfid 的实际绑定 / 解绑由 **J4（api_task_bindRfid）** 执行；本接口只记录任务最终状态。
+- **`result` 结构约定**：`result` 为 JSON，结构随 `task_type` 与 `status` 不同（详见数据库表结构设计 §3.9.1）。
+  - **find_book**：
+    - `success`：`{ "found": true, "durationMs": <ms>, "foundRssi": <int>, "readCount": <int> }`（`readCount` 为目标标签连续稳定读取次数，达到阈值即判「已找到」）。
+    - `failed`：`{ "found": false, "reason": "no_rfid_read" | "user_abort" | "device_error", "durationMs": <ms>, "readCount": 0 }`。其中 `no_rfid_read` = 本次会话未读到任何 RFID 结果即结束（寻书失败关闭，见需求流程定义书 F6.2）。
+  - **bind_rfid**：`success` → `{ "epcWritten": true }`；`failed` → `{ "reason": "user_abort" | "bind_failed" | "device_error" }`。
+- 失败原因统一写入 `result.reason`，供 PDA 任务台「最近完成任务」列表（J5）与小程序端失败排查复用。
 |
 |#### 权限
 |- 无（PDA 专用；提交任务执行结果）
@@ -2030,6 +2050,64 @@
 |
 |---
 |
+|### J5. api_task_listRecentCompleted
+|#### 功能
+|PDA 任务台查询**最近完成任务**（用于失败排查与执行回顾）。对应需求：任务台提供「最近完成任务」入口，列出近 N 天内 `status ∈ [success, failed]` 的任务及执行结果。
+
+|#### 入参（规划）
+|```json
+|{
+|  "deviceId": "pda001",
+|  "withinDays": 3
+|}
+|```
+|> `withinDays` 可选，默认 3（天）；`deviceId` 用于归属校验（仅返回本设备领取完成的任务）。
+
+|#### 处理规则
+|- 无家庭 / 角色校验（PDA 专用）。
+|- 查询 `device_task`：`claimed_by_device = deviceId` 且 `status in ['success','failed']` 且 `completed_at >= now - withinDays`；按 `completed_at` 倒序，最多 50 条。
+|- **展示字段实时关联**：`device_task` 不冗余存储 ISBN / 书名 / 作者；本接口经 `book_item.book_meta_id → book_meta` 反查拼装 `isbn` / `title` / `authors`，随任务一并返回（与 J1 一致）。
+|- 返回 `{ success:true, tasks:[{ taskId, taskType, bookItemId, targetTid, isbn, title, authors, status, result, completedAt }, ...] }`；无数据返回 `{ success:true, tasks:[] }`。
+|- `result` 结构见数据库表结构设计 §3.9.1：`status='failed'` 时取 `result.reason` 展示失败理由（如 `no_rfid_read` / `user_abort` / `device_error`）。
+
+|#### 权限
+|- 无（PDA 专用；按 deviceId 查询本设备最近完成任务，不做家庭角色校验）
+
+|#### 返回（规划）
+|```json
+|{
+|  "success": true,
+|  "tasks": [
+|    {
+|      "taskId": "task00002",
+|      "taskType": "find_book",
+|      "bookItemId": "bi00002",
+|      "targetTid": "E20000172211018018903333",
+|      "isbn": "9787536692930",
+|      "title": "活着",
+|      "authors": "余华",
+|      "status": "success",
+|      "result": { "found": true, "durationMs": 12345, "foundRssi": -28, "readCount": 12 },
+|      "completedAt": "2026-07-14T10:21:00Z"
+|    },
+|    {
+|      "taskId": "task00003",
+|      "taskType": "find_book",
+|      "bookItemId": "bi00003",
+|      "targetTid": "E20000172211018018904444",
+|      "isbn": "9787020000000",
+|      "title": "xxx",
+|      "authors": "xxx",
+|      "status": "failed",
+|      "result": { "found": false, "reason": "no_rfid_read", "durationMs": 30210, "readCount": 0 },
+|      "completedAt": "2026-07-13T18:05:00Z"
+|    }
+|  ]
+|}
+|```
+
+|---
+
 |# 4. 一次性数据迁移工具（script_data_migration）
 |
 |> **性质：临时工具，非业务接口。** 本云函数**不在**第 1 章「API 整体清单」中，因为它不是面向手机端 / PDA 的业务接口，而是运维期用于调整数据库表结构（改字段名、增减字段、迁移历史数据）的一次性脚本。

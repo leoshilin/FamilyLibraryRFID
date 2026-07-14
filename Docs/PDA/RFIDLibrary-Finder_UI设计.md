@@ -11,9 +11,9 @@
 
 覆盖 PDA 三大核心场景：
 
-1. **领取任务（任务台）** —— 空闲时轮询云端 `device_task`，领取后路由到绑定/寻书。
+1. **领取任务（任务台）** —— 空闲时轮询云端 `device_task`，**一次返回最多 10 条任务清单**供用户选择；同时提供「最近完成任务」入口查询近 3 天完成结果。选择清单中一条后路由到绑定/寻书。
 2. **执行绑定 / 重绑定（F4.3）** —— 校验 ISBN → 读标签 TID → 确认解绑（如需）→ 云端绑定 → 回写 EPC。
-3. **寻书定位（F6.2）** —— “盖革计数器”模式连续扫描，RSSI/距离/蜂鸣实时反馈，找到后结束。
+3. **寻书定位（F6.2）** —— “盖革计数器”模式连续扫描，RSSI/距离/蜂鸣实时反馈；**以目标标签连续读取结果防误判**，用户结束时按是否读到 RFID 结果落 `success` / `failed`。
 
 ## 2. PDA 端 UI 总体原则
 
@@ -25,24 +25,27 @@
 
 ## 3. 信息架构与导航
 
-采用 Jetpack Navigation Compose，路由：`home` → `bind` / `find`（凭领取到的任务进入）。
+采用 Jetpack Navigation Compose，路由：`home` → `bind` / `find`（凭选中的任务进入）；`home` 另提供 `recent` 入口查看最近完成任务。
 
 ```
             ┌─────────────┐
-            │   home      │  任务台（空闲轮询 / 任务卡片）
-            └──────┬──────┘
-       accept 返回 bind/find
-       ┌──────────┴──────────┐
-   ┌───▼────┐            ┌────▼────┐
-   │  bind   │            │  find   │   执行中（不在 PDA 做任务队列，一次一个）
-   └───┬────┘            └────┬────┘
-       └──────────┬──────────┘ complete(success/failed)
-                  ▼
-                home
+            │   home      │  任务台（轮询清单≤10 / 最近完成任务入口）
+            └──┬──────┬───┘
+       select  │      │ 点击「最近完成任务」
+               ▼      ▼
+          ┌──────┐  ┌─────────┐
+          │bind/ │  │ recent  │  最近完成任务列表（近3天，结果/理由/时间）
+          │ find │  └────┬────┘
+          └──┬───┘       │ back
+     complete│           │
+        (success/failed) │
+             ▼           │
+           home ◀────────┘  (返回即再次轮询刷新清单)
 ```
 
-- 领取到的 `DeviceTask` 以 **JSON 字符串**经 `kotlinx.serialization` 序列化后作为 NavArgument 传递（`DeviceTask` 需加 `@Serializable`）。
-- 每个流程一个 `ViewModel`（`HomeViewModel` / `BindViewModel` / `FindViewModel`），用 `StateFlow<UiState>` 表达状态机，Composable 只渲染、发事件。
+- 选中的 `DeviceTask` 以 **JSON 字符串**经 `kotlinx.serialization` 序列化后作为 NavArgument 传递（`DeviceTask` 需加 `@Serializable`）。
+- 每个流程一个 `ViewModel`（`HomeViewModel` / `BindViewModel` / `FindViewModel` / `RecentViewModel`），用 `StateFlow<UiState>` 表达状态机，Composable 只渲染、发事件。
+- `home` 进入（onStart / onResume）即触发 `acceptTask` 轮询并刷新清单；从 `bind` / `find` / `recent` 返回 `home` 时同样再次轮询刷新。
 
 ## 4. 设计冲突与结论
 
@@ -78,25 +81,59 @@
 
 ### 5.2 状态机
 ```
-[IDLE] ──(定时轮询 acceptTask, 每 5s)──▶ [POLLING]
-[POLLING] ──(无任务)──▶ [IDLE]
-[POLLING] ──(有任务)──▶ [TASK_CARD]  // 显示任务摘要 + [开始执行][放弃]
-[TASK_CARD] ──(开始)──▶ 路由到 bind / find
-[TASK_CARD] ──(放弃)──▶ completeTask(failed, {reason:"user_abort"}) → [IDLE]
+[IDLE] ──(进入页/返回页 轮询 acceptTask(limit=10))──▶ [POLLING]
+[POLLING] ──(无任务)──▶ [EMPTY]      // 显示「暂无任务」+ [手动刷新]
+[POLLING] ──(有任务)──▶ [TASK_LIST]  // 最多 10 条；每条 [执行][放弃]
+[TASK_LIST] ──(执行 某条)──▶ 路由到 bind / find
+[TASK_LIST] ──(放弃 某条)──▶ completeTask(failed, {reason:"user_abort"}) → 该条移出清单
+[TASK_LIST] ──(点击「最近完成任务」)──▶ [RECENT]  // 近 3 天完成结果
+[RECENT] ──(返回)──▶ 再次轮询 → [TASK_LIST]
+bind / find 完成 ──(返回 home)──▶ 再次轮询 → [TASK_LIST]（刷新）
 ```
-- **轮询策略**（遵守设计文档 §2.3）：仅当当前**无活动任务**时轮询；每次只取一个；`acceptTask` 将任务置 `running`，避免重复执行。
-- 也提供手动「领取任务」按钮（便于调试与无轮询场景）。
+- **轮询策略**（遵守设计文档 §2.3）：仅在**未进入 bind / find / recent** 时轮询；`acceptTask(deviceId, limit=10)` 一次返回最多 10 条，云端将其置 `running` 并写入 `claimed_by_device` / `claimed_at`，避免被其它 PDA 重复领取；用户从清单选择一条串行执行，其余候选在返回任务台再次轮询时随新任务一并刷新。
+- 进入 `home`（onStart / onResume）及从 `bind` / `find` / `recent` 返回 `home` 时，**均再次轮询并刷新**清单。
+- 也提供手动「刷新」按钮（便于无自动轮询场景 / 调试）。
 
-### 5.3 任务卡片（TASK_CARD）布局
+### 5.3 任务清单（TASK_LIST）布局
 ```
 ┌──────────────────────────────────┐
-│ 类型：绑定 RFID / 寻书              │
-│ 书名：<title>                     │
-│ 作者：<authors>                   │
-│ ISBN：<isbn>                      │
-│ (寻书) 目标TID：<target_tid>       │
-│                                    │
-│        [ 开始执行 ]   [ 放弃 ]       │
+│  任务台（共 N 条）        [ 刷新 ]   │
+│──────────────────────────────────│
+│ ▸ 绑定 RFID                       │
+│   书名：<title>  作者：<authors>   │
+│   ISBN：<isbn>                    │
+│            [ 执行 ]   [ 放弃 ]      │
+│──────────────────────────────────│
+│ ▸ 寻书                             │
+│   书名：<title>  TID：<target_tid> │
+│            [ 执行 ]   [ 放弃 ]      │
+│   ……（最多 10 条，可滚动）……        │
+├──────────────────────────────────┤
+│     [ 最近完成任务 ]  →             │
+└──────────────────────────────────┘
+```
+
+> 清单项复用公共组件 `TaskCard`（类型徽标 + 书名/作者/ISBN + 主/次按钮）；点击「执行」携带该 `DeviceTask` 进入 `bind` / `find`，点击「放弃」仅将该条置 `failed`（`reason:"user_abort"`），不阻塞其它候选。
+
+### 5.4 最近完成任务入口（RECENT）
+任务台底部提供「最近完成任务」入口，点击进入 `recent` 页，调用 `listRecentCompleted(deviceId, withinDays=3)` 拉取**近 3 天**内 `status ∈ [success, failed]` 的任务，展示：
+
+| 字段 | 来源 |
+|---|---|
+| 类型（绑定 RFID / 寻书） | `taskType` |
+| 书名 / 作者 / ISBN | 云端经 `book_item → book_meta` 关联返回 |
+| 结果 | `status`（成功 / 失败） |
+| 失败理由 | `result.reason`（仅失败显示） |
+| 执行时间 | `completed_at` |
+
+```
+┌──────────────────────────────────┐
+│  最近完成任务（近 3 天）    [ 返回 ] │
+│──────────────────────────────────│
+│ ✅ 寻书  《三体》  07-14 10:21     │
+│ ❌ 寻书  《活着》  未读到RFID 07-13 │
+│ ❌ 绑定  《xxx》  用户放弃  07-12   │
+│   …（按 completed_at 倒序）……      │
 └──────────────────────────────────┘
 ```
 
@@ -156,15 +193,18 @@ TASK_INFO → SCAN_ISBN → SCAN_TAG → [CONFIRM_UNBIND?] → BINDING → WRITE
 ```
 TASK_INFO → SEARCHING → DONE
    │           │  (停止)
-   │           └────────────▶ completeTask(success, {durationMs, foundRssi})
-   └─(取消)────────────────▶ completeTask(failed, {reason})
+   │           ├─(本次会话已读到目标标签连续结果)─▶ completeTask(success, {durationMs, foundRssi, readCount})
+   │           └─(停止时从未读到任何RFID结果)────▶ completeTask(failed, {reason:'no_rfid_read', durationMs, readCount:0})
+   └─(取消)────────────────▶ completeTask(failed, {reason:'user_abort'})
 ```
 
 | 状态 | 界面与行为 |
 |---|---|
 | **TASK_INFO** | 显示目标书名/作者/ISBN/TID + [开始寻书][取消] |
-| **SEARCHING** | “盖革计数器”模式：全屏大号可视化。每 ~300ms 调 `findTagByTid`；用 `RssiLocator.locate()` 得距离文案+beep 等级，`RssiLocator.nextPower()` 得下一档功率并 `setPower`；RSSI 条随信号增强由红→绿，配蜂鸣（越近越急）。底部 [停止寻书] |
-| **DONE** | “已结束寻书”+ 本次耗时/最后 RSSI + [返回任务台] |
+| **SEARCHING** | “盖革计数器”模式：全屏大号可视化。每 ~300ms 调 `findTagByTid`；用 `RssiLocator.locate()` 得距离文案+beep 等级，`RssiLocator.nextPower()` 得下一档功率并 `setPower`；RSSI 条随信号增强由红→绿，配蜂鸣（越近越急）。底部 [停止寻书]。界面持续累计目标标签**连续读取次数**（`readCount`），达到阈值（默认 3）时亮起「已定位✅」指示（防误判）。 |
+| **DONE** | “已结束寻书”+ 结果：成功（本次耗时 / 最后 RSSI / 连续读取次数）或失败（理由：`no_rfid_read` / `user_abort`）+ [返回任务台] |
+
+> **结束判定（防误判）**：用户点击「停止寻书」时，若本次会话已取得目标标签**连续稳定读取结果**（`readCount ≥ 阈值`）→ `completeTask(success, …)`；若**从未读到任何 RFID 结果**（`readCount = 0`）→ `completeTask(failed, {reason:'no_rfid_read', …})`，任务作为失败关闭。判定规则见需求流程定义书 F6.2。
 
 ### 7.2 寻书可视化（SEARCHING 态）
 - **中心指示**：大圆形/进度环，半径或颜色随 RSSI 强度变化（近=绿大，远=红小）。
@@ -191,7 +231,8 @@ TASK_INFO → SEARCHING → DONE
 
 | 组件 | 说明 |
 |---|---|
-| `TaskCard` | 任务摘要卡（类型徽标 + 书名/作者/ISBN + 主/次按钮） |
+| `TaskCard` | 任务摘要卡（类型徽标 + 书名/作者/ISBN + 主/次按钮），清单中复用 |
+| `RecentList` | 最近完成任务列表（类型 + 书名 + 结果徽标 + 失败理由 + 完成时间），`recent` 页复用 |
 | `StateBanner` | 进行中/成功/失败 横幅（颜色+图标+文案） |
 | `RssiBar` | RSSI 强度条（红→绿渐变，绑定/寻书复用） |
 | `ConfirmDialog` | 解绑确认、取消确认等 |
@@ -215,7 +256,8 @@ TASK_INFO → SEARCHING → DONE
 
 | UI 行为 | 复用现有封装 |
 |---|---|
-| 轮询领取 | `TaskCloudService.acceptTask(deviceId)` / `completeTask(...)` |
+| 轮询领取 | `TaskCloudService.acceptTask(deviceId, limit=10)` / `completeTask(...)` |
+| 最近完成查询 | `TaskCloudService.listRecentCompleted(deviceId, withinDays=3)` |
 | 读标签/写 EPC | `RfidManager.inventory` / `writeEpcByTid` / `findTagByTid` / `setPower` |
 | 绑定查询/执行 | `TaskCloudService.getRfidBindingInfo` / `bindRfid` |
 | 寻书信号换算 | `RssiLocator.nextPower` / `locate` |
@@ -225,10 +267,12 @@ TASK_INFO → SEARCHING → DONE
 ## 11. 后续实现待办（开发阶段） <font color="red">（待实现）</font>
 
 1. **（§4：任务表保持精简）**：展示字段不入 `device_task`；`api_task_accept` 领取时联表 `book_item → book_meta` 返回 `isbn`/`title`/`authors`，`api_task_createBindRfid`/`createFindBook` 不填充展示字段。
-2. 新增 `HomeViewModel` / `BindViewModel` / `FindViewModel` + 三个 Composable 屏 + NavHost。
+2. 新增 `HomeViewModel` / `BindViewModel` / `FindViewModel` / `RecentViewModel` + 四个 Composable 屏（含 `recent`）+ NavHost；`home` 进入与返回均触发 `acceptTask(limit=10)` 轮询刷新。
 3. 新增相机 ISBN 扫码（ML Kit）+ `BeepPlayer` + `RssiBar` 等组件。
 4. 绑定流程 EPC 回写失败的“完成(绑定已生效)”分支。
-5. 端到端联调（手机发起 bind/find 任务 → PDA 领取执行 → 小程序侧状态自愈）。
+5. 寻书会话内 `readCount` 连续读取计数与「已定位✅」指示；结束时按是否读到 RFID 结果落 `success` / `failed`（`no_rfid_read` / `user_abort`）。
+6. 任务台「最近完成任务」列表（`listRecentCompleted`，近 3 天，结果/失败理由/完成时间）+ `RecentList` 组件。
+7. 端到端联调（手机发起 bind/find 任务 → PDA 领取执行 → 小程序侧状态自愈）。
 
 ---
 

@@ -92,10 +92,11 @@ SDK 资源（来自同级 `RFIDTester`）：
 
 | 云函数 | 方法 | 入参 | 返回（解析自 resp_data） | 设计对应 |
 |---|---|---|---|---|
-| api_task_accept (J1) | acceptTask(deviceId) | {deviceId} | DeviceTask?（无任务为 null） | 领取任务，置 running |
+| api_task_accept (J1) | acceptTask(deviceId, limit=10) | {deviceId, limit?} | DeviceTask[]?（最多 10 条；无任务为 null/[]） | 批量轮询领取任务清单，置 running |
 | api_task_complete (J2) | completeTask(taskId,status,result) | {taskId,status,result} | CompleteResponse | 提交执行结果 |
 | api_task_getRfidBindingInfo (J3) | getRfidBindingInfo(tid) | {tid} | BookBindingInfo | 绑定前确认解绑 |
 | api_task_bindRfid (J4) | bindRfid(bookItemId,tid,taskId?,deviceId?) | 见上 | BindResponse(action) | 执行绑定 |
+| api_task_listRecentCompleted (J5) | listRecentCompleted(deviceId, withinDays=3) | {deviceId, withinDays?} | RecentTask[]（最多 50 条） | 任务台查询最近完成任务 <font color="red">（待实现）</font> |
 
 字段命名：入参/返回全链路 camelCase（deviceId / bookItemId / taskId / targetTid），与云函数一致（见 AI_DEVELOPMENT_HISTORY「命名统一专项」）。
 
@@ -107,8 +108,9 @@ SDK 资源（来自同级 `RFIDTester`）：
 
 - **F4.3 绑定**：`RfidManager.inventory` 读标签 → `getRfidBindingInfo(tid)` 查占用 →
   用户确认 → `bindRfid(bookItemId,tid,taskId,deviceId)` → `RfidManager.writeEpcByTid(tid, bookItemId)` 回写 EPC → `completeTask`。
-- **F6.2 寻书**：`acceptTask` 取 `targetTid` → `RfidManager.findTagByTid(tid)` 连续扫描 →
-  `RssiLocator.nextPower/locate` 估算距离与蜂鸣等级 → 用户结束 → `completeTask`。
+- **F6.2 寻书**：`acceptTask` 取清单中一条 `targetTid` → `RfidManager.findTagByTid(tid)` 连续扫描 →
+  `RssiLocator.nextPower/locate` 估算距离与蜂鸣等级 → 累计目标标签**连续读取次数**（达到阈值判「已找到」，防误判）→ 用户结束 →
+  若本次会话有连续读取结果则 `completeTask(success, {durationMs, foundRssi, readCount})`；若**从未读到 RFID 结果**则 `completeTask(failed, {reason:'no_rfid_read', durationMs, readCount:0})`（任务作为失败关闭）。详见需求流程定义书 F6.2。
 
 `RssiLocator` 把 RFIDTester 的跟踪循环逻辑提取为纯函数（功率 30/20/10 三档自动调节 + 距离文案 + beep 等级）。
 
@@ -136,5 +138,9 @@ SDK 资源（来自同级 `RFIDTester`）：
 ## 8. 本次范围外（后续实现） <font color="red">（待实现）</font>
 
 - F4.3 / F6.2 完整状态机与对应页面
+- 任务台**批量轮询清单（J1 返回 ≤10 条）** 与「最近完成任务」列表（J5 `api_task_listRecentCompleted`）的 UI 与接口落地
 - ISBN 扫码校验、EPC 回写反馈、任务轮询后台服务
+- 寻书会话内「连续读取计数 / 已找到判定」与结束时的 `success` / `failed` 落库逻辑（见 §6 F6.2、需求流程定义书 F6.2）
 - 不修改小程序 / 云函数 / `Docs` 既有文档 / 厂家 SDK
+
+> 注：本文档已同步上述设计变更（J1 改为批量返回、新增 J5、F6.2 成功/失败判定），代码实现仍属后续阶段。
