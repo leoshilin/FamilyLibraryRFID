@@ -30,8 +30,14 @@ android {
         applicationId = "com.familylibrary.rfidfinder"
         minSdk = 24
         targetSdk = 36
+        // 版本号：开发者可在此处修改，编译后自动更新到 App 中
+        // versionCode = 整数，用于 Google Play 发布判断
+        // versionName = 可读版本号，显示在首页底部方便 debug
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
+
+        // 将版本号注入 BuildConfig，供 UI 层读取显示
+        buildConfigField("String", "APP_VERSION_NAME", "\"${versionName}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -69,6 +75,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
