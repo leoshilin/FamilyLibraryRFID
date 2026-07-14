@@ -20,6 +20,9 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "BindViewModel"
 
+/** 连续读取确认所需的次数（3 次一致即为有效读取）。 */
+private const val READ_CONFIRM_COUNT = 3
+
 /** 单次盘点超时（ms）。 */
 private const val INVENTORY_TIMEOUT_MS = 100
 
@@ -62,8 +65,12 @@ data class BindUiState(
     val isbnMatched: Boolean = false,
     /** ISBN 比对错误提示 */
     val isbnError: String = "",
-    /** 当前扫描到的标签列表 */
-    val scannedTags: List<RfidTag> = emptyList(),
+    /** 连续读取确认后的有效标签（待用户确认绑定） */
+    val confirmedTag: RfidTag? = null,
+    /** 连续读取计数器（当前已连续读到同一 TID 的次数，0~3） */
+    val readConfirmCount: Int = 0,
+    /** 最近一次读到的标签 TID（用于判断连续一致性） */
+    val lastReadTid: String = "",
     /** 用户选中的目标标签 */
     val selectedTag: RfidTag? = null,
     /** 标签绑定信息（用于解绑确认） */
@@ -77,7 +84,9 @@ data class BindUiState(
     /** EPC 写入是否成功 */
     val epcWritten: Boolean = false,
     /** 是否正在盘点扫描 */
-    val scanning: Boolean = false
+    val scanning: Boolean = false,
+    /** 是否已发出 beep 提示（有效读取确认音） */
+    val beepTriggered: Boolean = false
 )
 
 /**
@@ -130,10 +139,10 @@ class BindViewModel : ViewModel() {
     // ───────── SCAN_ISBN ─────────
 
     /**
-     * 处理扫码结果（由相机扫码回调触发）。
+     * 处理扫码结果（由 PDA 硬件扫码回调触发）。
      *
      * 与任务返回的 ISBN 比对，不一致则红字提示允许重试；
-     * 一致则进入 SCAN_TAG 阶段。
+     * 一致则自动进入 SCAN_TAG 阶段。
      */
     fun onIsbnScanned(isbn: String) {
         val task = _uiState.value.task ?: return
@@ -163,20 +172,96 @@ class BindViewModel : ViewModel() {
         }
     }
 
+    /** 重新扫描 ISBN（清空结果，回到等待扫码状态）。 */
+    fun onRetryScanIsbn() {
+        _uiState.update {
+            it.copy(
+                scannedIsbn = "",
+                isbnMatched = false,
+                isbnError = "",
+                statusMessage = "请重新扫描图书 ISBN 条码"
+            )
+        }
+    }
+
     // ───────── SCAN_TAG ─────────
 
-    /** 开始循环盘点扫描标签。 */
+    /**
+     * 开始循环盘点扫描标签（连续3次确认机制）。
+     *
+     * 为防止附近有多个标签导致误读：
+     * - 每 300ms 盘点一次
+     * - 连续 3 次读到相同 TID 才认为是有效读取
+     * - 有效读取时发出 beep 提示音
+     * - 显示在屏幕上，由用户确认后进入绑定
+     */
     fun startInventory() {
         cancelInventory()
-
-        _uiState.update { it.copy(scanning = true, scannedTags = emptyList(), statusMessage = "正在扫描 RFID 标签…") }
+        _uiState.update {
+            it.copy(
+                scanning = true,
+                confirmedTag = null,
+                readConfirmCount = 0,
+                lastReadTid = "",
+                selectedTag = null,
+                beepTriggered = false,
+                statusMessage = "正在扫描 RFID 标签（连续确认中…）"
+            )
+        }
 
         inventoryJob = viewModelScope.launch {
             while (isActive) {
                 try {
                     val tags = RfidManager.inventory(INVENTORY_TIMEOUT_MS)
-                    if (tags.isNotEmpty()) {
-                        _uiState.update { it.copy(scannedTags = tags) }
+                    val current = _uiState.value
+
+                    if (tags.isEmpty()) {
+                        // 没读到标签，重置计数
+                        if (current.readConfirmCount > 0) {
+                            _uiState.update {
+                                it.copy(readConfirmCount = 0, lastReadTid = "")
+                            }
+                        }
+                    } else {
+                        // 取 RSSI 最强的标签（最近的标签）
+                        val bestTag = tags.maxByOrNull { it.rssi } ?: tags.first()
+                        val bestTid = bestTag.tid
+
+                        if (bestTid == current.lastReadTid) {
+                            // 同一 TID，累加计数
+                            val newCount = current.readConfirmCount + 1
+                            if (newCount >= READ_CONFIRM_COUNT && current.confirmedTag == null) {
+                                // 连续3次读到同一个标签 → 有效读取，发 beep 并显示
+                                _uiState.update {
+                                    it.copy(
+                                        readConfirmCount = newCount,
+                                        lastReadTid = bestTid,
+                                        confirmedTag = bestTag,
+                                        scanning = false,
+                                        beepTriggered = true,
+                                        statusMessage = "已检测到标签 TID=${bestTag.tid}，请确认是否绑定"
+                                    )
+                                }
+                                cancelInventory()
+                            } else {
+                                _uiState.update {
+                                    it.copy(
+                                        readConfirmCount = newCount,
+                                        lastReadTid = bestTid,
+                                        statusMessage = "扫描中… 连续读到同一标签 $newCount/$READ_CONFIRM_COUNT 次"
+                                    )
+                                }
+                            }
+                        } else {
+                            // 不同的 TID，重置计数
+                            _uiState.update {
+                                it.copy(
+                                    readConfirmCount = 1,
+                                    lastReadTid = bestTid,
+                                    statusMessage = "检测到新标签 TID=${bestTag.tid}，开始确认…"
+                                )
+                            }
+                        }
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "盘点扫描异常：${e.message}")
@@ -192,20 +277,29 @@ class BindViewModel : ViewModel() {
         _uiState.update { it.copy(scanning = false) }
     }
 
-    /** 重新扫描标签（清空列表重新盘点）。 */
+    /** 重新扫描标签（清空确认状态，重新盘点）。 */
     fun rescanTags() {
-        _uiState.update { it.copy(scannedTags = emptyList(), selectedTag = null) }
+        _uiState.update {
+            it.copy(
+                confirmedTag = null,
+                readConfirmCount = 0,
+                lastReadTid = "",
+                selectedTag = null,
+                beepTriggered = false
+            )
+        }
         startInventory()
     }
 
     /**
-     * 用户选中某个标签。
+     * 用户确认绑定当前有效标签。
      *
-     * 停止盘点，查询该标签绑定状态：
+     * 查询该标签绑定状态：
      * - 未被占用 → 直接进入 BINDING
      * - 已被占用 → 进入 CONFIRM_UNBIND
      */
-    fun onTagSelected(tag: RfidTag) {
+    fun onConfirmTag() {
+        val tag = _uiState.value.confirmedTag ?: return
         stopInventory()
         _uiState.update { it.copy(selectedTag = tag, busy = true, statusMessage = "查询标签绑定状态…") }
 
@@ -251,6 +345,11 @@ class BindViewModel : ViewModel() {
         }
     }
 
+    /** 用户拒绝当前标签，重新扫描。 */
+    fun onRejectTag() {
+        rescanTags()
+    }
+
     // ───────── CONFIRM_UNBIND ─────────
 
     /** 用户确认解绑后重绑。 */
@@ -264,10 +363,13 @@ class BindViewModel : ViewModel() {
         _uiState.update {
             it.copy(
                 phase = BindPhase.SCAN_TAG,
+                confirmedTag = null,
+                readConfirmCount = 0,
+                lastReadTid = "",
                 selectedTag = null,
                 bindingInfo = null,
-                scannedTags = emptyList(),
-                statusMessage = "请重新选择标签"
+                beepTriggered = false,
+                statusMessage = "请重新扫描标签"
             )
         }
         startInventory()

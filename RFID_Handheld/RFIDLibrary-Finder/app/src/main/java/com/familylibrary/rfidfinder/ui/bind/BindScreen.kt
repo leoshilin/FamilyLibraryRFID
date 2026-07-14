@@ -2,8 +2,6 @@ package com.familylibrary.rfidfinder.ui.bind
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,7 +13,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.familylibrary.rfidfinder.rfid.RfidTag
 
 // ───────── 颜色常量 ─────────
 
@@ -24,7 +21,6 @@ private val StatusRed = Color(0xFFF44336)
 private val StatusBlue = Color(0xFF1976D2)
 private val StatusOrange = Color(0xFFE65100)
 private val BgGray = Color(0xFFF5F5F5)
-private val TagCardBg = Color(0xFFE8F5E9)
 
 // ───────── 主 Composable ─────────
 
@@ -206,10 +202,15 @@ private fun TaskInfoContent(state: BindUiState, viewModel: BindViewModel) {
 
 // ───────── SCAN_ISBN ─────────
 
+/**
+ * ISBN 扫码校验（UI 设计 §6.1 SCAN_ISBN）。
+ *
+ * PDA 通过硬件扫码获取 ISBN 后，自动与任务 ISBN 比对并显示结果。
+ * 比对正确自动进入 SCAN_TAG 阶段；不一致红字提示，允许重新扫码。
+ * 不再提供手动输入框——ISBN 来源仅限 PDA 扫码。
+ */
 @Composable
 private fun ScanIsbnContent(state: BindUiState, viewModel: BindViewModel) {
-    var isbnInput by remember { mutableStateOf("") }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -219,61 +220,113 @@ private fun ScanIsbnContent(state: BindUiState, viewModel: BindViewModel) {
         Spacer(Modifier.height(32.dp))
 
         Text(
-            text = "📷 扫描图书 ISBN 条码",
+            text = "📷 请用 PDA 扫描图书 ISBN 条码",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
 
-        Text(
-            text = "期望 ISBN：${state.task?.isbn ?: ""}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray
-        )
+        // 期望 ISBN
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text("期望 ISBN：", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text(
+                    text = state.task?.isbn ?: "",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
 
         Spacer(Modifier.height(24.dp))
 
-        // ISBN 手动输入（真机扫码由相机实现，此处提供手动输入入口方便调试）
-        OutlinedTextField(
-            value = isbnInput,
-            onValueChange = { isbnInput = it },
-            label = { Text("ISBN") },
-            placeholder = { Text("扫描或手动输入 ISBN") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            isError = state.isbnError.isNotBlank(),
-            supportingText = if (state.isbnError.isNotBlank()) {
-                { Text(state.isbnError, color = StatusRed) }
-            } else null
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        // 校验按钮
-        Button(
-            onClick = { viewModel.onIsbnScanned(isbnInput.trim()) },
-            enabled = isbnInput.isNotBlank() && !state.busy,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = StatusBlue)
-        ) {
-            Text("校验 ISBN", fontSize = 16.sp)
+        // 扫码结果显示
+        if (state.scannedIsbn.isNotBlank()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (state.isbnMatched) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = if (state.isbnMatched) "✅ ISBN 匹配" else "❌ ISBN 不匹配",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (state.isbnMatched) StatusGreen else StatusRed
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "扫描结果：${state.scannedIsbn}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.DarkGray
+                    )
+                    if (state.isbnError.isNotBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = state.isbnError,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = StatusRed,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        } else {
+            // 等待扫码
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Spacer(Modifier.height(24.dp))
+                CircularProgressIndicator(
+                    modifier = Modifier.size(40.dp),
+                    color = StatusBlue,
+                    strokeWidth = 4.dp
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "等待 PDA 扫码…",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "按下 PDA 侧键触发扫码",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.LightGray
+                )
+            }
         }
 
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            text = "提示：真机通过相机扫码，此处可手动输入 ISBN 用于调试",
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.LightGray,
-            textAlign = TextAlign.Center
-        )
-
         Spacer(Modifier.weight(1f))
+
+        // 底部操作
+        if (state.scannedIsbn.isNotBlank() && !state.isbnMatched) {
+            // 不匹配时提供重新扫码入口
+            Button(
+                onClick = { viewModel.onRetryScanIsbn() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = StatusOrange)
+            ) {
+                Text("重新扫码", fontSize = 16.sp)
+            }
+            Spacer(Modifier.height(8.dp))
+        }
 
         OutlinedButton(
             onClick = { viewModel.onCancel() },
             modifier = Modifier.fillMaxWidth(),
+            enabled = !state.busy,
             colors = ButtonDefaults.outlinedButtonColors(contentColor = StatusRed)
         ) {
             Text("取消", fontSize = 16.sp)
@@ -283,6 +336,11 @@ private fun ScanIsbnContent(state: BindUiState, viewModel: BindViewModel) {
 
 // ───────── SCAN_TAG ─────────
 
+/**
+ * 标签扫描 + 连续确认（UI 设计 §6.1 SCAN_TAG）。
+ *
+ * 连续 3 次读到相同 TID 后发出 beep 并显示标签信息，用户确认或拒绝。
+ */
 @Composable
 private fun ScanTagContent(state: BindUiState, viewModel: BindViewModel) {
     Column(
@@ -299,9 +357,15 @@ private fun ScanTagContent(state: BindUiState, viewModel: BindViewModel) {
             Text("✅ ISBN 校验通过：${state.task?.isbn ?: ""}", color = StatusGreen, fontSize = 14.sp)
         }
 
-        // 标签列表
-        if (state.scannedTags.isEmpty() && !state.scanning) {
-            // 空态
+        // 主内容区
+        if (state.confirmedTag != null) {
+            // 有效标签已确认，等待用户决策
+            ConfirmedTagContent(state, viewModel)
+        } else if (state.scanning) {
+            // 正在扫描
+            ScanningInProgressContent(state)
+        } else {
+            // 空态（等待扫描）
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -311,37 +375,7 @@ private fun ScanTagContent(state: BindUiState, viewModel: BindViewModel) {
             ) {
                 Text("📡", fontSize = 48.sp)
                 Spacer(Modifier.height(12.dp))
-                Text("未扫描到标签", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
-                Spacer(Modifier.height(4.dp))
-                Text("请将 PDA 靠近 RFID 标签", style = MaterialTheme.typography.bodySmall, color = Color.LightGray)
-            }
-        } else {
-            // 扫描到的标签列表
-            Text(
-                text = "扫描到的标签：",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(state.scannedTags, key = { it.tid }) { tag ->
-                    TagItemCard(
-                        tag = tag,
-                        selected = state.selectedTag?.tid == tag.tid,
-                        enabled = !state.busy,
-                        onSelect = { viewModel.onTagSelected(tag) }
-                    )
-                }
-
-                // 底部留白
-                item { Spacer(Modifier.height(8.dp)) }
+                Text("正在初始化扫描…", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
             }
         }
 
@@ -360,67 +394,183 @@ private fun ScanTagContent(state: BindUiState, viewModel: BindViewModel) {
                 OutlinedButton(
                     onClick = { viewModel.onCancel() },
                     modifier = Modifier.weight(1f),
-                    enabled = !state.busy,
+                    enabled = !state.busy && state.confirmedTag == null,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = StatusRed)
                 ) {
                     Text("取消", fontSize = 16.sp)
                 }
                 Button(
-                    onClick = { viewModel.rescanTags() },
+                    onClick = {
+                        if (state.confirmedTag != null) {
+                            viewModel.onRejectTag()
+                        } else {
+                            viewModel.rescanTags()
+                        }
+                    },
                     modifier = Modifier.weight(1f),
                     enabled = !state.busy,
                     colors = ButtonDefaults.buttonColors(containerColor = StatusOrange)
                 ) {
-                    Text("重新扫描", fontSize = 16.sp)
+                    Text(if (state.confirmedTag != null) "不是这个标签" else "重新扫描", fontSize = 16.sp)
                 }
             }
         }
     }
 }
 
-/** 单个标签卡片。 */
+/**
+ * 扫描进行中——显示连续确认进度。
+ */
 @Composable
-private fun TagItemCard(
-    tag: RfidTag,
-    selected: Boolean,
-    enabled: Boolean,
-    onSelect: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) Color(0xFFE8F5E9) else TagCardBg
-        ),
-        border = if (selected) CardDefaults.outlinedCardBorder() else null
+private fun ScanningInProgressContent(state: BindUiState) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
+        // 进度指示
+        CircularProgressIndicator(
+            modifier = Modifier.size(56.dp),
+            color = StatusBlue,
+            strokeWidth = 5.dp
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            text = "正在扫描 RFID 标签…",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        // 连续确认进度条
+        val count = state.readConfirmCount
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            for (i in 1..3) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .background(
+                            color = if (i <= count) StatusGreen else Color(0xFFE0E0E0),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (i <= count) {
+                        Text("✓", color = Color.White, fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Text(
+            text = if (count > 0) "连续确认 $count/3 次" else "请将 PDA 靠近 RFID 标签",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray
+        )
+
+        if (state.lastReadTid.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "当前标签：${state.lastReadTid}",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.DarkGray
+            )
+        }
+    }
+}
+
+/**
+ * 有效标签已确认——显示标签信息，等待用户确认绑定。
+ */
+@Composable
+private fun ConfirmedTagContent(state: BindUiState, viewModel: BindViewModel) {
+    val tag = state.confirmedTag ?: return
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // beep 提示图标
+        Text("🔊", fontSize = 48.sp)
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            text = "检测到 RFID 标签",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = StatusGreen
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        // 标签信息卡片
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
+        ) {
+            Column(Modifier.padding(20.dp)) {
                 Text(
-                    text = "TID: ${tag.tid}",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "标签信息",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = StatusGreen,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "TID：${tag.tid}",
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
+                Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "RSSI: ${tag.rssi}",
+                    text = "RSSI：${tag.rssi}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.DarkGray
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "EPC：${tag.epc}",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
             }
+        }
 
-            Button(
-                onClick = onSelect,
-                enabled = enabled,
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = StatusBlue)
-            ) {
-                Text("选择", fontSize = 14.sp)
-            }
+        Spacer(Modifier.height(24.dp))
+
+        Text(
+            text = "确认要将此标签绑定到《${state.task?.title ?: ""}》吗？",
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(Modifier.height(24.dp))
+
+        // 确认绑定按钮
+        Button(
+            onClick = { viewModel.onConfirmTag() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            enabled = !state.busy,
+            colors = ButtonDefaults.buttonColors(containerColor = StatusGreen)
+        ) {
+            Text("确认绑定", fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

@@ -27,13 +27,23 @@ object RfidManager {
     // SDK 实例（懒初始化：首次 init 时调用 getInstance）
     private var manager: UHFRManager? = null
 
+    /** 最低读功率（dBm），初始化后默认使用。 */
+    const val MIN_READ_POWER = 5
+
+    /** 最低写功率（dBm），初始化后默认使用。 */
+    const val MIN_WRITE_POWER = 5
+
     /**
-     * 初始化/获取 SDK 实例。
+     * 初始化/获取 SDK 实例，并自动将读写功率设为最低档。
      * 必须在 PDA 真机调用（依赖 jniLibs 中的 so）；模拟器/非 PDA 设备会失败。
      * @return 是否初始化成功
      */
     fun init(): Boolean = runCatching {
         manager = UHFRManager.getInstance()
+        if (manager != null) {
+            // 初始化后立即将功率设为最低档，减少功耗和误读范围
+            setPower(MIN_READ_POWER, MIN_WRITE_POWER)
+        }
         manager != null
     }.getOrDefault(false)
 
