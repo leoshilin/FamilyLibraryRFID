@@ -86,12 +86,23 @@ class HomeViewModel : ViewModel() {
     /**
      * 页面进入（onStart / onResume）时调用，触发首次轮询。
      * 从 bind/find/recent 返回时也应调用此方法。
+     * 同时确保 RFID 已初始化（兜底：Application 中已自动初始化，此处二次确认）。
      */
     fun onEnter() {
-        // 刷新 RFID 状态（可能在其他页面初始化过）
+        // 确保 RFID 已初始化（Application 启动时可能因时序问题未完成）
+        ensureRfidReady()
+        // 刷新 RFID 状态
         _uiState.update { it.copy(rfidReady = RfidManager.isReady()) }
         // 进入即触发轮询
         startPolling()
+    }
+
+    /** 确保 RFID 已初始化（幂等，已初始化时无操作）。 */
+    private fun ensureRfidReady() {
+        if (!RfidManager.isReady()) {
+            Log.i(TAG, "RFID 未初始化，尝试自动初始化…")
+            RfidManager.init()
+        }
     }
 
     /**

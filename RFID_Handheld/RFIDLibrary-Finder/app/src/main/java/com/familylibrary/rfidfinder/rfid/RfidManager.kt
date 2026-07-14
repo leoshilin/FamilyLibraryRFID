@@ -36,16 +36,21 @@ object RfidManager {
     /**
      * 初始化/获取 SDK 实例，并自动将读写功率设为最低档。
      * 必须在 PDA 真机调用（依赖 jniLibs 中的 so）；模拟器/非 PDA 设备会失败。
+     * 幂等：已初始化时直接返回 true，不重复初始化。
      * @return 是否初始化成功
      */
-    fun init(): Boolean = runCatching {
-        manager = UHFRManager.getInstance()
-        if (manager != null) {
-            // 初始化后立即将功率设为最低档，减少功耗和误读范围
-            setPower(MIN_READ_POWER, MIN_WRITE_POWER)
-        }
-        manager != null
-    }.getOrDefault(false)
+    fun init(): Boolean {
+        // 已初始化时直接返回，避免重复调用 getInstance() 和 setPower()
+        if (manager != null) return true
+        return runCatching {
+            manager = UHFRManager.getInstance()
+            if (manager != null) {
+                // 初始化后立即将功率设为最低档，减少功耗和误读范围
+                setPower(MIN_READ_POWER, MIN_WRITE_POWER)
+            }
+            manager != null
+        }.getOrDefault(false)
+    }
 
     /** 是否已初始化（init 成功且实例非空）。 */
     fun isReady(): Boolean = manager != null

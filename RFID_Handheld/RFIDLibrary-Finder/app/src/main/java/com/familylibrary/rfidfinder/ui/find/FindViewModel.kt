@@ -137,6 +137,18 @@ class FindViewModel : ViewModel() {
             return
         }
 
+        // 确保 RFID 已初始化（兜底：Application 启动时已自动初始化，此处二次确认）
+        if (!RfidManager.isReady()) {
+            Log.w(TAG, "RFID 未初始化，尝试自动初始化…")
+            val ok = RfidManager.init()
+            if (!ok) {
+                _uiState.update {
+                    it.copy(statusMessage = "RFID 初始化失败，请检查设备后重试")
+                }
+                return
+            }
+        }
+
         // 初始化 BeepPlayer（如果尚未初始化）
         BeepPlayer.init()
 
@@ -146,6 +158,10 @@ class FindViewModel : ViewModel() {
             RfidManager.setPower(startPower, RfidManager.MIN_WRITE_POWER)
         } catch (e: Exception) {
             Log.w(TAG, "设置初始功率失败: ${e.message}")
+            _uiState.update {
+                it.copy(statusMessage = "RFID 设置功率失败: ${e.message}")
+            }
+            return
         }
 
         _uiState.update {

@@ -197,6 +197,19 @@ class BindViewModel : ViewModel() {
      */
     fun startInventory() {
         cancelInventory()
+
+        // 确保 RFID 已初始化（兜底）
+        if (!RfidManager.isReady()) {
+            Log.w(TAG, "RFID 未初始化，尝试自动初始化…")
+            val ok = RfidManager.init()
+            if (!ok) {
+                _uiState.update {
+                    it.copy(statusMessage = "RFID 初始化失败，请检查设备后重试")
+                }
+                return
+            }
+        }
+
         _uiState.update {
             it.copy(
                 scanning = true,
