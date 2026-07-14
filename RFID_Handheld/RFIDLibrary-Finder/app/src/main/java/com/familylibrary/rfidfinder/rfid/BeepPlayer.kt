@@ -40,20 +40,23 @@ object BeepPlayer {
     fun init(): Boolean {
         if (initialized) return true
         return try {
-            toneGenerator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                ToneGenerator(
-                    android.media.AudioManager.STREAM_MUSIC,
-                    DEFAULT_VOLUME,
+            // ToneGenerator 有两个构造函数：
+            // - (streamType, volumePercent: Int)    所有版本
+            // - (streamType, volume: Float)          API 25+
+            // 不存在 (streamType, Int, AudioAttributes) 的三参数版本。
+            // 这里使用 Int 版本兼容 minSdk=24，再通过 setAudioAttributes 设置音频属性。
+            toneGenerator = ToneGenerator(
+                android.media.AudioManager.STREAM_MUSIC,
+                DEFAULT_VOLUME
+            )
+            // API 21+ 可用 AudioAttributes 设置音频用途
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                @Suppress("DEPRECATION")
+                toneGenerator?.setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                ToneGenerator(
-                    android.media.AudioManager.STREAM_MUSIC,
-                    DEFAULT_VOLUME
                 )
             }
             initialized = true
