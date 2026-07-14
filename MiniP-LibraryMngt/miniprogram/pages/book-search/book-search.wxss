@@ -389,6 +389,11 @@
     background: #f56c6c;
   }
 
+  /* 寻书按钮（蓝色醒目，区别于绑定绿/解绑红） */
+  .btn.find-book {
+    background: #1677ff;
+  }
+
   /* 解绑按钮（危险色，区别于绑定/重绑的绿色） */
   .btn.rfid-unbind {
     background: #f56c6c;

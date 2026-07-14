@@ -13,6 +13,7 @@ Page({
     // RFID 权限门控（无 RFID_TASK_CREATE_BIND 隐藏绑定/重绑；无 RFID_UNBIND 隐藏解绑）
     canBind: false,
     canUnbind: false,
+    canFindBook: false,  // 是否有 RFID_TASK_CREATE_FIND 权限（寻书）
 
     // 批量读取绑定任务状态期间为 true，期间禁用 RFID 按钮，防止「置灰前抢点」竞态
     bindStatusLoading: false,
@@ -127,7 +128,7 @@ Page({
     }
   },
 
-  // 等待全局权限加载完成，并刷新本页 RFID 按钮门控（canBind / canUnbind）
+  // 等待全局权限加载完成，并刷新本页 RFID 按钮门控（canBind / canUnbind / canFindBook）
   // 同时打印到 console 便于确认权限是否到位
   async ensurePermissions() {
     const app = getApp()
@@ -137,9 +138,10 @@ Page({
     const perms = (app && app.globalData.permissions) || {}
     this.setData({
       canBind: !!perms.canCreateBindRfidTask,
-      canUnbind: !!perms.canUnbindRfid
+      canUnbind: !!perms.canUnbindRfid,
+      canFindBook: !!perms.canCreateFindBookTask
     })
-    console.log('[book-search] RFID 权限门控: canBind=', this.data.canBind, 'canUnbind=', this.data.canUnbind, 'permissions=', perms)
+    console.log('[book-search] RFID 权限门控: canBind=', this.data.canBind, 'canUnbind=', this.data.canUnbind, 'canFindBook=', this.data.canFindBook, 'permissions=', perms)
   },
 
   onUnload() {
@@ -914,6 +916,41 @@ Page({
   compareIsbn(a, b) {
     const norm = (s) => (s || '').replace(/[^0-9Xx]/g, '').toUpperCase()
     return norm(a) === norm(b)
+  },
+
+  // ========================
+  // 寻书（物理定位）
+  // ========================
+
+  // 发起寻书任务（列表页展开区，仅已绑定 RFID 的 in_stock 图书可用）
+  async handleFindBook(e) {
+    console.log('handleFindBook start')
+
+    const index = e.currentTarget.dataset.index
+    const book = this.data.books[index]
+
+    if (!book || !book.itemId || !book.rfidTid) {
+      wx.showToast({ title: '该书未绑定RFID，无法寻书', icon: 'none' })
+      return
+    }
+
+    this.setData({ currentExpandedId: null })
+    wx.showLoading({ title: '发起中...' })
+
+    try {
+      const result = await taskServices.createFindBook(book.itemId)
+      wx.hideLoading()
+
+      if (result && result.success) {
+        wx.showToast({ title: '已发起寻书任务，请使用PDA寻书', icon: 'none' })
+      } else {
+        wx.showToast({ title: (result && result.message) || '发起失败', icon: 'none' })
+      }
+    } catch (err) {
+      wx.hideLoading()
+      console.error('handleFindBook error:', err)
+      wx.showToast({ title: '发起失败', icon: 'none' })
+    }
   },
 
   // ========================

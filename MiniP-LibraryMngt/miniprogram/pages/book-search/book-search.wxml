@@ -332,6 +332,16 @@
 
             </block>
 
+            <!-- 寻书按钮：仅已绑定 RFID 且有权限时显示 -->
+            <block wx:if="{{canFindBook && item.rfidTid}}">
+              <view
+                class="btn find-book"
+                catchtap="handleFindBook"
+                data-index="{{index}}">
+                寻书
+              </view>
+            </block>
+
           </block>
 
           <!-- 已下架 -->

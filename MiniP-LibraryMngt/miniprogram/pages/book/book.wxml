@@ -205,6 +205,14 @@
                 bindtap="onBindRFID">
                 重新绑定
               </button>
+              <!-- 寻书按钮：仅已绑定 RFID 且有权限时显示 -->
+              <button
+                wx:if="{{canFindBook}}"
+                class="primary-btn"
+                disabled="{{busy}}"
+                bindtap="onFindBook">
+                寻书
+              </button>
             </block>
 
           </block>

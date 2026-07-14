@@ -25,6 +25,7 @@ Page({
     // —— RFID 绑定交互状态 ——
     canBind: false,      // 是否有 RFID_TASK_CREATE_BIND 权限（绑定 / 重新绑定）
     canUnbind: false,    // 是否有 RFID_UNBIND 权限（解绑）
+    canFindBook: false,  // 是否有 RFID_TASK_CREATE_FIND 权限（寻书）
     isBound: false,      // 是否已绑定 RFID（rfid_tid 非空）
     showRfid: false,     // 是否展示 RFID 按钮区（仅 in_stock 展示）
     bindInProgress: false, // 是否存在进行中的绑定任务（pending/running）
@@ -865,7 +866,7 @@ Page({
     }
   },
 
-  // 等待全局权限加载完成，并刷新本页 RFID 按钮门控（canBind / canUnbind）
+  // 等待全局权限加载完成，并刷新本页 RFID 按钮门控（canBind / canUnbind / canFindBook）
   // 同时打印到 console 便于确认权限是否到位
   async ensurePermissions() {
     const app = getApp()
@@ -875,9 +876,10 @@ Page({
     const perms = (app && app.globalData.permissions) || {}
     this.setData({
       canBind: !!perms.canCreateBindRfidTask,
-      canUnbind: !!perms.canUnbindRfid
+      canUnbind: !!perms.canUnbindRfid,
+      canFindBook: !!perms.canCreateFindBookTask
     })
-    console.log('[book] RFID 权限门控: canBind=', this.data.canBind, 'canUnbind=', this.data.canUnbind, 'permissions=', perms)
+    console.log('[book] RFID 权限门控: canBind=', this.data.canBind, 'canUnbind=', this.data.canUnbind, 'canFindBook=', this.data.canFindBook, 'permissions=', perms)
   },
 
   // 绑定 / 重新绑定 RFID
@@ -1010,6 +1012,47 @@ Page({
   compareIsbn(a, b) {
     const norm = (s) => (s || '').replace(/[^0-9Xx]/g, '').toUpperCase()
     return norm(a) === norm(b)
+  },
+
+  // ========================
+  // 寻书（物理定位）
+  // ========================
+
+  // 发起寻书任务（仅已绑定 RFID 的 in_stock 图书可用）
+  async onFindBook() {
+    console.log('book.onFindBook: start')
+
+    const book = this.data.book
+    if (!book || !book.itemId) {
+      wx.showToast({ title: '书籍数据异常', icon: 'none' })
+      return
+    }
+
+    // 二次校验：未绑定 RFID 不可寻书（按钮已条件渲染，但防止竞态）
+    if (!book.rfidTid) {
+      wx.showToast({ title: '该书未绑定RFID，无法寻书', icon: 'none' })
+      return
+    }
+
+    this.setData({ busy: true })
+    wx.showLoading({ title: '发起中...' })
+
+    try {
+      const result = await taskServices.createFindBook(book.itemId)
+      wx.hideLoading()
+      this.setData({ busy: false })
+
+      if (result && result.success) {
+        wx.showToast({ title: '已发起寻书任务，请使用PDA寻书', icon: 'none' })
+      } else {
+        wx.showToast({ title: (result && result.message) || '发起失败', icon: 'none' })
+      }
+    } catch (err) {
+      wx.hideLoading()
+      this.setData({ busy: false })
+      console.error('book.onFindBook error:', err)
+      wx.showToast({ title: '发起失败', icon: 'none' })
+    }
   }
 
 
