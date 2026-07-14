@@ -27,8 +27,8 @@ object RfidManager {
     // SDK 实例（懒初始化：首次 init 时调用 getInstance）
     private var manager: UHFRManager? = null
 
-    /** 最低读功率（dBm），初始化后默认使用。 */
-    const val MIN_READ_POWER = 5
+    /** 默认读功率（dBm），初始化后使用。足够覆盖正常手持读取距离（约 0.5-1m）。 */
+    const val MIN_READ_POWER = 26
 
     /** 最低写功率（dBm），初始化后默认使用。 */
     const val MIN_WRITE_POWER = 5

@@ -22,8 +22,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.familylibrary.rfidfinder.cloud.model.DeviceTask
+import com.familylibrary.rfidfinder.cloud.model.TaskType
 import com.familylibrary.rfidfinder.ui.bind.BindScreen
 import com.familylibrary.rfidfinder.ui.bind.BindViewModel
+import com.familylibrary.rfidfinder.ui.find.FindScreen
+import com.familylibrary.rfidfinder.ui.find.FindViewModel
 import com.familylibrary.rfidfinder.ui.keytest.KeyTestScreen
 import com.familylibrary.rfidfinder.ui.keytest.KeyTestViewModel
 import com.familylibrary.rfidfinder.ui.theme.RFIDLibraryFinderTheme
@@ -165,9 +168,11 @@ class MainActivity : ComponentActivity() {
 private object Routes {
     const val HOME = "home"
     const val BIND = "bind/{taskJson}"
+    const val FIND = "find/{taskJson}"
     const val KEY_TEST = "keytest"
 
     fun bindRoute(taskJson: String) = "bind/$taskJson"
+    fun findRoute(taskJson: String) = "find/$taskJson"
 }
 
 /**
@@ -208,7 +213,11 @@ private fun FinderNavHost(
                 viewModel = homeViewModel,
                 onExecuteTask = { task ->
                     val taskJson = json.encodeToString(DeviceTask.serializer(), task)
-                    navController.navigate(Routes.bindRoute(taskJson))
+                    val route = when (task.taskType) {
+                        TaskType.FIND_BOOK -> Routes.findRoute(taskJson)
+                        else -> Routes.bindRoute(taskJson)
+                    }
+                    navController.navigate(route)
                 },
                 onNavigateToKeyTest = {
                     navController.navigate(Routes.KEY_TEST)
@@ -239,6 +248,36 @@ private fun FinderNavHost(
                 }
                 BindScreen(
                     viewModel = bindViewModel,
+                    onNavigateBack = {
+                        navController.popBackStack(Routes.HOME, inclusive = false)
+                    }
+                )
+            }
+        }
+
+        // 寻书定位页面
+        composable(
+            route = Routes.FIND,
+            arguments = listOf(
+                navArgument("taskJson") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val taskJson = backStackEntry.arguments?.getString("taskJson") ?: ""
+            val task = remember(taskJson) {
+                try {
+                    json.decodeFromString(DeviceTask.serializer(), taskJson)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+            if (task != null) {
+                val findViewModel: FindViewModel = viewModel()
+                LaunchedEffectWithKey(task.taskId) {
+                    findViewModel.init(task)
+                }
+                FindScreen(
+                    viewModel = findViewModel,
                     onNavigateBack = {
                         navController.popBackStack(Routes.HOME, inclusive = false)
                     }

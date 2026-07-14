@@ -23,8 +23,8 @@ private const val TAG = "BindViewModel"
 /** 连续读取确认所需的次数（3 次一致即为有效读取）。 */
 private const val READ_CONFIRM_COUNT = 3
 
-/** 单次盘点超时（ms）。 */
-private const val INVENTORY_TIMEOUT_MS = 100
+/** 单次盘点超时（ms）。200ms 在 26dBm 下能可靠覆盖手持读取距离。 */
+private const val INVENTORY_TIMEOUT_MS = 200
 
 /**
  * 绑定流程 UI 状态机（设计文档 UI §6.1）：
@@ -210,10 +210,14 @@ class BindViewModel : ViewModel() {
         }
 
         inventoryJob = viewModelScope.launch {
+            var consecutiveErrors = 0
             while (isActive) {
                 try {
                     val tags = RfidManager.inventory(INVENTORY_TIMEOUT_MS)
+                    consecutiveErrors = 0 // 成功后重置错误计数
                     val current = _uiState.value
+
+                    Log.i(TAG, "盘点: 读到 ${tags.size} 个标签, tags=$tags")
 
                     if (tags.isEmpty()) {
                         // 没读到标签，重置计数
@@ -227,11 +231,14 @@ class BindViewModel : ViewModel() {
                         val bestTag = tags.maxByOrNull { it.rssi } ?: tags.first()
                         val bestTid = bestTag.tid
 
+                        Log.i(TAG, "盘点: 最强标签 TID=$bestTid RSSI=${bestTag.rssi}")
+
                         if (bestTid == current.lastReadTid) {
                             // 同一 TID，累加计数
                             val newCount = current.readConfirmCount + 1
                             if (newCount >= READ_CONFIRM_COUNT && current.confirmedTag == null) {
                                 // 连续3次读到同一个标签 → 有效读取，发 beep 并显示
+                                Log.i(TAG, "连续确认完成 TID=$bestTid")
                                 _uiState.update {
                                     it.copy(
                                         readConfirmCount = newCount,
@@ -264,7 +271,18 @@ class BindViewModel : ViewModel() {
                         }
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "盘点扫描异常：${e.message}")
+                    consecutiveErrors++
+                    Log.w(TAG, "盘点扫描异常（第${consecutiveErrors}次）：${e.message}", e)
+                    // 连续多次异常后更新 UI 提示用户
+                    if (consecutiveErrors >= 5) {
+                        _uiState.update {
+                            it.copy(
+                                scanning = false,
+                                statusMessage = "RFID 扫描异常：${e.message}。请检查设备或点击「重新扫描」重试"
+                            )
+                        }
+                        cancelInventory()
+                    }
                 }
                 delay(300) // 每 300ms 扫描一次
             }
