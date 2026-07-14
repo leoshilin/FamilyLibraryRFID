@@ -79,24 +79,24 @@
 
 ### 5.2 状态机
 ```
-[IDLE] ──(进入页/返回页, 启动自动轮询)──▶ [POLLING]            // IDLE 为瞬时入口态，立即进入轮询，用户不可见
-[POLLING] ──(无任务)──▶ [EMPTY]      // 显示「暂无任务」+ [手动刷新] + [最近完成任务]
-[POLLING] ──(有任务)──▶ [TASK_LIST]  // 最多 10 条；每条 [执行][放弃]；底部 [刷新][最近完成任务]
-[EMPTY] ──(定时自动轮询, 每 5s)──▶ [POLLING]                  // 不停滞，持续探测新任务
-[EMPTY] ──(点击「手动刷新」)──▶ [POLLING]                       // 立即重新拉取
-[TASK_LIST] ──(执行 某条)──▶ 路由到 bind / find
-[TASK_LIST] ──(放弃 某条)──▶ completeTask(failed, {reason:"user_abort"}) → 该条移出清单
-[TASK_LIST] ──(点击「手动刷新」)──▶ [POLLING]                  // 立即重新拉取
-[TASK_LIST / EMPTY] ──(点击「最近完成任务」)──▶ [RECENT]        // 近 3 天完成结果
-[RECENT] ──(返回)──▶ [POLLING]                                  // 返回即重新轮询
-bind / find 完成 ──(返回 home)──▶ [POLLING]                    // 返回即重新轮询（用户可见态为 EMPTY/TASK_LIST）
+[IDLE] ──(onStart/onResume/从 RECENT·bind·find 返回)──▶ [POLLING]   // 进入即轮询（刷新）
+[IDLE] ──(定时, 每 5s)──▶ [POLLING]                                // 无任务时的自动轮询
+[IDLE] ──(点击「刷新」)──▶ [POLLING]                               // 手动立即轮询
+[POLLING] ──(有任务)──▶ [TASK_LIST]   // 最多 10 条；每条 [执行][放弃]；底部 [刷新][最近完成任务]
+[POLLING] ──(无任务)──▶ [IDLE]        // 回到等待态，5s 定时器重新轮询
+[TASK_LIST] ──(执行 某条)──▶ 路由到 bind / find   // 导航前取消轮询定时器/进行中轮询
+[TASK_LIST] ──(放弃 某条)──▶ completeTask(failed,{reason:"user_abort"}) → 该条移出清单
+[TASK_LIST] ──(点击「刷新」)──▶ [POLLING]
+[TASK_LIST] ──(点击「最近完成任务」)──▶ [RECENT]   // 导航前取消轮询定时器/进行中轮询
+[RECENT] ──(返回)──▶ [POLLING]        // 返回即重新轮询
+bind / find 完成 ──(返回 home)──▶ [POLLING]
 ```
 - **轮询策略**（遵守设计文档 §2.3）：仅在**未进入 bind / find / recent** 时轮询；`acceptTask(deviceId, limit=10)` 一次返回最多 10 条，云端将其置 `running` 并写入 `claimed_by_device` / `claimed_at`，避免被其它 PDA 重复领取；用户从清单选择一条串行执行，其余候选在返回任务台再次轮询时随新任务一并刷新。
-- **IDLE 是瞬时入口态**：进入 `home`（onStart / onResume）及从 `bind` / `find` / `recent` 返回 `home` 时**立即进入 `POLLING`**；`IDLE` 仅存在于「尚未发出首次请求」的一瞬，**用户实际可见的展示态只有 `EMPTY` 与 `TASK_LIST`**。因此「最近完成任务」等常驻入口只需在这两个可见态上提供（不必在 `IDLE` 单独画转移——等价于进入后首次 `POLLING` 落到的展示态上都有该入口）。
-- **EMPTY 不会停滞**：落到 `EMPTY`（暂无任务）后由定时器**每 5s 自动回到 `POLLING`** 重新探测任务，故「暂无任务」会持续刷新，不会因进入 `EMPTY` 而停止轮询；一旦有任务即切到 `TASK_LIST`。
-- **手动「刷新」按钮**：在 `EMPTY` / `TASK_LIST` 点击「刷新」即**立即进入 `POLLING`**（打断定时、立即重新拉取）；`POLLING` 期间「刷新」按钮**禁用**，避免重复请求。
-- **POLLING 期间 UI 控制（防并发）**：进入 `POLLING` 时显示轮询指示（顶部 Spinner / 「刷新中…」），并**禁用** `[执行]` / `[放弃]` / `[刷新]` / `[最近完成任务]` 等用户操作，防止轮询与执行 / 导航并发导致任务状态不一致；`POLLING` 结束回到 `EMPTY` / `TASK_LIST` 后恢复可用。
-- 「最近完成任务」为**任务台常驻入口**，在 `EMPTY` 与 `TASK_LIST` 均可点击进入 `RECENT`；`RECENT` 返回或 `bind`/`find` 完成后均回到 `POLLING` 重新轮询刷新。
+- **IDLE 是「等待 / 无任务」态（合并原 EMPTY）**：既是进入首页的瞬时入口，也是轮询无任务后的停留态，统一持有 **5s 自动轮询定时器**并展示「暂无任务」。不再单独设 EMPTY 态，避免冗余（轮询无任务即回到 IDLE，由定时器再次触发 POLLING）。
+- **POLLING 期间 UI 控制（防并发）**：显示「刷新中…」并**禁用** `[执行]` / `[放弃]` / `[刷新]` / `[最近完成任务]`；离开首页（进入 bind / find / recent）或页面销毁时，**取消轮询定时器与进行中的轮询协程**，避免返回后旧结果覆盖新状态（详见 §12）。
+- **「最近完成任务」/「执行」导航前先取消轮询**：点击这两类按钮进入其它页前，先取消首页轮询定时器与进行中轮询协程再导航——防止旧轮询在子页完成并回写首页状态（见 §5.4、§12）。**无需为「点击最近完成任务」本身额外设置禁用态**：该按钮在 `POLLING` 期间已被禁用（无法点）；在 `IDLE`/`TASK_LIST` 点击仅做页面导航，不修改任务状态，无并发写冲突；进入 `RECENT` 后首页操作不可达，自然无并发。
+- **手动「刷新」按钮**：在 `IDLE` / `TASK_LIST` 点击「刷新」即**立即进入 `POLLING`**（打断 5s 定时、立即重新拉取）；`POLLING` 期间「刷新」禁用，避免重复请求。
+- 「最近完成任务」为**任务台常驻入口**，在 `IDLE` 与 `TASK_LIST` 均可点击进入 `RECENT`；`RECENT` 返回或 `bind`/`find` 完成后均回到 `POLLING` 重新轮询刷新。
 
 ### 5.3 任务清单（TASK_LIST）布局
 ```
@@ -119,7 +119,7 @@ bind / find 完成 ──(返回 home)──▶ [POLLING]                    // 
 
 > 清单项复用公共组件 `TaskCard`（类型徽标 + 书名/作者/ISBN + 主/次按钮）；点击「执行」携带该 `DeviceTask` 进入 `bind` / `find`，点击「放弃」仅将该条置 `failed`（`reason:"user_abort"`），不阻塞其它候选。
 
-### 5.3.1 空任务布局（EMPTY）
+### 5.3.1 无任务布局（IDLE）
 ```
 ┌──────────────────────────────────┐
 │  任务台（暂无任务）      [ 刷新 ]   │
@@ -129,7 +129,7 @@ bind / find 完成 ──(返回 home)──▶ [POLLING]                    // 
 │     [ 最近完成任务 ]  →             │
 └──────────────────────────────────┘
 ```
-> `EMPTY` 与 `TASK_LIST` 共享底部「最近完成任务」常驻入口与顶部「刷新」；`POLLING` 期间「刷新」禁用并展示「刷新中…」。
+> `IDLE`（无任务）与 `TASK_LIST` 共享底部「最近完成任务」常驻入口与顶部「刷新」；`IDLE` 由 5s 定时器自动回到 `POLLING`；`POLLING` 期间「刷新」禁用并展示「刷新中…」。
 
 ### 5.4 最近完成任务入口（RECENT）
 任务台底部提供「最近完成任务」入口，点击进入 `recent` 页，调用 `listRecentCompleted(deviceId, withinDays=3)` 拉取**近 3 天**内 `status ∈ [success, failed]` 的任务，展示：
@@ -152,6 +152,8 @@ bind / find 完成 ──(返回 home)──▶ [POLLING]                    // 
 │   …（按 completed_at 倒序）……      │
 └──────────────────────────────────┘
 ```
+
+> **进入与加载控制**：进入 `recent` 前已在首页取消轮询定时器与进行中轮询协程（见 §5.2）；`listRecentCompleted` 拉取近 3 天任务期间显示加载进度，**`[返回]` 保持可点**（返回即回到 home 触发 POLLING，无任务状态写冲突）。列表加载完成前不展示空态，避免与加载态混淆。
 
 ---
 
@@ -176,6 +178,14 @@ TASK_INFO → SCAN_ISBN → SCAN_TAG → [CONFIRM_UNBIND?] → BINDING → WRITE
 | **BINDING** | 进度提示“正在绑定…” | `bindRfid(bookItemId, tid, taskId, deviceId)`；成功(action=bind/rebind)→下一步；失败→重试/取消 |
 | **WRITE_EPC** | 进度提示“正在写入 EPC=book_item_id” | `RfidManager.writeEpcByTid(tid, bookItemId)`；成功→DONE；失败→见下 |
 | **DONE** | 绿勾“绑定完成（书名 / TID / EPC 已写入）”+ [返回任务台] | 进入 DONE 前调 `completeTask(success, {epcWritten:true})` |
+
+> **操作禁用（防并发 / 防误触）**：绑定流程含多个异步 / 阻塞环节，按状态控制按钮可用性：
+> - **TASK_INFO**：`[开始绑定]` `[取消]` 均可点；`[取消]` → `completeTask(failed,{reason:"user_abort"})` 返回任务台。
+> - **SCAN_ISBN**（相机扫码中）：仅 `[取消]` 可点；ISBN 比对不一致仅作红字提示与重试，不进入下一步。
+> - **SCAN_TAG**（inventory 进行中）：`[选择]` 在取到 TID 前禁用；`[重新扫描]` 可点（重启盘点）；`[取消]` 可点（中断盘点并 abort）。
+> - **CONFIRM_UNBIND**（弹窗）：模态 `ConfirmDialog` 阻塞底层 UI，期间不可点其它按钮；`[确认]`→BINDING，`[取消]`→回 SCAN_TAG 或 abort。
+> - **BINDING / WRITE_EPC**（云绑定 / EPC 回写异步）：显示 `LoadingOverlay`，**禁用** 除显式弹窗按钮外的导航/返回；EPC 回写失败按 §6.2 弹 `[重试写入]` `[完成(绑定已生效)]`，二者均激活。
+> - **DONE**：仅 `[返回任务台]` 可点 → 返回 home 触发 POLLING。
 
 ### 6.2 EPC 回写失败的处理（设计权衡）
 设计文档 F4.3：「等待成功后再次扫描写入 EPC… 否则更新队列中任务状态为 success（失败则提交云端回退）」。
@@ -219,6 +229,11 @@ TASK_INFO → SEARCHING → DONE
 | **TASK_INFO** | 显示目标书名/作者/ISBN/TID + [开始寻书][取消] |
 | **SEARCHING** | “盖革计数器”模式：全屏大号可视化。每 ~300ms 调 `findTagByTid`；用 `RssiLocator.locate()` 得距离文案+beep 等级，`RssiLocator.nextPower()` 得下一档功率并 `setPower`；RSSI 条随信号增强由红→绿，配蜂鸣（越近越急）。底部 [停止寻书]。界面持续累计目标标签**连续读取次数**（`readCount`），达到阈值（默认 3）时亮起「已定位✅」指示（防误判）。 |
 | **DONE** | “已结束寻书”+ 结果：成功（本次耗时 / 最后 RSSI / 连续读取次数）或失败（理由：`no_rfid_read` / `user_abort`）+ [返回任务台] |
+
+> **操作禁用（防并发 / 防误触）**：寻书为连续 RFID 扫描循环，需严格控制：
+> - **TASK_INFO**：`[开始寻书]` `[取消]` 可点；`[取消]` → `completeTask(failed,{reason:"user_abort"})`。
+> - **SEARCHING**（RFID 循环进行中）：**仅 `[停止寻书]` 可点**，禁用 `[开始寻书]` 及一切导航/返回；系统返回键等同 `[停止寻书]`，按“结束判定（防误判）”落 `success`/`failed`。`LoadingOverlay` 不可取消（扫描循环由停止键终止）。
+> - **DONE**：`completeTask` 已在进入 DONE 前调用；仅 `[返回任务台]` 可点 → 返回 home 触发 POLLING。
 
 > **结束判定（防误判）**：用户点击「停止寻书」时，若本次会话已取得目标标签**连续稳定读取结果**（`readCount ≥ 阈值`）→ `completeTask(success, …)`；若**从未读到任何 RFID 结果**（`readCount = 0`）→ `completeTask(failed, {reason:'no_rfid_read', …})`，任务作为失败关闭。判定规则见需求流程定义书 F6.2。
 
@@ -289,6 +304,31 @@ TASK_INFO → SEARCHING → DONE
 5. 寻书会话内 `readCount` 连续读取计数与「已定位✅」指示；结束时按是否读到 RFID 结果落 `success` / `failed`（`no_rfid_read` / `user_abort`）。
 6. 任务台「最近完成任务」列表（`listRecentCompleted`，近 3 天，结果/失败理由/完成时间）+ `RecentList` 组件。
 7. 端到端联调（手机发起 bind/find 任务 → PDA 领取执行 → 小程序侧状态自愈）。
+
+---
+
+---
+
+## 12. 各页面操作禁用总览
+
+> 汇总全文档状态机中“哪些期间需禁用哪些操作”，便于实现时统一落地。原则：**异步 / 阻塞环节禁用除显式允许外的操作；导航前先取消首页轮询；模态弹窗阻塞底层 UI**（与 §5.2 一致）。
+
+| 页面 | 状态 / 期间 | 禁用操作 | 允许操作 | 说明 |
+|---|---|---|---|---|
+| 任务台 Home | POLLING（轮询中） | `[执行]` `[放弃]` `[刷新]` `[最近完成任务]` | 无（展示“刷新中…”） | 防重复请求 / 并发写；离开页面取消定时器与协程 |
+| 任务台 Home | IDLE（无任务等待） | 无 | `[刷新]` `[最近完成任务]` | 5s 定时器自动 POLLING；“刷新”即立即 POLLING |
+| 任务台 Home | TASK_LIST | 无 | `[执行]` `[放弃]` `[刷新]` `[最近完成任务]` | 各候选独立，放弃单条不阻塞其它 |
+| 任务台 Home | 导航至 bind / find / recent 前 | — | — | 先取消首页轮询定时器与进行中协程再导航 |
+| Bind | TASK_INFO | 无 | `[开始绑定]` `[取消]` | 取消 → abort |
+| Bind | SCAN_ISBN（相机扫码） | 其它导航 | `[取消]` | 不一致仅红字提示 + 重试 |
+| Bind | SCAN_TAG（inventory 中） | `[选择]`（未取到 TID 前） | `[重新扫描]` `[取消]` | 重扫重启盘点 |
+| Bind | CONFIRM_UNBIND（弹窗） | 底层所有按钮（模态） | `[确认]` `[取消]` | 确认 → BINDING，取消 → 回扫 / abort |
+| Bind | BINDING / WRITE_EPC（异步） | 导航 / 返回 | 失败弹窗 `[重试写入]` `[完成(绑定已生效)]` | `LoadingOverlay` |
+| Bind | DONE | 无 | `[返回任务台]` | 返回 home 触发 POLLING |
+| Find | TASK_INFO | 无 | `[开始寻书]` `[取消]` | 取消 → abort |
+| Find | SEARCHING（RFID 循环） | `[开始寻书]`、导航 / 返回、系统返回键 | `[停止寻书]` | 返回键等同停止；`LoadingOverlay` 不可取消 |
+| Find | DONE | 无 | `[返回任务台]` | `completeTask` 已前置调用 |
+| RECENT | 列表加载中 | 无（空态不展示） | `[返回]` | 进入前已取消首页轮询；返回 → POLLING 无冲突 |
 
 ---
 
