@@ -1027,9 +1027,9 @@ Page({
   async onFindBook() {
     console.log('book.onFindBook: start')
 
-    // 进行中（findInProgress）禁止重复发起
-    if (this.data.busy || this.data.findInProgress) {
-      console.log('book.onFindBook: 存在进行中寻书任务，忽略重复点击')
+    // 进行中（findInProgress）或状态加载中禁止重复发起
+    if (this.data.busy || this.data.findInProgress || this.data.bindStatusLoading) {
+      console.log('book.onFindBook: 存在进行中寻书任务或状态加载中，忽略重复点击')
       return
     }
 
